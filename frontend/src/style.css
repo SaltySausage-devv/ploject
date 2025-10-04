@@ -26,8 +26,8 @@
 body {
   font-family: 'Inter', sans-serif;
   line-height: 1.6;
-  color: var(--text-primary);
-  background-color: #ffffff;
+  color: #ffffff;
+  background-color: #1a1a1a;
 }
 
 /* Visible White Segmented Scrollbar */
