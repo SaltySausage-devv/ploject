@@ -320,8 +320,12 @@
               <div class="cyberpunk-tutor-card border-0 shadow-sm h-100">
                 <div class="card-body p-4">
                   <div class="d-flex align-items-start mb-3">
-                    <div class="cyberpunk-tutor-avatar rounded-circle d-flex align-items-center justify-content-center me-3">
-                      <i class="fas fa-user cyberpunk-orange fs-4"></i>
+                    <div class="cyberpunk-tutor-avatar me-3">
+                      <img 
+                        :src="tutor.avatar" 
+                        :alt="tutor.name"
+                        class="cyberpunk-avatar-img"
+                      >
                     </div>
                     <div class="flex-grow-1">
                       <h6 class="cyberpunk-tutor-name mb-1">{{ tutor.name }}</h6>
@@ -766,7 +770,8 @@ export default {
             hourlyRate: 80,
             bio: 'Experienced mathematics tutor with 8 years of experience. Specializes in O-Level and A-Level mathematics.',
             location: 'Orchard, Singapore',
-            teachingMode: 'online'
+            teachingMode: 'online',
+            avatar: 'https://i.pravatar.cc/400?img=3'
           },
           {
             id: 2,
@@ -778,7 +783,8 @@ export default {
             hourlyRate: 70,
             bio: 'Former MOE teacher with 10 years of experience. Excellent track record with students.',
             location: 'Marina Bay, Singapore',
-            teachingMode: 'in-person'
+            teachingMode: 'in-person',
+            avatar: 'https://i.pravatar.cc/400?img=5'
           },
           {
             id: 3,
@@ -790,7 +796,8 @@ export default {
             hourlyRate: 60,
             bio: 'Passionate English tutor with a focus on creative writing and comprehension skills.',
             location: 'Tampines, Singapore',
-            teachingMode: 'both'
+            teachingMode: 'both',
+            avatar: 'https://i.pravatar.cc/400?img=7'
           }
         ]
         isLoading.value = false
@@ -1450,10 +1457,16 @@ export default {
   min-height: 60px !important;
   max-width: 60px !important;
   max-height: 60px !important;
-  background: rgba(255, 140, 66, 0.1);
   border: 2px solid var(--cyber-orange);
+  border-radius: 50%;
   transition: transform 0.3s ease;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.cyberpunk-avatar-img {
+  width: 100% !important;
+  height: 100% !important;
   object-fit: cover;
   aspect-ratio: 1 / 1;
 }

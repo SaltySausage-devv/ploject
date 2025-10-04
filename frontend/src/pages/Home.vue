@@ -3,9 +3,9 @@
     <!-- Hero Section -->
     <section class="hero-section text-white py-5">
       <div class="container">
-        <div class="row align-items-center min-vh-50">
-          <div class="col-lg-6">
-            <div>
+        <div class="row align-items-center min-vh-50 hero-row">
+          <div class="col-lg-6 col-12 hero-content-col">
+            <div class="hero-content">
               <h1 class="display-4 fw-bold mb-4 hero-title cyberpunk-glow">
                 Find Your Perfect Tutor in Singapore
               </h1>
@@ -25,8 +25,8 @@
               </div>
             </div>
           </div>
-          <div class="col-lg-6">
-            <div class="text-center">
+          <div class="col-lg-6 col-12 hero-logo-col">
+            <div class="text-center hero-logo-container">
               <div class="hero-image rounded-4 p-4 shadow-lg hero-logo cyberpunk-glow" style="background: var(--cyber-grey); border: 2px solid var(--cyber-orange);">
                 <i class="fas fa-graduation-cap text-primary" style="font-size: 8rem; color: var(--cyber-orange) !important;"></i>
               </div>
@@ -409,18 +409,236 @@ export default {
   transform: translateY(-5px);
 }
 
+/* Fix for 979px overlap issue - Hero logo overlapping with buttons */
+@media (max-width: 979px) {
+  .hero-section {
+    padding-top: 4rem !important;
+    margin-top: 2rem;
+  }
+  
+  .hero-content {
+    margin-top: 1rem;
+  }
+  
+  .display-4 {
+    font-size: 2.3rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
+  
+  .hero-buttons {
+    margin-top: 1.5rem;
+  }
+  
+  /* Move hero logo below content to prevent overlap */
+  .hero-row {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .hero-content-col {
+    order: 1;
+  }
+  
+  .hero-logo-col {
+    order: 2;
+  }
+  
+  .hero-logo-container {
+    margin-top: 3rem !important;
+  }
+  
+  .hero-content {
+    margin-bottom: 2rem;
+  }
+  
+  /* Reduce hero logo size at this breakpoint */
+  .hero-image {
+    max-width: 280px !important;
+  }
+  
+  .hero-image i {
+    font-size: 4.5rem !important;
+  }
+}
+
+/* Fix for 924px overlap issue - Hero logo overlapping with buttons */
+@media (max-width: 924px) {
+  .hero-section {
+    padding-top: 4rem !important;
+    margin-top: 2rem;
+  }
+  
+  .hero-content {
+    margin-top: 1rem;
+  }
+  
+  .display-4 {
+    font-size: 2.2rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
+  
+  .hero-buttons {
+    margin-top: 1.5rem;
+  }
+  
+  /* Move hero logo below content to prevent overlap */
+  .hero-row {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .hero-content-col {
+    order: 1;
+  }
+  
+  .hero-logo-col {
+    order: 2;
+  }
+  
+  .hero-logo-container {
+    margin-top: 3rem !important;
+  }
+  
+  .hero-content {
+    margin-bottom: 2rem;
+  }
+  
+  /* Reduce hero logo size at this breakpoint */
+  .hero-image {
+    max-width: 250px !important;
+  }
+  
+  .hero-image i {
+    font-size: 4rem !important;
+  }
+}
+
+/* Fix for 783px overlap issue - Hero logo overlapping with buttons */
+@media (max-width: 783px) {
+  .hero-section {
+    padding-top: 4rem !important;
+    margin-top: 2rem;
+  }
+  
+  .hero-content {
+    margin-top: 1rem;
+  }
+  
+  .display-4 {
+    font-size: 2rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
+  }
+  
+  .hero-buttons {
+    margin-top: 1.5rem;
+  }
+  
+  /* Move hero logo below content to prevent overlap */
+  .hero-row {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .hero-content-col {
+    order: 1;
+  }
+  
+  .hero-logo-col {
+    order: 2;
+  }
+  
+  .hero-logo-container {
+    margin-top: 3rem !important;
+  }
+  
+  .hero-content {
+    margin-bottom: 2rem;
+  }
+  
+  /* Reduce hero logo size at this breakpoint */
+  .hero-image {
+    max-width: 200px !important;
+  }
+  
+  .hero-image i {
+    font-size: 3rem !important;
+  }
+}
+
+/* Mobile Responsive Styles */
 @media (max-width: 768px) {
   .hero-section {
     min-height: 60vh;
     text-align: center;
+    padding: 2rem 0;
+    padding-top: 4rem !important;
+  }
+  
+  .hero-content {
+    margin-bottom: 2rem;
   }
   
   .display-4 {
-    font-size: 2.5rem;
+    font-size: 2.2rem;
+    line-height: 1.2;
+    margin-bottom: 1rem;
   }
   
   .lead {
-    font-size: 1.1rem;
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+  
+  .hero-buttons {
+    justify-content: center;
+    gap: 1rem;
+  }
+  
+  .hero-buttons .btn {
+    flex: 1;
+    min-width: 140px;
+    font-size: 0.9rem;
+    padding: 0.75rem 1rem;
+  }
+  
+  .hero-logo-container {
+    margin-top: 2rem;
+  }
+  
+  .hero-image {
+    max-width: 250px;
+    margin: 0 auto;
+  }
+  
+  .hero-image i {
+    font-size: 4rem !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .display-4 {
+    font-size: 1.8rem;
+  }
+  
+  .hero-buttons {
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .hero-buttons .btn {
+    width: 100%;
+    max-width: 200px;
+  }
+  
+  .hero-image {
+    max-width: 200px;
+  }
+  
+  .hero-image i {
+    font-size: 3rem !important;
   }
 }
 </style>
