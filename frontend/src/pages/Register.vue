@@ -1,5 +1,5 @@
 <template>
-  <div class="register-page min-vh-100 d-flex align-items-center position-relative" style="background: #1a1a1a !important;">
+  <div class="register-page min-vh-100 position-relative py-4" style="background: #1a1a1a !important;">
     <!-- Animated Background Elements -->
     <div class="register-background-elements">
       <div class="floating-icon floating-icon-1">🎓</div>
@@ -14,13 +14,13 @@
 
     <div class="container">
       <div class="row justify-content-center">
-        <div class="col-lg-8 col-md-10">
-          <div 
+        <div class="col-lg-5 col-md-7 col-sm-10">
+          <div
             ref="registerCard"
             class="cyberpunk-register-card border-0 shadow-lg"
           >
-            <div class="card-body p-5">
-              <div class="text-center mb-4">
+            <div class="card-body p-3">
+              <div class="text-center mb-3">
                 <div 
                   ref="logoIcon"
                   class="cyberpunk-logo-icon"
@@ -42,48 +42,47 @@
               </div>
 
               <form @submit.prevent="handleRegister">
-                <div class="row">
-                  <div class="col-md-6 mb-3">
-                    <label for="firstName" class="cyberpunk-label">First Name</label>
-                    <div class="cyberpunk-input-group">
-                      <div class="cyberpunk-input-icon">
-                        <i class="fas fa-user"></i>
-                      </div>
-                      <input
-                        ref="firstNameField"
-                        type="text"
-                        id="firstName"
-                        v-model="form.firstName"
-                        class="cyberpunk-input"
-                        :class="{ 'is-invalid': errors.firstName }"
-                        placeholder="Enter your first name"
-                        required
-                      />
+                <div class="mb-3">
+                  <label for="firstName" class="cyberpunk-label">First Name</label>
+                  <div class="cyberpunk-input-group">
+                    <div class="cyberpunk-input-icon">
+                      <i class="fas fa-user"></i>
                     </div>
-                    <div v-if="errors.firstName" class="cyberpunk-error-message">
-                      {{ errors.firstName }}
-                    </div>
+                    <input
+                      ref="firstNameField"
+                      type="text"
+                      id="firstName"
+                      v-model="form.firstName"
+                      class="cyberpunk-input"
+                      :class="{ 'is-invalid': errors.firstName }"
+                      placeholder="Enter your first name"
+                      required
+                    />
                   </div>
-                  <div class="col-md-6 mb-3">
-                    <label for="lastName" class="cyberpunk-label">Last Name</label>
-                    <div class="cyberpunk-input-group">
-                      <div class="cyberpunk-input-icon">
-                        <i class="fas fa-user"></i>
-                      </div>
-                      <input
-                        ref="lastNameField"
-                        type="text"
-                        id="lastName"
-                        v-model="form.lastName"
-                        class="cyberpunk-input"
-                        :class="{ 'is-invalid': errors.lastName }"
-                        placeholder="Enter your last name"
-                        required
-                      />
+                  <div v-if="errors.firstName" class="cyberpunk-error-message">
+                    {{ errors.firstName }}
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="lastName" class="cyberpunk-label">Last Name</label>
+                  <div class="cyberpunk-input-group">
+                    <div class="cyberpunk-input-icon">
+                      <i class="fas fa-user"></i>
                     </div>
-                    <div v-if="errors.lastName" class="cyberpunk-error-message">
-                      {{ errors.lastName }}
-                    </div>
+                    <input
+                      ref="lastNameField"
+                      type="text"
+                      id="lastName"
+                      v-model="form.lastName"
+                      class="cyberpunk-input"
+                      :class="{ 'is-invalid': errors.lastName }"
+                      placeholder="Enter your last name"
+                      required
+                    />
+                  </div>
+                  <div v-if="errors.lastName" class="cyberpunk-error-message">
+                    {{ errors.lastName }}
                   </div>
                 </div>
 
@@ -931,10 +930,10 @@ export default {
 .register-page {
   background: #1a1a1a !important;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   min-height: 100vh;
   width: 100vw;
-  height: 100vh;
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -1034,17 +1033,17 @@ export default {
 
 /* Cyberpunk Logo Icon */
 .cyberpunk-logo-icon {
-  width: 80px;
-  height: 80px;
+  width: 50px;
+  height: 50px;
   background: linear-gradient(45deg, var(--cyber-orange), var(--cyber-yellow));
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 0 auto 1rem;
+  margin: 0 auto 0.5rem;
   box-shadow: 0 0 20px rgba(255, 140, 66, 0.5);
-  border: 3px solid var(--cyber-orange);
-  font-size: 2rem;
+  border: 2px solid var(--cyber-orange);
+  font-size: 1.25rem;
   color: white;
   text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
 }
@@ -1053,31 +1052,32 @@ export default {
 .cyberpunk-welcome-text {
   color: var(--cyber-text);
   font-weight: 700;
-  font-size: 2.5rem;
+  font-size: 1.5rem;
   text-shadow: 0 0 20px rgba(255, 140, 66, 0.5);
-  letter-spacing: 2px;
-  margin-bottom: 1rem;
+  letter-spacing: 1.5px;
+  margin-bottom: 0.25rem;
 }
 
 .cyberpunk-subtitle {
   color: var(--cyber-text);
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   font-weight: 500;
   text-shadow: 0 0 15px rgba(255, 140, 66, 0.5);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .cyberpunk-label {
   color: var(--cyber-text);
   font-weight: 600;
+  font-size: 0.9rem;
   text-shadow: 0 0 5px rgba(255, 140, 66, 0.3);
-  letter-spacing: 1px;
-  margin-bottom: 0.5rem;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.35rem;
 }
 
 .cyberpunk-signup-text {
   color: var(--cyber-text-muted);
-  font-size: 0.95rem;
+  font-size: 0.85rem;
 }
 
 .cyberpunk-link {
@@ -1111,20 +1111,20 @@ export default {
 }
 
 .cyberpunk-input-icon {
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 0.85rem;
   color: var(--cyber-orange);
   background: rgba(255, 140, 66, 0.1);
   border-right: 1px solid var(--cyber-grey-light);
-  font-size: 1.1rem;
+  font-size: 0.95rem;
 }
 
 .cyberpunk-input {
   flex: 1;
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 0.85rem;
   background: transparent;
   border: none;
   color: var(--cyber-text);
-  font-size: 1rem;
+  font-size: 0.9rem;
   outline: none;
 }
 
@@ -1133,13 +1133,14 @@ export default {
 }
 
 .cyberpunk-toggle-btn {
-  padding: 0.75rem 1rem;
+  padding: 0.6rem 0.85rem;
   background: rgba(255, 140, 66, 0.1);
   border: none;
   color: var(--cyber-orange);
   cursor: pointer;
   transition: all 0.3s ease;
   border-left: 1px solid var(--cyber-grey-light);
+  font-size: 0.9rem;
 }
 
 .cyberpunk-toggle-btn:hover {
@@ -1192,8 +1193,8 @@ export default {
 
 .cyberpunk-checkbox-label {
   color: var(--cyber-text);
-  font-size: 0.9rem;
-  line-height: 1.4;
+  font-size: 0.85rem;
+  line-height: 1.3;
   cursor: pointer;
 }
 
@@ -1203,8 +1204,10 @@ export default {
   border: 2px solid var(--cyber-orange);
   color: white;
   font-weight: 700;
+  font-size: 0.9rem;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  padding: 0.65rem 1.5rem;
   box-shadow: 0 0 20px rgba(255, 140, 66, 0.3);
   position: relative;
   overflow: hidden;
