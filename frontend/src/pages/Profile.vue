@@ -79,16 +79,6 @@
                 </div>
 
                 <div class="mb-3">
-                  <label class="form-label">Email Address</label>
-                  <input
-                    type="email"
-                    v-model="profileForm.email"
-                    class="form-control"
-                    disabled
-                  />
-                </div>
-
-                <div class="mb-3">
                   <label class="form-label">Phone Number</label>
                   <input
                     type="tel"
