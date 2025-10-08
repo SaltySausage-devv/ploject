@@ -8,7 +8,8 @@ const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const multer = require('multer');
-const amqp = require('amqplib');
+const createDOMPurify = require('dompurify');
+const { JSDOM } = require('jsdom');
 require('dotenv').config({ path: '../../.env' });
 
 const app = express();
@@ -17,7 +18,10 @@ const io = socketIo(server, {
   cors: {
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     methods: ['GET', 'POST']
-  }
+  },
+  pingTimeout: 60000,
+  pingInterval: 25000,
+  transports: ['websocket', 'polling']
 });
 const PORT = process.env.PORT || 3005;
 
@@ -27,33 +31,20 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
-// RabbitMQ connection
-let connection;
-let channel;
-const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost:5672';
-const MESSAGE_QUEUE = 'messages';
-const CHAT_QUEUE = 'chat_messages';
+// Initialize DOMPurify for XSS protection
+const window = new JSDOM('').window;
+const DOMPurify = createDOMPurify(window);
 
-// Initialize RabbitMQ
-async function initRabbitMQ() {
-  try {
-    connection = await amqp.connect(RABBITMQ_URL);
-    channel = await connection.createChannel();
-    
-    // Declare queues
-    await channel.assertQueue(MESSAGE_QUEUE, { durable: true });
-    await channel.assertQueue(CHAT_QUEUE, { durable: true });
-    
-    console.log('RabbitMQ connected successfully for messaging');
-    
-    // Start consuming messages
-    await consumeMessages();
-    
-  } catch (error) {
-    console.error('RabbitMQ connection failed:', error);
-    // Fallback to direct processing if RabbitMQ is not available
-  }
-}
+// Input sanitization function
+const sanitizeInput = (input) => {
+  if (typeof input !== 'string') return input;
+  return DOMPurify.sanitize(input, { 
+    ALLOWED_TAGS: [],
+    ALLOWED_ATTR: []
+  });
+};
+
+// RabbitMQ removed - using direct Socket.io + Supabase messaging
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -78,7 +69,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // JWT verification middleware
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   
   if (!token) {
@@ -86,16 +77,35 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    // Verify token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Get user profile from database
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    req.user = {
+      userId: user.id,
+      email: user.email,
+      userType: userProfile?.user_type || 'student'
+    };
+    
     next();
   } catch (error) {
+    console.error('Token verification error:', error);
     return res.status(401).json({ error: 'Invalid token' });
   }
 };
 
 // Socket.io authentication middleware
-io.use((socket, next) => {
+io.use(async (socket, next) => {
   const token = socket.handshake.auth.token;
   
   if (!token) {
@@ -103,12 +113,26 @@ io.use((socket, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = decoded.userId;
-    socket.userType = decoded.userType;
+    // Verify token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    if (error || !user) {
+      return next(new Error('Authentication error'));
+    }
+
+    // Get user profile from database
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    socket.userId = user.id;
+    socket.userType = userProfile?.user_type || 'student';
     next();
   } catch (error) {
-    next(new Error('Authentication error'));
+    console.error('Socket authentication error:', error);
+    return next(new Error('Authentication error'));
   }
 });
 
@@ -117,16 +141,17 @@ const activeConnections = new Map();
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log(`User ${socket.userId} connected`);
   activeConnections.set(socket.userId, socket);
 
   // Join conversation room
-  socket.on('join_conversation', (conversationId) => {
+  socket.on('join_conversation', (data) => {
+    const { conversationId } = data;
     socket.join(`conversation_${conversationId}`);
   });
 
   // Leave conversation room
-  socket.on('leave_conversation', (conversationId) => {
+  socket.on('leave_conversation', (data) => {
+    const { conversationId } = data;
     socket.leave(`conversation_${conversationId}`);
   });
 
@@ -135,13 +160,16 @@ io.on('connection', (socket) => {
     try {
       const { conversationId, content, messageType = 'text' } = data;
 
+      // Sanitize message content
+      const sanitizedContent = sanitizeInput(content);
+
       // Save message to database
       const { data: message, error } = await supabase
         .from('messages')
         .insert({
           conversation_id: conversationId,
           sender_id: socket.userId,
-          content,
+          content: sanitizedContent,
           message_type: messageType,
           created_at: new Date().toISOString()
         })
@@ -160,25 +188,31 @@ io.on('connection', (socket) => {
         .from('conversations')
         .update({
           last_message_at: new Date().toISOString(),
-          last_message_content: content
+          last_message_content: sanitizedContent
         })
         .eq('id', conversationId);
 
     } catch (error) {
       console.error('Message send error:', error);
-      socket.emit('message_error', { error: 'Failed to send message' });
+      socket.emit('message_error', { 
+        error: 'Failed to send message',
+        details: error.message,
+        code: error.code || 'UNKNOWN_ERROR'
+      });
     }
   });
 
   // Handle typing indicators
-  socket.on('typing_start', (conversationId) => {
+  socket.on('typing_start', (data) => {
+    const { conversationId } = data;
     socket.to(`conversation_${conversationId}`).emit('user_typing', {
       userId: socket.userId,
       isTyping: true
     });
   });
 
-  socket.on('typing_stop', (conversationId) => {
+  socket.on('typing_stop', (data) => {
+    const { conversationId } = data;
     socket.to(`conversation_${conversationId}`).emit('user_typing', {
       userId: socket.userId,
       isTyping: false
@@ -187,25 +221,51 @@ io.on('connection', (socket) => {
 
   // Handle disconnect
   socket.on('disconnect', () => {
-    console.log(`User ${socket.userId} disconnected`);
     activeConnections.delete(socket.userId);
   });
 });
 
 // Validation schemas
 const createConversationSchema = Joi.object({
-  participantId: Joi.number().required(),
-  bookingId: Joi.number().optional()
+  participantId: Joi.string().uuid().required(),
+  bookingId: Joi.string().uuid().allow(null).optional()
 });
 
+
 const sendMessageSchema = Joi.object({
-  conversationId: Joi.number().required(),
+  conversationId: Joi.string().uuid().required(),
   content: Joi.string().max(1000).required(),
   messageType: Joi.string().valid('text', 'image', 'file', 'document').default('text')
 });
 
 // Routes
-app.post('/conversations', verifyToken, async (req, res) => {
+
+// Get available tutors for messaging
+app.get('/messaging/tutors', verifyToken, async (req, res) => {
+  try {
+    const { data: allUsers, error: allUsersError } = await supabase
+      .from('users')
+      .select('id, first_name, last_name, user_type, email');
+
+    if (allUsersError) {
+      console.error('Supabase error:', allUsersError);
+      throw allUsersError;
+    }
+    
+    // Filter tutors
+    const tutors = allUsers?.filter(user => 
+      user.user_type === 'tutor' && user.id !== req.user.userId
+    ) || [];
+
+    res.json({ tutors });
+  } catch (error) {
+    console.error('Error fetching tutors:', error);
+    res.status(500).json({ error: 'Failed to fetch tutors' });
+  }
+});
+
+// Create or get existing conversation
+app.post('/messaging/conversations', verifyToken, async (req, res) => {
   try {
     const { error, value } = createConversationSchema.validate(req.body);
     if (error) {
@@ -214,19 +274,43 @@ app.post('/conversations', verifyToken, async (req, res) => {
 
     const { participantId, bookingId } = value;
 
-    // Check if conversation already exists
-    const { data: existingConversation } = await supabase
+    // First, check if conversation already exists (in either direction)
+    const { data: existingConversations, error: searchError } = await supabase
       .from('conversations')
-      .select('id')
-      .or(`participant1_id.eq.${req.user.userId},participant1_id.eq.${participantId}`)
-      .or(`participant2_id.eq.${req.user.userId},participant2_id.eq.${participantId}`)
-      .single();
+      .select(`
+        id, 
+        participant1_id, 
+        participant2_id, 
+        created_at, 
+        last_message_at, 
+        last_message_content,
+        participant1:participant1_id (
+          first_name,
+          last_name,
+          user_type
+        ),
+        participant2:participant2_id (
+          first_name,
+          last_name,
+          user_type
+        )
+      `)
+      .or(`and(participant1_id.eq.${req.user.userId},participant2_id.eq.${participantId}),and(participant1_id.eq.${participantId},participant2_id.eq.${req.user.userId})`)
+      .limit(1);
 
-    if (existingConversation) {
-      return res.json({ conversation: existingConversation });
+    if (searchError) {
+      throw searchError;
     }
 
-    // Create new conversation
+    if (existingConversations && existingConversations.length > 0) {
+      // Return existing conversation
+      return res.json({ 
+        conversation: existingConversations[0],
+        message: 'Using existing conversation'
+      });
+    }
+
+    // Create new conversation if none exists
     const { data: conversation, error: insertError } = await supabase
       .from('conversations')
       .insert({
@@ -235,7 +319,24 @@ app.post('/conversations', verifyToken, async (req, res) => {
         booking_id: bookingId,
         created_at: new Date().toISOString()
       })
-      .select()
+      .select(`
+        id, 
+        participant1_id, 
+        participant2_id, 
+        created_at, 
+        last_message_at, 
+        last_message_content,
+        participant1:participant1_id (
+          first_name,
+          last_name,
+          user_type
+        ),
+        participant2:participant2_id (
+          first_name,
+          last_name,
+          user_type
+        )
+      `)
       .single();
 
     if (insertError) {
@@ -252,9 +353,11 @@ app.post('/conversations', verifyToken, async (req, res) => {
   }
 });
 
-app.get('/conversations', verifyToken, async (req, res) => {
+app.get('/messaging/conversations', verifyToken, async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    // Validate and sanitize pagination parameters
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20))
 
     const offset = (page - 1) * limit;
 
@@ -288,10 +391,12 @@ app.get('/conversations', verifyToken, async (req, res) => {
   }
 });
 
-app.get('/conversations/:id/messages', verifyToken, async (req, res) => {
+app.get('/messaging/conversations/:id/messages', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { page = 1, limit = 50 } = req.query;
+    // Validate and sanitize pagination parameters
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 50))
 
     // Verify user is participant in conversation
     const { data: conversation } = await supabase
@@ -308,19 +413,20 @@ app.get('/conversations/:id/messages', verifyToken, async (req, res) => {
 
     const offset = (page - 1) * limit;
 
-    const { data: messages, error } = await supabase
-      .from('messages')
-      .select(`
-        *,
-        sender:sender_id (
-          first_name,
-          last_name,
-          user_type
-        )
-      `)
-      .eq('conversation_id', id)
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+      const { data: messages, error } = await supabase
+        .from('messages')
+        .select(`
+          *,
+          sender:sender_id (
+            first_name,
+            last_name,
+            user_type
+          )
+        `)
+        .eq('conversation_id', id)
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
     if (error) {
       throw error;
@@ -333,7 +439,7 @@ app.get('/conversations/:id/messages', verifyToken, async (req, res) => {
   }
 });
 
-app.post('/conversations/:id/messages', verifyToken, async (req, res) => {
+app.post('/messaging/conversations/:id/messages', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { error, value } = sendMessageSchema.validate(req.body);
@@ -355,12 +461,15 @@ app.post('/conversations/:id/messages', verifyToken, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
+    // Sanitize message content
+    const sanitizedContent = sanitizeInput(value.content);
+
     const { data: message, error: insertError } = await supabase
       .from('messages')
       .insert({
         conversation_id: id,
         sender_id: req.user.userId,
-        content: value.content,
+        content: sanitizedContent,
         message_type: value.messageType,
         created_at: new Date().toISOString()
       })
@@ -383,13 +492,13 @@ app.post('/conversations/:id/messages', verifyToken, async (req, res) => {
       .from('conversations')
       .update({
         last_message_at: new Date().toISOString(),
-        last_message_content: value.content
+        last_message_content: sanitizedContent
       })
       .eq('id', id);
 
     res.status(201).json({
       message: 'Message sent successfully',
-      message: message
+      data: message
     });
   } catch (error) {
     console.error('Message send error:', error);
@@ -397,7 +506,7 @@ app.post('/conversations/:id/messages', verifyToken, async (req, res) => {
   }
 });
 
-app.post('/conversations/:id/upload', verifyToken, upload.single('file'), async (req, res) => {
+app.post('/messaging/conversations/:id/upload', verifyToken, upload.single('file'), async (req, res) => {
   try {
     const { id } = req.params;
     const { messageType } = req.body;
@@ -459,7 +568,7 @@ app.post('/conversations/:id/upload', verifyToken, upload.single('file'), async 
 
     res.status(201).json({
       message: 'File uploaded successfully',
-      message: message
+      data: message
     });
   } catch (error) {
     console.error('File upload error:', error);
@@ -467,7 +576,7 @@ app.post('/conversations/:id/upload', verifyToken, upload.single('file'), async 
   }
 });
 
-app.put('/conversations/:id/read', verifyToken, async (req, res) => {
+app.put('/messaging/conversations/:id/read', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -490,101 +599,153 @@ app.put('/conversations/:id/read', verifyToken, async (req, res) => {
   }
 });
 
-// RabbitMQ Consumer Function
-async function consumeMessages() {
-  if (!channel) return;
-  
-  await channel.consume(MESSAGE_QUEUE, async (msg) => {
-    if (msg) {
-      try {
-        const messageData = JSON.parse(msg.content.toString());
-        console.log('Processing message:', messageData);
-        
-        // Store message in database
-        const { data: message } = await supabase
-          .from('messages')
-          .insert({
-            conversation_id: messageData.conversationId,
-            sender_id: messageData.senderId,
-            content: messageData.content,
-            message_type: messageData.type || 'text',
-            attachments: messageData.attachments || null,
-            created_at: new Date().toISOString()
-          })
-          .select()
-          .single();
-        
-        if (message) {
-          // Emit to Socket.io clients
-          io.to(`conversation_${messageData.conversationId}`).emit('new_message', message);
-          
-          // Send to chat queue for real-time processing
-          await channel.sendToQueue(CHAT_QUEUE, Buffer.from(JSON.stringify(message)));
-        }
-        
-        channel.ack(msg);
-      } catch (error) {
-        console.error('Error processing message:', error);
-        channel.nack(msg, false, false);
-      }
-    }
-  });
-}
-
-// Publish message to RabbitMQ
-async function publishMessage(messageData) {
-  if (channel) {
-    await channel.sendToQueue(MESSAGE_QUEUE, Buffer.from(JSON.stringify(messageData)), {
-      persistent: true
-    });
-  } else {
-    // Fallback to direct processing
-    await processMessageDirectly(messageData);
-  }
-}
-
-async function processMessageDirectly(messageData) {
+// Delete a message (soft delete)
+app.delete('/messaging/messages/:messageId', verifyToken, async (req, res) => {
   try {
-    // Store message in database
-    const { data: message } = await supabase
+    const { messageId } = req.params;
+
+    // Verify user is the sender of the message
+    const { data: message, error: fetchError } = await supabase
       .from('messages')
-      .insert({
-        conversation_id: messageData.conversationId,
-        sender_id: messageData.senderId,
-        content: messageData.content,
-        message_type: messageData.type || 'text',
-        attachments: messageData.attachments || null,
-        created_at: new Date().toISOString()
-      })
-      .select()
+      .select('sender_id, conversation_id')
+      .eq('id', messageId)
       .single();
-    
-    if (message) {
-      // Emit to Socket.io clients
-      io.to(`conversation_${messageData.conversationId}`).emit('new_message', message);
+
+    if (fetchError) {
+      return res.status(404).json({ error: 'Message not found' });
     }
+
+    if (message.sender_id !== req.user.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Soft delete the message
+    const { error: deleteError } = await supabase
+      .from('messages')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', messageId);
+
+    if (deleteError) {
+      throw deleteError;
+    }
+
+    res.json({ message: 'Message deleted successfully' });
   } catch (error) {
-    console.error('Direct message processing failed:', error);
+    console.error('Message deletion error:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
-}
+});
+
+// Archive a conversation
+app.put('/messaging/conversations/:id/archive', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify user is participant in conversation
+    const { data: conversation } = await supabase
+      .from('conversations')
+      .select('participant1_id, participant2_id, status')
+      .eq('id', id)
+      .single();
+
+    if (!conversation || 
+        (conversation.participant1_id !== req.user.userId && 
+         conversation.participant2_id !== req.user.userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    if (conversation.status === 'archived') {
+      return res.status(400).json({ error: 'Conversation already archived' });
+    }
+
+    // Archive the conversation
+    const { error } = await supabase
+      .from('conversations')
+      .update({ status: 'archived' })
+      .eq('id', id);
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({ message: 'Conversation archived successfully' });
+  } catch (error) {
+    console.error('Conversation archive error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get unread message count for a conversation
+app.get('/messaging/conversations/:id/unread-count', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Verify user is participant in conversation
+    const { data: conversation } = await supabase
+      .from('conversations')
+      .select('participant1_id, participant2_id')
+      .eq('id', id)
+      .single();
+
+    if (!conversation || 
+        (conversation.participant1_id !== req.user.userId && 
+         conversation.participant2_id !== req.user.userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Count unread messages
+    const { count, error } = await supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('conversation_id', id)
+      .neq('sender_id', req.user.userId)
+      .is('read_at', null)
+      .is('deleted_at', null);
+
+    if (error) {
+      throw error;
+    }
+
+    res.json({ unreadCount: count || 0 });
+  } catch (error) {
+    console.error('Unread count error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// RabbitMQ functions removed - using direct Socket.io + Supabase messaging
 
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'OK', 
     service: 'messaging',
-    rabbitmq: connection ? 'connected' : 'disconnected'
+    architecture: 'Socket.io + Supabase'
   });
 });
 
-// Initialize RabbitMQ and start server
-initRabbitMQ().then(() => {
-  server.listen(PORT, () => {
-    console.log(`Messaging service running on port ${PORT}`);
-  });
-}).catch(error => {
-  console.error('Failed to initialize:', error);
-  server.listen(PORT, () => {
-    console.log(`Messaging service running on port ${PORT} (without RabbitMQ)`);
-  });
+// Start server
+server.listen(PORT, () => {
+  console.log(`Messaging service running on port ${PORT}`);
+});
+
+// Handle server errors gracefully
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Please kill the existing process or use a different port.`);
+    process.exit(1);
+  } else {
+    console.error('Server error:', error);
+  }
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  // Don't exit the process, just log the error
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  // Don't exit the process, just log the error
 });

@@ -349,11 +349,7 @@ export default {
           alternate: true,
           playbackRate: 0.5 + (index * 0.1),
           onLoop: (self) => {
-            console.log(`Floating element ${index} completed loop ${self.currentIteration}`)
             element.style.color = `hsl(${(index * 45) % 360}, 70%, 60%)`
-          },
-          onPause: (self) => {
-            console.log(`Floating element ${index} paused`)
           }
         })
         

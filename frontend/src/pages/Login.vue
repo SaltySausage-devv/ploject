@@ -232,13 +232,8 @@ export default {
           alternate: true,
           playbackRate: 0.5 + (index * 0.1),
           onLoop: (self) => {
-            // Loop callback for each floating element
-            console.log(`Floating element ${index} completed loop ${self.currentIteration}`)
             // Add subtle color variation on each loop
             element.style.color = `hsl(${(index * 45) % 360}, 70%, 60%)`
-          },
-          onPause: (self) => {
-            console.log(`Floating element ${index} paused`)
           }
         })
         

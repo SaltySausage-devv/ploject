@@ -35,7 +35,7 @@ const routes = [
   { path: '/messages', name: 'Messages', component: Messages },
   { path: '/analytics', name: 'Analytics', component: Analytics },
   { path: '/profile', name: 'Profile', component: Profile },
-  { path: '/gamification', name: 'Gamification', component: Gamification }
+  { path: '/gamification', name: 'Gamification', component: Gamification },
 ]
 
 const router = createRouter({
