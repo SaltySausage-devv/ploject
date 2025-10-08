@@ -87,46 +87,76 @@ export const useAuthStore = defineStore('auth', () => {
   const register = async (userData) => {
     isLoading.value = true
     try {
+      console.log('🔐 Starting registration with email:', userData.email)
+
       // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: userData.password
       })
 
-      if (authError) throw authError
+      console.log('📦 Supabase auth.signUp response:', { authData, authError })
+
+      if (authError) {
+        console.error('❌ Auth signup error:', authError)
+        throw authError
+      }
+
+      console.log('✅ Auth user created:', authData.user)
+      console.log('🔑 Session:', authData.session)
 
       // Create user profile in database
       if (authData.user) {
+        console.log('👤 Creating profile in public.users for ID:', authData.user.id)
+
+        const profileData = {
+          id: authData.user.id,
+          email: userData.email,
+          first_name: userData.firstName,
+          last_name: userData.lastName,
+          user_type: userData.userType || 'student',
+          phone: userData.phone || null,
+          created_at: new Date().toISOString()
+        }
+
+        console.log('📊 Profile data to insert:', profileData)
+
         const { data: profile, error: profileError } = await supabase
           .from('users')
-          .insert([
-            {
-              id: authData.user.id,
-              email: userData.email,
-              first_name: userData.firstName,
-              last_name: userData.lastName,
-              user_type: userData.userType || 'student',
-              phone: userData.phone || null,
-              created_at: new Date().toISOString()
-            }
-          ])
+          .insert([profileData])
           .select()
           .single()
 
-        if (profileError) throw profileError
+        console.log('📊 Profile insert result:', { profile, profileError })
+
+        if (profileError) {
+          console.error('❌ Profile creation error:', profileError)
+          throw profileError
+        }
+
+        console.log('✅ Profile created successfully:', profile)
 
         session.value = authData.session
         user.value = profile
       }
 
+      console.log('✅ Registration complete!')
       return { success: true, user: authData.user }
     } catch (error) {
-      console.error('Registration error:', error)
+      console.error('❌ Registration error:', error)
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        name: error.name,
+        details: error.details,
+        hint: error.hint
+      })
       return {
         success: false,
         error: error.message || 'Registration failed'
       }
     } finally {
+      console.log('🏁 Registration process ended, setting isLoading to false')
       isLoading.value = false
     }
   }
