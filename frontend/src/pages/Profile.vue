@@ -17,7 +17,7 @@
                 </div>
                 <div class="flex-grow-1">
                   <h2 class="fw-bold mb-1">{{ user?.firstName }} {{ user?.lastName }}</h2>
-                  <p class="text-muted mb-2">{{ user?.email }}</p>
+                  
                   <div class="d-flex align-items-center gap-3">
                     <span class="badge bg-primary">{{ userTypeLabels[user?.userType] }}</span>
                     <span class="text-muted">
@@ -63,6 +63,7 @@
                       v-model="profileForm.firstName"
                       class="form-control"
                       :disabled="!editMode"
+                      :placeholder="user?.firstName || 'First name'"
                       required
                     />
                   </div>
@@ -73,6 +74,7 @@
                       v-model="profileForm.lastName"
                       class="form-control"
                       :disabled="!editMode"
+                      :placeholder="user?.lastName || 'Last name'"
                       required
                     />
                   </div>
@@ -85,6 +87,7 @@
                     v-model="profileForm.phone"
                     class="form-control"
                     :disabled="!editMode"
+                    :placeholder="user?.phone || 'Enter your phone number'"
                     placeholder="Enter your phone number"
                   />
                 </div>
@@ -106,6 +109,7 @@
                     class="form-control"
                     :disabled="!editMode"
                     rows="3"
+                    :placeholder="user?.address || 'Enter your address'"
                     placeholder="Enter your address"
                   ></textarea>
                 </div>
@@ -117,6 +121,7 @@
                     class="form-control"
                     :disabled="!editMode"
                     rows="4"
+                    :placeholder="user?.bio || 'Tell us about yourself'"
                     placeholder="Tell us about yourself"
                   ></textarea>
                 </div>
