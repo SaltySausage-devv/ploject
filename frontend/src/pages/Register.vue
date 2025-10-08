@@ -667,11 +667,16 @@ export default {
     }
 
     const handleRegister = async () => {
+      console.log('🚀 handleRegister called')
+      console.log('📝 Form data:', form)
+
       if (!validateForm()) {
+        console.log('❌ Form validation failed')
         animateError()
         return
       }
 
+      console.log('✅ Form validated, starting registration...')
       isLoading.value = true
       error.value = ''
 
@@ -681,7 +686,7 @@ export default {
           loop: true,
           playbackRate: 1.5
         })
-        
+
         loadingTimeline
           .add(submitButton.value, {
             scale: [1, 0.95, 1],
@@ -698,6 +703,7 @@ export default {
       }
 
       try {
+        console.log('📞 Calling authStore.register...')
         const result = await authStore.register({
           firstName: form.firstName,
           lastName: form.lastName,
@@ -706,8 +712,10 @@ export default {
           phone: form.phone,
           password: form.password
         })
+        console.log('📦 Registration result:', result)
         
         if (result.success) {
+          console.log('✅ Registration successful!')
           // Advanced success animation with promise-based chaining
           if (registerCard.value) {
             const successTimeline = createTimeline({
@@ -750,13 +758,16 @@ export default {
             }, 800)
           }
         } else {
+          console.log('❌ Registration failed:', result.error)
           error.value = result.error
           animateError()
         }
       } catch (err) {
+        console.error('❌ Caught exception in handleRegister:', err)
         error.value = 'An unexpected error occurred. Please try again.'
         animateError()
       } finally {
+        console.log('🏁 handleRegister finally block - setting isLoading to false')
         isLoading.value = false
       }
     }
