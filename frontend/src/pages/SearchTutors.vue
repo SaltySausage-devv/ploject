@@ -287,7 +287,7 @@
         <div class="col-lg-9">
           <div class="d-flex justify-content-between align-items-center mb-4">
             <h5 class="cyberpunk-results-title mb-0">
-              {{ tutors.length }} tutors found
+              {{ totalFilteredTutors }} tutors found
             </h5>
             <div class="d-flex align-items-center gap-3">
               <span class="cyberpunk-text-muted">Sort by:</span>
@@ -774,15 +774,15 @@ export default {
 
       // Simulate API call with filtering
       setTimeout(() => {
-        // All available tutors - expanded dataset
-        const baseTutors = [
+        // All available tutors - 10 tutors only with review counts <10
+        allTutors.value = [
           {
             id: 1,
             name: 'Dr. Sarah Chen',
             subjects: ['Mathematics', 'Additional Mathematics'],
             levels: ['Secondary', 'JC'],
             rating: 5,
-            reviews: 127,
+            reviews: 8,
             hourlyRate: 80,
             experience: '5+',
             bio: 'Experienced mathematics tutor with 8 years of experience. Specializes in O-Level and A-Level mathematics.',
@@ -797,7 +797,7 @@ export default {
             subjects: ['Physics', 'Chemistry'],
             levels: ['Secondary', 'JC'],
             rating: 5,
-            reviews: 89,
+            reviews: 6,
             hourlyRate: 70,
             experience: '5+',
             bio: 'Former MOE teacher with 10 years of experience. Excellent track record with students.',
@@ -812,7 +812,7 @@ export default {
             subjects: ['English', 'Literature'],
             levels: ['Primary', 'Secondary'],
             rating: 5,
-            reviews: 156,
+            reviews: 9,
             hourlyRate: 60,
             experience: '5+',
             bio: 'Passionate English tutor with a focus on creative writing and comprehension skills.',
@@ -826,8 +826,8 @@ export default {
             name: 'Prof. Michael Tan',
             subjects: ['Biology', 'Chemistry'],
             levels: ['Secondary', 'JC', 'IB'],
-            rating: 4,
-            reviews: 203,
+            rating: 5,
+            reviews: 7,
             hourlyRate: 95,
             experience: '5+',
             bio: 'University professor with expertise in life sciences. Published researcher and experienced tutor.',
@@ -842,7 +842,7 @@ export default {
             subjects: ['Mathematics', 'Science'],
             levels: ['Primary'],
             rating: 4,
-            reviews: 78,
+            reviews: 5,
             hourlyRate: 45,
             experience: '3-5',
             bio: 'Patient and nurturing tutor specializing in primary school students. Focus on building strong foundations.',
@@ -856,8 +856,8 @@ export default {
             name: 'Mr. Jason Koh',
             subjects: ['English', 'Mathematics'],
             levels: ['Primary', 'Secondary'],
-            rating: 3,
-            reviews: 42,
+            rating: 4,
+            reviews: 4,
             hourlyRate: 50,
             experience: '3-5',
             bio: 'Energetic and creative tutor who makes learning fun. Strong focus on exam techniques.',
@@ -871,8 +871,8 @@ export default {
             name: 'Dr. Amanda Lee',
             subjects: ['Additional Mathematics', 'Physics'],
             levels: ['Secondary', 'JC', 'IGCSE'],
-            rating: 2,
-            reviews: 167,
+            rating: 3,
+            reviews: 3,
             hourlyRate: 85,
             experience: '5+',
             bio: 'PhD holder with passion for teaching. Specializes in helping students overcome math anxiety.',
@@ -886,8 +886,8 @@ export default {
             name: 'Mr. Benjamin Ng',
             subjects: ['Mathematics', 'Physics', 'Chemistry'],
             levels: ['JC', 'IB'],
-            rating: 1,
-            reviews: 94,
+            rating: 3,
+            reviews: 2,
             hourlyRate: 75,
             experience: '3-5',
             bio: 'Former scholarship holder with strong academic background. Results-oriented teaching approach.',
@@ -895,21 +895,38 @@ export default {
             teachingMode: 'in-person',
             availability: ['now'],
             avatar: 'https://i.pravatar.cc/400?img=13'
+          },
+          {
+            id: 9,
+            name: 'Ms. Linda Tan',
+            subjects: ['Mathematics', 'Science'],
+            levels: ['Primary', 'Secondary'],
+            rating: 5,
+            reviews: 8,
+            hourlyRate: 55,
+            experience: '5+',
+            bio: 'Dedicated tutor with strong emphasis on building confidence. Makes complex topics simple.',
+            location: 'Ang Mo Kio, Singapore',
+            teachingMode: 'both',
+            availability: ['now', 'week', 'weekend'],
+            avatar: 'https://i.pravatar.cc/400?img=45'
+          },
+          {
+            id: 10,
+            name: 'Mr. William Chen',
+            subjects: ['Physics', 'Mathematics'],
+            levels: ['Secondary', 'JC'],
+            rating: 4,
+            reviews: 6,
+            hourlyRate: 90,
+            experience: '5+',
+            bio: 'Former engineer turned educator. Practical approach to physics and mathematics.',
+            location: 'Bishan, Singapore',
+            teachingMode: 'online',
+            availability: ['week'],
+            avatar: 'https://i.pravatar.cc/400?img=33'
           }
         ]
-
-        // Generate additional tutors for pagination
-        allTutors.value = [...baseTutors]
-        for (let i = 0; i < 20; i++) {
-          const template = baseTutors[i % baseTutors.length]
-          allTutors.value.push({
-            ...template,
-            id: baseTutors.length + i + 1,
-            name: `${template.name.split(' ')[0]}. ${['Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Martinez', 'Anderson', 'Taylor'][i % 10]} ${String.fromCharCode(65 + (i % 26))}`,
-            reviews: Math.floor(Math.random() * 200) + 20,
-            avatar: `https://i.pravatar.cc/400?img=${(i % 70) + 1}`
-          })
-        }
 
         // Apply filters
         let filtered = allTutors.value

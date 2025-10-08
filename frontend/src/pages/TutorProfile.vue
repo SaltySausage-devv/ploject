@@ -175,10 +175,9 @@
                   >
                 </div>
                 <h3 class="cyberpunk-tutor-name">{{ tutor.name }}</h3>
-                <p class="cyberpunk-tutor-specialization">{{ tutor.subject }} • {{ tutor.level }}</p>
                 <div class="cyberpunk-rating mb-3">
-                  <i class="fas fa-star cyberpunk-star" v-for="n in 5" :key="n"></i>
-                  <span class="cyberpunk-rating-text">({{ tutor.rating }})</span>
+                  <i v-for="n in 5" :key="n" :class="n <= tutor.rating ? 'fas fa-star cyberpunk-star' : 'far fa-star cyberpunk-star-empty'"></i>
+                  <span class="cyberpunk-rating-text">({{ tutor.reviews }})</span>
                 </div>
                 <div class="cyberpunk-button-group">
                   <button class="cyberpunk-btn cyberpunk-btn-primary" ref="bookButton" @click="bookSession">
@@ -288,19 +287,19 @@
             <div class="cyberpunk-detail-card" ref="reviewsCard">
               <div class="cyberpunk-card-header">
                 <h4 class="cyberpunk-card-title">
-                  <i class="fas fa-star me-2"></i>Reviews ({{ reviews.length }})
+                  <i class="fas fa-star me-2"></i>Reviews ({{ tutor.reviews }})
                 </h4>
               </div>
               <div class="cyberpunk-card-body">
-                <div v-for="review in reviews" :key="review.id" class="cyberpunk-review-item">
+                <div v-for="review in displayedReviews" :key="review.id" class="cyberpunk-review-item">
                   <div class="cyberpunk-review-content">
                     <div>
                       <h6 class="cyberpunk-review-name">{{ review.studentName }}</h6>
                       <div class="cyberpunk-review-rating">
-                        <i 
-                          class="fas fa-star" 
+                        <i
+                          class="fas fa-star"
                           :class="n <= review.rating ? 'cyberpunk-star-filled' : 'cyberpunk-star-empty'"
-                          v-for="n in 5" 
+                          v-for="n in 5"
                           :key="n"
                         ></i>
                       </div>
@@ -308,6 +307,14 @@
                     </div>
                     <small class="cyberpunk-review-date">{{ formatDate(review.createdAt) }}</small>
                   </div>
+                </div>
+                <div v-if="reviews.length > 3" class="text-center mt-3">
+                  <button v-if="!showAllReviews" class="cyberpunk-btn cyberpunk-btn-outline" @click="showAllReviews = true">
+                    <i class="fas fa-chevron-down me-2"></i>Show All Reviews ({{ reviews.length }})
+                  </button>
+                  <button v-else class="cyberpunk-btn cyberpunk-btn-outline" @click="showAllReviews = false">
+                    <i class="fas fa-chevron-up me-2"></i>Show Less
+                  </button>
                 </div>
               </div>
             </div>
@@ -354,18 +361,23 @@ export default {
       subject: 'Mathematics',
       level: 'Secondary',
       avatar: 'https://i.pravatar.cc/400?img=3',
-      rating: 4.8,
-      bio: 'Experienced mathematics tutor with over 10 years of teaching experience. Specialized in helping students excel in algebra, calculus, and statistics.',
+      rating: 5,
+      bio: 'Experienced mathematics tutor with 8 years of experience. Specializes in O-Level and A-Level mathematics. Strong focus on building conceptual understanding and problem-solving skills.',
       education: 'PhD in Mathematics, NUS',
-      experience: 10,
-      subjects: ['Mathematics', 'Statistics', 'Calculus'],
-      levels: ['Primary', 'Secondary', 'JC'],
+      experience: 8,
+      experienceRange: '5+',
+      subjects: ['Mathematics', 'Additional Mathematics'],
+      levels: ['Secondary', 'JC'],
       hourlyRate: 80,
-      groupRate: 60,
-      packageRate: 300
+      groupRate: 65,
+      packageRate: 350,
+      location: 'Orchard, Singapore',
+      teachingMode: 'online',
+      availability: ['now', 'week'],
+      reviews: 8
     })
 
-    // Sample tutors data - in real app, this would come from API
+    // Sample tutors data - 10 tutors matching SearchTutors exactly
     const tutorsData = {
       1: {
         id: 1,
@@ -373,15 +385,20 @@ export default {
         subject: 'Mathematics',
         level: 'Secondary',
         avatar: 'https://i.pravatar.cc/400?img=3',
-        rating: 4.8,
-        bio: 'Experienced mathematics tutor with over 10 years of teaching experience. Specialized in helping students excel in algebra, calculus, and statistics.',
+        rating: 5,
+        bio: 'Experienced mathematics tutor with 8 years of experience. Specializes in O-Level and A-Level mathematics. Strong focus on building conceptual understanding and problem-solving skills.',
         education: 'PhD in Mathematics, NUS',
-        experience: 10,
-        subjects: ['Mathematics', 'Statistics', 'Calculus'],
-        levels: ['Primary', 'Secondary', 'JC'],
+        experience: 8,
+        experienceRange: '5+',
+        subjects: ['Mathematics', 'Additional Mathematics'],
+        levels: ['Secondary', 'JC'],
         hourlyRate: 80,
-        groupRate: 60,
-        packageRate: 300
+        groupRate: 65,
+        packageRate: 350,
+        location: 'Orchard, Singapore',
+        teachingMode: 'online',
+        availability: ['now', 'week'],
+        reviews: 8
       },
       2: {
         id: 2,
@@ -389,15 +406,20 @@ export default {
         subject: 'Physics',
         level: 'Secondary',
         avatar: 'https://i.pravatar.cc/400?img=5',
-        rating: 4.5,
-        bio: 'Former MOE teacher with 10 years of experience. Excellent track record with students in physics and chemistry.',
+        rating: 5,
+        bio: 'Former MOE teacher with 10 years of experience. Excellent track record with students in physics and chemistry. Patient and systematic teaching approach.',
         education: 'MSc in Physics, NTU',
         experience: 10,
-        subjects: ['Physics', 'Chemistry', 'Mathematics'],
+        experienceRange: '5+',
+        subjects: ['Physics', 'Chemistry'],
         levels: ['Secondary', 'JC'],
         hourlyRate: 70,
-        groupRate: 50,
-        packageRate: 250
+        groupRate: 55,
+        packageRate: 300,
+        location: 'Marina Bay, Singapore',
+        teachingMode: 'in-person',
+        availability: ['week', 'weekend'],
+        reviews: 6
       },
       3: {
         id: 3,
@@ -405,41 +427,259 @@ export default {
         subject: 'English',
         level: 'Primary',
         avatar: 'https://i.pravatar.cc/400?img=7',
-        rating: 4.9,
-        bio: 'Passionate English tutor with a focus on creative writing and comprehension skills. Helps students excel in literature and language.',
+        rating: 5,
+        bio: 'Passionate English tutor with a focus on creative writing and comprehension skills. Helps students build confidence in language and literature.',
         education: 'MA in English Literature, NUS',
-        experience: 8,
-        subjects: ['English', 'Literature', 'Creative Writing'],
+        experience: 7,
+        experienceRange: '5+',
+        subjects: ['English', 'Literature'],
         levels: ['Primary', 'Secondary'],
         hourlyRate: 60,
         groupRate: 45,
-        packageRate: 200
+        packageRate: 250,
+        location: 'Tampines, Singapore',
+        teachingMode: 'both',
+        availability: ['now', 'weekend'],
+        reviews: 9
+      },
+      4: {
+        id: 4,
+        name: 'Prof. Michael Tan',
+        subject: 'Biology',
+        level: 'JC',
+        avatar: 'https://i.pravatar.cc/400?img=8',
+        rating: 5,
+        bio: 'University professor with expertise in life sciences. Published researcher and experienced tutor. Specializes in advanced biology concepts and exam preparation.',
+        education: 'PhD in Biological Sciences, NUS',
+        experience: 12,
+        experienceRange: '5+',
+        subjects: ['Biology', 'Chemistry'],
+        levels: ['Secondary', 'JC', 'IB'],
+        hourlyRate: 95,
+        groupRate: 75,
+        packageRate: 420,
+        location: 'Bukit Timah, Singapore',
+        teachingMode: 'online',
+        availability: ['week'],
+        reviews: 7
+      },
+      5: {
+        id: 5,
+        name: 'Ms. Rachel Goh',
+        subject: 'Mathematics',
+        level: 'Primary',
+        avatar: 'https://i.pravatar.cc/400?img=9',
+        rating: 4,
+        bio: 'Patient and nurturing tutor specializing in primary school students. Focus on building strong foundations in mathematics and science. Creates engaging learning experiences.',
+        education: 'BEd in Primary Education, NIE',
+        experience: 4,
+        experienceRange: '3-5',
+        subjects: ['Mathematics', 'Science'],
+        levels: ['Primary'],
+        hourlyRate: 45,
+        groupRate: 35,
+        packageRate: 180,
+        location: 'Jurong West, Singapore',
+        teachingMode: 'in-person',
+        availability: ['now', 'weekend'],
+        reviews: 5
+      },
+      6: {
+        id: 6,
+        name: 'Mr. Jason Koh',
+        subject: 'English',
+        level: 'Secondary',
+        avatar: 'https://i.pravatar.cc/400?img=12',
+        rating: 4,
+        bio: 'Energetic and creative tutor who makes learning fun. Strong focus on exam techniques and practical application of concepts.',
+        education: 'BA in Education, NTU',
+        experience: 4,
+        experienceRange: '3-5',
+        subjects: ['English', 'Mathematics'],
+        levels: ['Primary', 'Secondary'],
+        hourlyRate: 50,
+        groupRate: 40,
+        packageRate: 200,
+        location: 'Bedok, Singapore',
+        teachingMode: 'both',
+        availability: ['now', 'week'],
+        reviews: 4
+      },
+      7: {
+        id: 7,
+        name: 'Dr. Amanda Lee',
+        subject: 'Mathematics',
+        level: 'JC',
+        avatar: 'https://i.pravatar.cc/400?img=10',
+        rating: 3,
+        bio: 'PhD holder with passion for teaching. Specializes in helping students overcome math anxiety and build confidence. Strong track record in improving grades.',
+        education: 'PhD in Applied Mathematics, NUS',
+        experience: 9,
+        experienceRange: '5+',
+        subjects: ['Additional Mathematics', 'Physics'],
+        levels: ['Secondary', 'JC', 'IGCSE'],
+        hourlyRate: 85,
+        groupRate: 70,
+        packageRate: 370,
+        location: 'Clementi, Singapore',
+        teachingMode: 'online',
+        availability: ['week', 'weekend'],
+        reviews: 3
+      },
+      8: {
+        id: 8,
+        name: 'Mr. Benjamin Ng',
+        subject: 'Physics',
+        level: 'JC',
+        avatar: 'https://i.pravatar.cc/400?img=13',
+        rating: 3,
+        bio: 'Former scholarship holder with strong academic background. Results-oriented teaching approach with focus on exam strategies and time management.',
+        education: 'BSc (Hons) in Physics, NUS',
+        experience: 4,
+        experienceRange: '3-5',
+        subjects: ['Mathematics', 'Physics', 'Chemistry'],
+        levels: ['JC', 'IB'],
+        hourlyRate: 75,
+        groupRate: 60,
+        packageRate: 320,
+        location: 'Yishun, Singapore',
+        teachingMode: 'in-person',
+        availability: ['now'],
+        reviews: 2
+      },
+      9: {
+        id: 9,
+        name: 'Ms. Linda Tan',
+        subject: 'Mathematics',
+        level: 'Primary',
+        avatar: 'https://i.pravatar.cc/400?img=45',
+        rating: 5,
+        bio: 'Dedicated tutor with strong emphasis on building confidence. Makes complex topics simple and accessible for all students.',
+        education: 'BSc in Mathematics, NTU',
+        experience: 7,
+        experienceRange: '5+',
+        subjects: ['Mathematics', 'Science'],
+        levels: ['Primary', 'Secondary'],
+        hourlyRate: 55,
+        groupRate: 42,
+        packageRate: 230,
+        location: 'Ang Mo Kio, Singapore',
+        teachingMode: 'both',
+        availability: ['now', 'week', 'weekend'],
+        reviews: 8
+      },
+      10: {
+        id: 10,
+        name: 'Mr. William Chen',
+        subject: 'Physics',
+        level: 'Secondary',
+        avatar: 'https://i.pravatar.cc/400?img=33',
+        rating: 4,
+        bio: 'Former engineer turned educator. Practical approach to physics and mathematics with real-world applications.',
+        education: 'MEng in Engineering, NUS',
+        experience: 8,
+        experienceRange: '5+',
+        subjects: ['Physics', 'Mathematics'],
+        levels: ['Secondary', 'JC'],
+        hourlyRate: 90,
+        groupRate: 72,
+        packageRate: 380,
+        location: 'Bishan, Singapore',
+        teachingMode: 'online',
+        availability: ['week'],
+        reviews: 6
       }
     }
 
-    const reviews = ref([
-      {
-        id: 1,
-        studentName: 'John Lim',
-        rating: 5,
-        comment: 'Excellent tutor! Sarah helped me improve my math grades significantly.',
-        createdAt: '2024-01-15'
-      },
-      {
-        id: 2,
-        studentName: 'Mary Tan',
-        rating: 5,
-        comment: 'Very patient and explains concepts clearly. Highly recommended!',
-        createdAt: '2024-01-10'
-      },
-      {
-        id: 3,
-        studentName: 'David Wong',
-        rating: 4,
-        comment: 'Great teaching methods and very knowledgeable.',
-        createdAt: '2024-01-05'
-      }
-    ])
+    // Reviews data for each tutor matching their review counts
+    const reviewsData = {
+      1: [ // 8 reviews for Dr. Sarah Chen
+        { id: 1, studentName: 'John Lim', rating: 5, comment: 'Excellent tutor! Helped me improve my math grades significantly.', createdAt: '2024-01-15' },
+        { id: 2, studentName: 'Mary Tan', rating: 5, comment: 'Very patient and explains concepts clearly. Highly recommended!', createdAt: '2024-01-10' },
+        { id: 3, studentName: 'David Wong', rating: 5, comment: 'Great teaching methods and very knowledgeable.', createdAt: '2024-01-05' },
+        { id: 4, studentName: 'Sarah Lee', rating: 5, comment: 'My daughter scored A1 in O-Levels thanks to Dr. Chen!', createdAt: '2023-12-20' },
+        { id: 5, studentName: 'Kevin Ng', rating: 5, comment: 'Clear explanations and great study materials provided.', createdAt: '2023-12-15' },
+        { id: 6, studentName: 'Rachel Goh', rating: 5, comment: 'Very professional and effective teaching style.', createdAt: '2023-12-10' },
+        { id: 7, studentName: 'James Tan', rating: 5, comment: 'Helped me understand complex topics easily.', createdAt: '2023-12-05' },
+        { id: 8, studentName: 'Lisa Wong', rating: 5, comment: 'Best math tutor I have ever had!', createdAt: '2023-12-01' }
+      ],
+      2: [ // 6 reviews for Mr. David Lim
+        { id: 1, studentName: 'Michael Chen', rating: 5, comment: 'Excellent physics tutor! Very experienced and patient.', createdAt: '2024-01-12' },
+        { id: 2, studentName: 'Emily Tan', rating: 5, comment: 'Helped me ace my A-Level physics exam.', createdAt: '2024-01-08' },
+        { id: 3, studentName: 'Benjamin Koh', rating: 5, comment: 'Great teacher with practical examples.', createdAt: '2024-01-04' },
+        { id: 4, studentName: 'Amanda Lee', rating: 5, comment: 'Clear and concise explanations.', createdAt: '2023-12-28' },
+        { id: 5, studentName: 'Daniel Ng', rating: 5, comment: 'Highly recommend for physics students.', createdAt: '2023-12-22' },
+        { id: 6, studentName: 'Sophie Wong', rating: 5, comment: 'Very knowledgeable and helpful.', createdAt: '2023-12-18' }
+      ],
+      3: [ // 9 reviews for Ms. Emily Wong
+        { id: 1, studentName: 'Grace Lim', rating: 5, comment: 'My daughter loves her English lessons now!', createdAt: '2024-01-14' },
+        { id: 2, studentName: 'Peter Tan', rating: 5, comment: 'Improved my writing skills tremendously.', createdAt: '2024-01-10' },
+        { id: 3, studentName: 'Michelle Koh', rating: 5, comment: 'Very creative and engaging teacher.', createdAt: '2024-01-06' },
+        { id: 4, studentName: 'Ryan Lee', rating: 5, comment: 'Makes English fun and interesting.', createdAt: '2024-01-02' },
+        { id: 5, studentName: 'Jessica Ng', rating: 5, comment: 'Patient and encouraging tutor.', createdAt: '2023-12-29' },
+        { id: 6, studentName: 'Andrew Wong', rating: 5, comment: 'Great at building confidence in students.', createdAt: '2023-12-25' },
+        { id: 7, studentName: 'Hannah Tan', rating: 5, comment: 'Excellent comprehension teaching methods.', createdAt: '2023-12-20' },
+        { id: 8, studentName: 'Nicholas Lim', rating: 5, comment: 'My child looks forward to every lesson.', createdAt: '2023-12-16' },
+        { id: 9, studentName: 'Olivia Chen', rating: 5, comment: 'Highly recommended for English.', createdAt: '2023-12-12' }
+      ],
+      4: [ // 7 reviews for Prof. Michael Tan
+        { id: 1, studentName: 'Jonathan Lee', rating: 5, comment: 'Outstanding biology professor! Very knowledgeable.', createdAt: '2024-01-11' },
+        { id: 2, studentName: 'Chloe Tan', rating: 5, comment: 'Helped me excel in IB Biology.', createdAt: '2024-01-07' },
+        { id: 3, studentName: 'Marcus Ng', rating: 5, comment: 'In-depth knowledge and great teaching.', createdAt: '2024-01-03' },
+        { id: 4, studentName: 'Isabelle Wong', rating: 5, comment: 'Perfect for JC students.', createdAt: '2023-12-30' },
+        { id: 5, studentName: 'Xavier Koh', rating: 5, comment: 'Very professional and thorough.', createdAt: '2023-12-26' },
+        { id: 6, studentName: 'Natalie Lim', rating: 5, comment: 'Best biology tutor in Singapore!', createdAt: '2023-12-22' },
+        { id: 7, studentName: 'Ethan Tan', rating: 5, comment: 'Excellent exam preparation strategies.', createdAt: '2023-12-18' }
+      ],
+      5: [ // 5 reviews for Ms. Rachel Goh
+        { id: 1, studentName: 'William Chen', rating: 4, comment: 'Very patient with my primary school child.', createdAt: '2024-01-09' },
+        { id: 2, studentName: 'Sophia Tan', rating: 4, comment: 'Makes learning fun for young children.', createdAt: '2024-01-05' },
+        { id: 3, studentName: 'Lucas Ng', rating: 4, comment: 'Good foundation building for primary students.', createdAt: '2024-01-01' },
+        { id: 4, studentName: 'Emma Wong', rating: 4, comment: 'Nurturing and caring teacher.', createdAt: '2023-12-27' },
+        { id: 5, studentName: 'Liam Koh', rating: 4, comment: 'My son enjoys his math lessons now.', createdAt: '2023-12-23' }
+      ],
+      6: [ // 4 reviews for Mr. Jason Koh
+        { id: 1, studentName: 'Mia Lee', rating: 4, comment: 'Energetic and fun teacher!', createdAt: '2024-01-08' },
+        { id: 2, studentName: 'Noah Tan', rating: 4, comment: 'Good exam techniques taught.', createdAt: '2024-01-04' },
+        { id: 3, studentName: 'Ava Ng', rating: 4, comment: 'Makes learning enjoyable.', createdAt: '2023-12-31' },
+        { id: 4, studentName: 'Mason Wong', rating: 4, comment: 'Helpful and patient tutor.', createdAt: '2023-12-27' }
+      ],
+      7: [ // 3 reviews for Dr. Amanda Lee
+        { id: 1, studentName: 'Charlotte Lim', rating: 3, comment: 'Good at explaining difficult concepts.', createdAt: '2024-01-06' },
+        { id: 2, studentName: 'James Koh', rating: 3, comment: 'Helped me overcome math anxiety.', createdAt: '2024-01-02' },
+        { id: 3, studentName: 'Amelia Tan', rating: 3, comment: 'Knowledgeable tutor.', createdAt: '2023-12-29' }
+      ],
+      8: [ // 2 reviews for Mr. Benjamin Ng
+        { id: 1, studentName: 'Oliver Chen', rating: 3, comment: 'Results-oriented teaching approach.', createdAt: '2024-01-05' },
+        { id: 2, studentName: 'Harper Ng', rating: 3, comment: 'Good exam strategies.', createdAt: '2024-01-01' }
+      ],
+      9: [ // 8 reviews for Ms. Linda Tan
+        { id: 1, studentName: 'Elijah Wong', rating: 5, comment: 'Makes math simple and fun!', createdAt: '2024-01-13' },
+        { id: 2, studentName: 'Lily Lee', rating: 5, comment: 'Very patient and encouraging.', createdAt: '2024-01-09' },
+        { id: 3, studentName: 'Jack Tan', rating: 5, comment: 'My daughter improved from C to A.', createdAt: '2024-01-05' },
+        { id: 4, studentName: 'Zoe Koh', rating: 5, comment: 'Excellent at building confidence.', createdAt: '2024-01-01' },
+        { id: 5, studentName: 'Henry Ng', rating: 5, comment: 'Great teaching methods.', createdAt: '2023-12-28' },
+        { id: 6, studentName: 'Aria Chen', rating: 5, comment: 'Highly recommend for primary students.', createdAt: '2023-12-24' },
+        { id: 7, studentName: 'Leo Wong', rating: 5, comment: 'Makes complex topics easy.', createdAt: '2023-12-20' },
+        { id: 8, studentName: 'Mila Lim', rating: 5, comment: 'Best math tutor for kids!', createdAt: '2023-12-16' }
+      ],
+      10: [ // 6 reviews for Mr. William Chen
+        { id: 1, studentName: 'Alexander Tan', rating: 4, comment: 'Practical approach to physics!', createdAt: '2024-01-12' },
+        { id: 2, studentName: 'Victoria Koh', rating: 4, comment: 'Real-world examples are very helpful.', createdAt: '2024-01-08' },
+        { id: 3, studentName: 'Sebastian Ng', rating: 4, comment: 'Engineering background adds value.', createdAt: '2024-01-04' },
+        { id: 4, studentName: 'Scarlett Wong', rating: 4, comment: 'Good for practical understanding.', createdAt: '2023-12-31' },
+        { id: 5, studentName: 'Mateo Lee', rating: 4, comment: 'Connects theory to practice well.', createdAt: '2023-12-27' },
+        { id: 6, studentName: 'Luna Chen', rating: 4, comment: 'Very knowledgeable tutor.', createdAt: '2023-12-23' }
+      ]
+    }
+
+    const reviews = ref(reviewsData[1] || [])
+    const showAllReviews = ref(false)
+
+    // Computed property to show first 3 reviews or all reviews
+    const displayedReviews = computed(() => {
+      return showAllReviews.value ? reviews.value : reviews.value.slice(0, 3)
+    })
 
     const formatDate = (dateString) => {
       return new Date(dateString).toLocaleDateString()
@@ -855,7 +1095,19 @@ export default {
       // For now, we'll use our sample data
       if (tutorsData[tutorId]) {
         tutor.value = tutorsData[tutorId]
-        console.log('Loaded tutor:', tutor.value.name)
+        reviews.value = reviewsData[tutorId] || []
+        showAllReviews.value = false // Reset reviews visibility when loading new tutor
+
+        // Calculate average rating dynamically from reviews
+        if (reviews.value.length > 0) {
+          const totalRating = reviews.value.reduce((sum, review) => sum + review.rating, 0)
+          tutor.value.rating = Math.round(totalRating / reviews.value.length)
+        }
+
+        // Set review count dynamically from actual reviews array
+        tutor.value.reviews = reviews.value.length
+
+        console.log('Loaded tutor:', tutor.value.name, 'with', reviews.value.length, 'reviews, avg rating:', tutor.value.rating)
       } else {
         console.log('Tutor not found, using default')
         // Keep default tutor data
@@ -891,6 +1143,8 @@ export default {
     return {
       tutor,
       reviews,
+      showAllReviews,
+      displayedReviews,
       formatDate,
       bookSession,
       sendMessage,
@@ -1061,6 +1315,12 @@ export default {
 
 .cyberpunk-star {
   color: var(--cyber-orange);
+  font-size: 1.2rem;
+  margin-right: 0.2rem;
+}
+
+.cyberpunk-star-empty {
+  color: var(--cyber-grey-light);
   font-size: 1.2rem;
   margin-right: 0.2rem;
 }
