@@ -62,15 +62,15 @@
               
               <!-- Search Form -->
               <form @submit.prevent="searchTutors" class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-6">
                   <label class="cyberpunk-label">Subject</label>
                   <div class="cyberpunk-input-group">
                     <div class="cyberpunk-input-icon">
                       <i class="fas fa-book"></i>
                     </div>
-                    <select 
+                    <select
                       ref="subjectField"
-                      v-model="filters.subject" 
+                      v-model="filters.subject"
                       class="cyberpunk-input"
                     >
                     <option value="">All Subjects</option>
@@ -84,16 +84,16 @@
                   </select>
                   </div>
                 </div>
-                
-                <div class="col-md-4">
+
+                <div class="col-md-6">
                   <label class="cyberpunk-label">Level</label>
                   <div class="cyberpunk-input-group">
                     <div class="cyberpunk-input-icon">
                       <i class="fas fa-graduation-cap"></i>
                     </div>
-                    <select 
+                    <select
                       ref="levelField"
-                      v-model="filters.level" 
+                      v-model="filters.level"
                       class="cyberpunk-input"
                     >
                     <option value="">All Levels</option>
@@ -105,26 +105,7 @@
                   </select>
                   </div>
                 </div>
-                
-                <div class="col-md-4">
-                  <label class="cyberpunk-label">Teaching Mode</label>
-                  <div class="cyberpunk-input-group">
-                    <div class="cyberpunk-input-icon">
-                      <i class="fas fa-video"></i>
-                    </div>
-                    <select 
-                      ref="teachingModeField"
-                      v-model="filters.teachingMode" 
-                      class="cyberpunk-input"
-                    >
-                    <option value="">Any Mode</option>
-                    <option value="online">Online Only</option>
-                    <option value="in-person">In-Person Only</option>
-                    <option value="both">Both</option>
-                  </select>
-                  </div>
-                </div>
-                
+
                 <div class="col-md-6">
                   <label class="cyberpunk-label">Location</label>
                   <div class="cyberpunk-input-group">
@@ -140,7 +121,7 @@
                   />
                   </div>
                 </div>
-                
+
                 <div class="col-md-3">
                   <label class="cyberpunk-label">Min Rate ($/hr)</label>
                   <div class="cyberpunk-input-group">
@@ -156,7 +137,7 @@
                   />
                   </div>
                 </div>
-                
+
                 <div class="col-md-3">
                   <label class="cyberpunk-label">Max Rate ($/hr)</label>
                   <div class="cyberpunk-input-group">
@@ -404,7 +385,6 @@ export default {
     const searchSubtitle = ref(null)
     const subjectField = ref(null)
     const levelField = ref(null)
-    const teachingModeField = ref(null)
     const locationField = ref(null)
     const minRateField = ref(null)
     const maxRateField = ref(null)
@@ -429,7 +409,6 @@ export default {
     const filters = reactive({
       subject: '',
       level: '',
-      teachingMode: '',
       location: '',
       minRate: '',
       maxRate: '',
@@ -531,8 +510,7 @@ export default {
       const formFields = [
         { ref: subjectField, delay: 400 },
         { ref: levelField, delay: 450 },
-        { ref: teachingModeField, delay: 500 },
-        { ref: locationField, delay: 550 },
+        { ref: locationField, delay: 500 },
         { ref: minRateField, delay: 600 },
         { ref: maxRateField, delay: 650 },
         { ref: searchButton, delay: 700 },
@@ -560,7 +538,7 @@ export default {
       })
 
       // Advanced input focus animations
-      const inputFields = [subjectField, levelField, teachingModeField, locationField, minRateField, maxRateField]
+      const inputFields = [subjectField, levelField, locationField, minRateField, maxRateField]
       
       inputFields.forEach(fieldRef => {
         if (fieldRef.value) {
@@ -789,7 +767,7 @@ export default {
             location: 'Orchard, Singapore',
             teachingMode: 'online',
             availability: ['now', 'week'],
-            avatar: 'https://i.pravatar.cc/400?img=3'
+            avatar: 'https://i.pravatar.cc/400?img=47'
           },
           {
             id: 2,
@@ -819,7 +797,7 @@ export default {
             location: 'Tampines, Singapore',
             teachingMode: 'both',
             availability: ['now', 'weekend'],
-            avatar: 'https://i.pravatar.cc/400?img=7'
+            avatar: 'https://i.pravatar.cc/400?img=44'
           },
           {
             id: 4,
@@ -1067,9 +1045,6 @@ export default {
       if (filters.level) {
         filtered = filtered.filter(tutor => tutor.levels.includes(filters.level))
       }
-      if (filters.teachingMode) {
-        filtered = filtered.filter(tutor => tutor.teachingMode === filters.teachingMode || tutor.teachingMode === 'both')
-      }
       if (filters.location) {
         filtered = filtered.filter(tutor => tutor.location.toLowerCase().includes(filters.location.toLowerCase()))
       }
@@ -1253,7 +1228,6 @@ export default {
       searchSubtitle,
       subjectField,
       levelField,
-      teachingModeField,
       locationField,
       minRateField,
       maxRateField,
@@ -1277,6 +1251,7 @@ export default {
       filters,
       sortBy,
       tutors,
+      totalFilteredTutors,
       isLoading,
       hasMoreTutors,
       searchTutors,

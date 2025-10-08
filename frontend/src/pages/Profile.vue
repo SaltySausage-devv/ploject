@@ -327,65 +327,237 @@ export default {
 </script>
 
 <style scoped>
+/* Cyberpunk Profile Page */
 .profile-page {
-  background-color: var(--light-bg);
+  background: #1a1a1a !important;
   min-height: 100vh;
+  color: var(--cyber-text, #ffffff);
 }
 
+/* Cards */
+.card {
+  background: rgba(26, 26, 26, 0.85) !important;
+  border: 2px solid var(--cyber-grey-light, #4a4a4a) !important;
+  border-radius: 15px;
+  box-shadow:
+    0 0 15px rgba(255, 140, 66, 0.1),
+    0 0 30px rgba(255, 140, 66, 0.05) !important;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(8px);
+  color: var(--cyber-text, #ffffff) !important;
+}
+
+.card:hover {
+  border-color: var(--cyber-orange, #ff8c42) !important;
+  box-shadow: 0 0 25px rgba(255, 140, 66, 0.3) !important;
+  transform: translateY(-2px);
+}
+
+.card-header {
+  background: rgba(255, 140, 66, 0.1) !important;
+  border-bottom: 1px solid var(--cyber-orange, #ff8c42) !important;
+  color: var(--cyber-text, #ffffff) !important;
+}
+
+.card-body {
+  color: var(--cyber-text, #ffffff) !important;
+}
+
+/* Headings and Text */
+h2, h3, h4, h5, h6 {
+  color: var(--cyber-text, #ffffff) !important;
+  text-shadow: 0 0 5px rgba(255, 140, 66, 0.3);
+}
+
+.text-muted {
+  color: var(--cyber-text-muted, #cccccc) !important;
+}
+
+.fw-bold {
+  color: var(--cyber-text, #ffffff) !important;
+}
+
+/* Profile Avatar */
 .profile-avatar {
+  background: rgba(255, 140, 66, 0.2) !important;
+  border: 2px solid var(--cyber-orange, #ff8c42);
   transition: all 0.3s ease;
 }
 
 .profile-avatar:hover {
   transform: scale(1.1);
-  background-color: var(--primary-color) !important;
+  background: linear-gradient(45deg, var(--cyber-orange, #ff8c42), var(--cyber-yellow, #ffd23f)) !important;
+  box-shadow: 0 0 20px rgba(255, 140, 66, 0.5);
 }
 
 .profile-avatar:hover i {
   color: white !important;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
+.profile-avatar i {
+  color: var(--cyber-orange, #ff8c42) !important;
+}
+
+/* Badges */
+.badge {
+  border: 1px solid var(--cyber-orange, #ff8c42);
+  font-weight: 600;
+  padding: 0.5em 0.8em;
+  border-radius: 6px;
+}
+
+.badge.bg-primary {
+  background: rgba(255, 140, 66, 0.2) !important;
+  color: var(--cyber-orange, #ff8c42) !important;
+  border-color: var(--cyber-orange, #ff8c42) !important;
+}
+
+/* Rating Stars */
 .rating .star {
-  color: #fbbf24;
+  color: var(--cyber-yellow, #ffd23f);
   font-size: 0.9rem;
+  text-shadow: 0 0 5px rgba(255, 210, 63, 0.5);
 }
 
-.btn-outline-primary {
+/* Form Controls */
+.form-label {
+  color: var(--cyber-text, #ffffff) !important;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+
+.form-control {
+  background: rgba(42, 42, 42, 0.8) !important;
+  border: 2px solid var(--cyber-grey-light, #4a4a4a) !important;
+  color: var(--cyber-text, #ffffff) !important;
+  border-radius: 8px;
   transition: all 0.3s ease;
 }
 
-.btn-outline-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
+.form-control:focus {
+  background: rgba(42, 42, 42, 0.95) !important;
+  border-color: var(--cyber-orange, #ff8c42) !important;
+  box-shadow: 0 0 15px rgba(255, 140, 66, 0.3) !important;
+  color: var(--cyber-text, #ffffff) !important;
 }
 
+.form-control:disabled {
+  background: rgba(42, 42, 42, 0.5) !important;
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.form-control::placeholder {
+  color: var(--cyber-text-dim, #888888) !important;
+}
+
+/* Buttons */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-  border: none;
+  background: linear-gradient(45deg, var(--cyber-orange, #ff8c42), var(--cyber-yellow, #ffd23f)) !important;
+  border: 2px solid var(--cyber-orange, #ff8c42) !important;
+  color: white !important;
+  font-weight: 600;
+  border-radius: 10px;
   transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(255, 140, 66, 0.3);
 }
 
 .btn-primary:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 0 30px rgba(255, 140, 66, 0.5) !important;
+  border-color: var(--cyber-orange, #ff8c42) !important;
 }
 
 .btn-primary:disabled {
   opacity: 0.7;
   transform: none;
+  cursor: not-allowed;
 }
 
-.form-control:focus {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.25);
+.btn-outline-primary {
+  background: transparent !important;
+  border: 2px solid var(--cyber-orange, #ff8c42) !important;
+  color: var(--cyber-text, #ffffff) !important;
+  transition: all 0.3s ease;
+  border-radius: 10px;
+  font-weight: 600;
 }
 
+.btn-outline-primary:hover {
+  background: linear-gradient(45deg, var(--cyber-orange, #ff8c42), var(--cyber-yellow, #ffd23f)) !important;
+  border-color: var(--cyber-orange, #ff8c42) !important;
+  color: white !important;
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(255, 140, 66, 0.5) !important;
+}
+
+.btn-outline-secondary {
+  background: transparent !important;
+  border: 2px solid var(--cyber-grey-light, #4a4a4a) !important;
+  color: var(--cyber-text, #ffffff) !important;
+  transition: all 0.3s ease;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn-outline-secondary:hover {
+  background: rgba(74, 74, 74, 0.3) !important;
+  border-color: var(--cyber-grey-light, #4a4a4a) !important;
+  color: var(--cyber-text, #ffffff) !important;
+  transform: translateY(-2px);
+}
+
+.btn-outline-danger {
+  background: transparent !important;
+  border: 2px solid #ef4444 !important;
+  color: #ef4444 !important;
+  transition: all 0.3s ease;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn-outline-danger:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  border-color: #ef4444 !important;
+  color: #ef4444 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Icons */
+i.text-primary {
+  color: var(--cyber-orange, #ff8c42) !important;
+}
+
+/* Background Elements */
+.bg-white {
+  background: rgba(26, 26, 26, 0.5) !important;
+}
+
+/* Spinner */
+.spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  border: 2px solid transparent;
+  border-top: 2px solid currentColor;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Responsive */
 @media (max-width: 768px) {
   .profile-avatar {
     width: 60px !important;
     height: 60px !important;
   }
-  
+
   .card-body {
     padding: 1.5rem !important;
   }
