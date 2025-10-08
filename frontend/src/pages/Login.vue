@@ -112,7 +112,7 @@
                 >
                   <span v-if="isLoading" class="cyberpunk-spinner me-2"></span>
                   <i v-else class="fas fa-sign-in-alt me-2"></i>
-                  {{ isLoading ? 'Signing In...' : '→ SIGN IN' }}
+                  {{ isLoading ? 'Signing In...' : 'SIGN IN' }}
                 </button>
 
                 <!-- Sign Up Link with Animation -->

@@ -1535,7 +1535,7 @@ select.cyberpunk-input option {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 1px;
-  box-shadow: 0 0 20px rgba(255, 140, 66, 0.3);
+  box-shadow: none;
   position: relative;
   overflow: hidden;
   transition: all 0.3s ease;
@@ -1560,7 +1560,7 @@ select.cyberpunk-input option {
 
 .cyberpunk-search-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(255, 140, 66, 0.5);
+  box-shadow: 0 0 35px rgba(255, 140, 66, 0.6);
 }
 
 .cyberpunk-clear-btn {

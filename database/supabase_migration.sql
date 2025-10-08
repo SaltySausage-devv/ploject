@@ -1,10 +1,14 @@
--- TutorConnect Database Schema
--- PostgreSQL/Supabase
--- Updated for Supabase Auth (UUID-based)
+-- ============================================
+-- SUPABASE AUTH MIGRATION SCRIPT
+-- ============================================
+-- This script updates your existing schema to work with Supabase Auth
+-- Run this in your Supabase SQL Editor
+--
+-- WARNING: This will drop and recreate tables!
+-- If you have important data, back it up first.
+-- ============================================
 
--- ============================================
--- DROP ALL EXISTING TABLES FIRST
--- ============================================
+-- Drop existing tables in correct order (respecting foreign keys)
 DROP TABLE IF EXISTS calendar_events CASCADE;
 DROP TABLE IF EXISTS calendar_tokens CASCADE;
 DROP TABLE IF EXISTS earnings CASCADE;
@@ -28,13 +32,10 @@ DROP TABLE IF EXISTS travel_times CASCADE;
 DROP TABLE IF EXISTS location_cache CASCADE;
 DROP TABLE IF EXISTS users CASCADE;
 
--- Enable necessary extensions
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
 -- ============================================
--- Users table (Updated for Supabase Auth)
+-- USERS TABLE (Updated for Supabase Auth)
 -- ============================================
--- Now uses UUID that matches auth.users.id
+-- This now uses UUID that matches auth.users.id
 -- No password field - Supabase Auth manages that
 CREATE TABLE users (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -50,7 +51,9 @@ CREATE TABLE users (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tutor profiles table
+-- ============================================
+-- TUTOR PROFILES TABLE
+-- ============================================
 CREATE TABLE tutor_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -71,7 +74,9 @@ CREATE TABLE tutor_profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Centre profiles table
+-- ============================================
+-- CENTRE PROFILES TABLE
+-- ============================================
 CREATE TABLE centre_profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -93,7 +98,9 @@ CREATE TABLE centre_profiles (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Availability slots table
+-- ============================================
+-- AVAILABILITY SLOTS TABLE
+-- ============================================
 CREATE TABLE availability_slots (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tutor_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -105,7 +112,9 @@ CREATE TABLE availability_slots (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Bookings table
+-- ============================================
+-- BOOKINGS TABLE
+-- ============================================
 CREATE TABLE bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tutor_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -128,7 +137,9 @@ CREATE TABLE bookings (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Reviews table
+-- ============================================
+-- REVIEWS TABLE
+-- ============================================
 CREATE TABLE reviews (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tutor_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -142,7 +153,9 @@ CREATE TABLE reviews (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Conversations table
+-- ============================================
+-- CONVERSATIONS TABLE
+-- ============================================
 CREATE TABLE conversations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     participant1_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -153,7 +166,9 @@ CREATE TABLE conversations (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Messages table
+-- ============================================
+-- MESSAGES TABLE
+-- ============================================
 CREATE TABLE messages (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     conversation_id UUID REFERENCES conversations(id) ON DELETE CASCADE,
@@ -166,7 +181,9 @@ CREATE TABLE messages (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Notifications table
+-- ============================================
+-- NOTIFICATIONS TABLE
+-- ============================================
 CREATE TABLE notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -180,7 +197,9 @@ CREATE TABLE notifications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Notification preferences table
+-- ============================================
+-- NOTIFICATION PREFERENCES TABLE
+-- ============================================
 CREATE TABLE notification_preferences (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -194,7 +213,9 @@ CREATE TABLE notification_preferences (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Profile views table
+-- ============================================
+-- PROFILE VIEWS TABLE
+-- ============================================
 CREATE TABLE profile_views (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tutor_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -203,7 +224,9 @@ CREATE TABLE profile_views (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Verification documents table
+-- ============================================
+-- VERIFICATION DOCUMENTS TABLE
+-- ============================================
 CREATE TABLE verification_documents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     profile_id UUID NOT NULL,
@@ -216,7 +239,9 @@ CREATE TABLE verification_documents (
     reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL
 );
 
--- Review reports table
+-- ============================================
+-- REVIEW REPORTS TABLE
+-- ============================================
 CREATE TABLE review_reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     review_id UUID REFERENCES reviews(id) ON DELETE CASCADE,
@@ -227,7 +252,9 @@ CREATE TABLE review_reports (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Push tokens table
+-- ============================================
+-- PUSH TOKENS TABLE
+-- ============================================
 CREATE TABLE push_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -236,7 +263,9 @@ CREATE TABLE push_tokens (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Gamification tables
+-- ============================================
+-- GAMIFICATION TABLES
+-- ============================================
 CREATE TABLE user_badges (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -265,7 +294,9 @@ CREATE TABLE leaderboards (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Earnings tracking table
+-- ============================================
+-- EARNINGS TRACKING TABLE
+-- ============================================
 CREATE TABLE earnings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tutor_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -279,7 +310,9 @@ CREATE TABLE earnings (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Calendar integration tables
+-- ============================================
+-- CALENDAR INTEGRATION TABLES
+-- ============================================
 CREATE TABLE calendar_tokens (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
@@ -298,7 +331,9 @@ CREATE TABLE calendar_events (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Maps and location tables
+-- ============================================
+-- LOCATION TABLES
+-- ============================================
 CREATE TABLE location_cache (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     address TEXT NOT NULL,
@@ -321,7 +356,9 @@ CREATE TABLE travel_times (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create indexes for better performance
+-- ============================================
+-- INDEXES FOR PERFORMANCE
+-- ============================================
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_user_type ON users(user_type);
 CREATE INDEX idx_tutor_profiles_user_id ON tutor_profiles(user_id);
@@ -337,28 +374,35 @@ CREATE INDEX idx_notifications_user_id ON notifications(user_id);
 CREATE INDEX idx_profile_views_tutor_id ON profile_views(tutor_id);
 CREATE INDEX idx_profile_views_centre_id ON profile_views(centre_id);
 
--- Create triggers for updated_at timestamps
+-- ============================================
+-- TRIGGERS FOR UPDATED_AT TIMESTAMPS
+-- ============================================
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
     RETURN NEW;
 END;
-$$ language 'plpgsql';
+$$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+CREATE TRIGGER update_users_updated_at
+    BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_tutor_profiles_updated_at BEFORE UPDATE ON tutor_profiles
+CREATE TRIGGER update_tutor_profiles_updated_at
+    BEFORE UPDATE ON tutor_profiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_centre_profiles_updated_at BEFORE UPDATE ON centre_profiles
+CREATE TRIGGER update_centre_profiles_updated_at
+    BEFORE UPDATE ON centre_profiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_reviews_updated_at BEFORE UPDATE ON reviews
+CREATE TRIGGER update_reviews_updated_at
+    BEFORE UPDATE ON reviews
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE TRIGGER update_notification_preferences_updated_at BEFORE UPDATE ON notification_preferences
+CREATE TRIGGER update_notification_preferences_updated_at
+    BEFORE UPDATE ON notification_preferences
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ============================================
@@ -478,10 +522,11 @@ CREATE POLICY "Users can view own notifications" ON notifications
     FOR SELECT USING (auth.uid() = user_id);
 
 -- ============================================
--- SCHEMA UPDATED FOR SUPABASE AUTH
+-- MIGRATION COMPLETE
 -- ============================================
--- All tables now use UUID instead of SERIAL
--- Password field removed (Supabase Auth manages authentication)
--- RLS policies added for security
--- Ready for production use!
+-- Your database is now ready for Supabase Auth!
+-- Next steps:
+-- 1. Test user registration
+-- 2. Test user login
+-- 3. Test profile updates
 -- ============================================
