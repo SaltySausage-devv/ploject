@@ -28,33 +28,53 @@ export const useAuthStore = defineStore('auth', () => {
   const login = async (email, password) => {
     isLoading.value = true
     try {
+      console.log('🔐 Attempting login with email:', email)
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
 
-      if (error) throw error
+      console.log('📦 Supabase auth response:', { data, error })
+
+      if (error) {
+        console.error('❌ Supabase auth error:', error)
+        throw error
+      }
+
+      console.log('✅ Auth successful, session:', data.session)
+      console.log('✅ Auth user:', data.user)
 
       session.value = data.session
 
       // Fetch user profile from database
       if (data.user) {
+        console.log('👤 Fetching user profile for ID:', data.user.id)
+
         const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('*')
           .eq('id', data.user.id)
           .single()
 
+        console.log('📊 Profile fetch result:', { profile, profileError })
+
         if (profileError) {
           console.error('Profile fetch error:', profileError)
         } else {
           user.value = profile
+          console.log('✅ User profile loaded:', profile)
         }
       }
 
       return { success: true, user: data.user }
     } catch (error) {
-      console.error('Login error:', error)
+      console.error('❌ Login error:', error)
+      console.error('Error details:', {
+        message: error.message,
+        status: error.status,
+        name: error.name
+      })
       return {
         success: false,
         error: error.message || 'Login failed'
