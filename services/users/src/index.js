@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
-require('dotenv').config();
+require('dotenv').config({ path: '../../.env' });
 
 const app = express();
 const PORT = process.env.PORT || 3002;

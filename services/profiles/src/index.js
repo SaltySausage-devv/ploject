@@ -6,7 +6,7 @@ const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const multer = require('multer');
-require('dotenv').config();
+require('dotenv').config({ path: '../../.env' });
 
 const app = express();
 const PORT = process.env.PORT || 3003;

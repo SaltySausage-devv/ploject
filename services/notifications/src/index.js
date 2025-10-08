@@ -9,7 +9,7 @@ const nodemailer = require('nodemailer');
 const twilio = require('twilio');
 const cron = require('node-cron');
 const amqp = require('amqplib');
-require('dotenv').config();
+require('dotenv').config({ path: '../../.env' });
 
 const app = express();
 const PORT = process.env.PORT || 3007;

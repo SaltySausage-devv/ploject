@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const multer = require('multer');
 const amqp = require('amqplib');
-require('dotenv').config();
+require('dotenv').config({ path: '../../.env' });
 
 const app = express();
 const server = http.createServer(app);
