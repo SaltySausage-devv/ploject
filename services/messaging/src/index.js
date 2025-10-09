@@ -8,8 +8,7 @@ const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const multer = require('multer');
-const createDOMPurify = require('dompurify');
-const { JSDOM } = require('jsdom');
+const DOMPurify = require('isomorphic-dompurify');
 require('dotenv').config({ path: '../../.env' });
 
 const app = express();
@@ -31,9 +30,14 @@ const supabase = createClient(
   process.env.SUPABASE_ANON_KEY
 );
 
+// Initialize Supabase client with service role key for storage operations
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
 // Initialize DOMPurify for XSS protection
-const window = new JSDOM('').window;
-const DOMPurify = createDOMPurify(window);
+// DOMPurify is now imported directly from isomorphic-dompurify
 
 // Input sanitization function
 const sanitizeInput = (input) => {
@@ -76,6 +80,12 @@ app.use(limiter);
 // JWT verification middleware
 const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
+  
+  console.log('Token verification:', { 
+    hasAuthHeader: !!req.headers.authorization,
+    hasToken: !!token,
+    endpoint: req.path 
+  });
   
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
@@ -578,8 +588,26 @@ app.post('/messaging/conversations/:id/upload', verifyToken, upload.single('file
     const { id } = req.params;
     const { messageType } = req.body;
 
+    console.log('Upload request received:', { 
+      id, 
+      messageType, 
+      hasFile: !!req.file,
+      userId: req.user?.userId,
+      token: req.headers.authorization ? 'present' : 'missing'
+    });
+
     if (!req.file) {
+      console.log('No file uploaded');
       return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    // Validate file type - only allow images
+    const allowedImageTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+    if (!allowedImageTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({ 
+        error: 'Only images are allowed',
+        message: 'Please upload an image file (JPEG, PNG, GIF, or WebP). Videos are not supported.'
+      });
     }
 
     // Verify user is participant in conversation
@@ -595,28 +623,51 @@ app.post('/messaging/conversations/:id/upload', verifyToken, upload.single('file
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    // Upload file to Supabase Storage
+    // Upload image to Supabase Storage
     const fileName = `messages/${id}/${Date.now()}_${req.file.originalname}`;
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    console.log('Uploading file to Supabase:', { fileName, size: req.file.size, type: req.file.mimetype });
+    
+    // Create a Supabase client with the user's token for RLS
+    const token = req.headers.authorization?.split(' ')[1];
+    const userSupabase = createClient(
+      process.env.SUPABASE_URL,
+      process.env.SUPABASE_ANON_KEY,
+      {
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        }
+      }
+    );
+    
+    const { data: uploadData, error: uploadError } = await userSupabase.storage
       .from('message-files')
       .upload(fileName, req.file.buffer, {
         contentType: req.file.mimetype
       });
 
     if (uploadError) {
-      throw uploadError;
+      console.error('Supabase upload error:', uploadError);
+      return res.status(500).json({ 
+        error: 'Failed to upload file to storage',
+        details: uploadError.message 
+      });
     }
 
-    // Save message with file reference
+    // Get public URL for the uploaded image
+    const { data: publicUrlData } = userSupabase.storage
+      .from('message-files')
+      .getPublicUrl(uploadData.path);
+
+    // Save message with image reference
     const { data: message, error: insertError } = await supabase
       .from('messages')
       .insert({
         conversation_id: id,
         sender_id: req.user.userId,
-        content: uploadData.path,
-        message_type: messageType || 'file',
-        file_name: req.file.originalname,
-        file_size: req.file.size,
+        content: publicUrlData.publicUrl,
+        message_type: 'image',
         created_at: new Date().toISOString()
       })
       .select(`
@@ -633,13 +684,22 @@ app.post('/messaging/conversations/:id/upload', verifyToken, upload.single('file
       throw insertError;
     }
 
+    // Broadcast image message to conversation room
+    console.log(`Broadcasting image message to room: conversation_${id}`);
+    console.log('Image message data:', message);
+    io.to(`conversation_${id}`).emit('new_message', message);
+
     res.status(201).json({
-      message: 'File uploaded successfully',
+      message: 'Image uploaded successfully',
       data: message
     });
   } catch (error) {
-    console.error('File upload error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Image upload error:', error);
+    res.status(500).json({ 
+      error: 'Failed to upload image',
+      details: error.message,
+      code: error.code || 'UPLOAD_ERROR'
+    });
   }
 });
 

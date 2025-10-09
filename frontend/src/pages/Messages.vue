@@ -60,9 +60,19 @@
                         </div>
                           <!-- Bottom row: Last Message and Unread Count -->
                           <div class="d-flex justify-content-between align-items-center mt-1">
-                            <p class="text-muted mb-0 small text-truncate" style="max-width: 70%;" :class="{ 'fw-bold': conversation.unreadCount > 0 }">
+                            <div class="d-flex align-items-center" style="max-width: 70%;">
+                              <div v-if="isImageMessage(conversation.lastMessage)" class="d-flex align-items-center">
+                                <img 
+                                  :src="conversation.lastMessage" 
+                                  alt="Image"
+                                  style="width: 20px; height: 20px; border-radius: 4px; margin-right: 6px; object-fit: cover;"
+                                />
+                                <span class="text-muted small" :class="{ 'fw-bold': conversation.unreadCount > 0 }">Image</span>
+                              </div>
+                              <p v-else class="text-muted mb-0 small text-truncate" :class="{ 'fw-bold': conversation.unreadCount > 0 }">
                               {{ conversation.lastMessage }}
                             </p>
+                            </div>
                             <div v-if="conversation.unreadCount > 0" class="badge bg-danger rounded-pill" style="font-size: 0.7rem;">
                           {{ conversation.unreadCount }}
                         </div>
@@ -84,6 +94,7 @@
             :animate="{ opacity: 1, x: 0 }"
             :transition="{ duration: 0.6, delay: 0.1 }"
             class="card border-0 shadow-sm w-100 d-flex flex-column"
+            style="height: 800px; max-height: 800px;"
           >
             <!-- Chat Header -->
             <div class="card-header bg-white border-bottom" v-if="selectedConversation">
@@ -127,11 +138,25 @@
                     :class="{ 'sent': message.senderId === currentUserId, 'received': message.senderId !== currentUserId }"
                   >
                     <div class="d-flex" :class="{ 'justify-content-end': message.senderId === currentUserId }">
-                      <div class="message-bubble" :class="{ 'sent': message.senderId === currentUserId, 'received': message.senderId !== currentUserId }"
+                      <div class="message-bubble" :class="{ 
+                        'sent': message.senderId === currentUserId, 
+                        'received': message.senderId !== currentUserId,
+                        'image-message-bubble': message.messageType === 'image'
+                      }"
                            :style="{ cursor: message.senderId === currentUserId ? 'context-menu' : 'default' }"
                            @contextmenu.prevent="message.senderId === currentUserId ? showMessageContextMenu($event, message) : null">
                         <div v-if="message.messageType === 'text'" class="message-content">
-                          {{ message.content }}
+                          {{ message.content || 'Empty message' }}
+                        </div>
+                        <div v-else-if="message.messageType === 'image'" class="message-content image-message">
+                          <img 
+                            v-if="message.content" 
+                            :src="message.content" 
+                            :alt="message.fileName || 'Image'"
+                            style="max-width: 300px; max-height: 300px; border-radius: 8px; cursor: pointer;"
+                            @click.stop="handleImageClick(message.content, $event)"
+                          />
+                          <div v-else class="text-muted">Loading image...</div>
                         </div>
                         <div v-else-if="message.messageType === 'file'" class="message-content">
                           <div class="d-flex align-items-center">
@@ -167,7 +192,15 @@
                       :disabled="isLoading"
                     />
                   </div>
-                  <button type="button" class="btn btn-outline-secondary" @click="attachFile">
+                  <!-- Hidden file input for images only -->
+                  <input 
+                    ref="fileInput"
+                    type="file" 
+                    accept="image/*"
+                    style="display: none"
+                    @change="handleFileSelect"
+                  />
+                  <button type="button" class="btn btn-outline-secondary" @click="attachFile" :disabled="isLoading">
                     <i class="fas fa-paperclip"></i>
                   </button>
                   <button type="submit" class="btn btn-primary" :disabled="!newMessage.trim() || isLoading">
@@ -266,6 +299,7 @@
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import messagingService from '../services/messaging.js'
+import axios from 'axios'
 
 export default {
   name: 'Messages',
@@ -301,7 +335,11 @@ export default {
     })
 
     const formatTime = (dateString) => {
+      if (!dateString) return 'Just now'
+      
       const date = new Date(dateString)
+      if (isNaN(date.getTime())) return 'Just now'
+      
       const now = new Date()
       const diff = now - date
       
@@ -309,6 +347,20 @@ export default {
       if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
       if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
       return date.toLocaleDateString()
+    }
+
+    const scrollToBottom = () => {
+      const messagesContainer = document.querySelector('.messages-container')
+      if (messagesContainer) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight
+      }
+    }
+
+    const isImageMessage = (messageContent) => {
+      if (!messageContent) return false
+      // Check if it's a Supabase storage URL or any image URL
+      return messageContent.includes('supabase.co/storage') || 
+             messageContent.match(/\.(jpg|jpeg|png|gif|webp|bmp|svg)(\?.*)?$/i)
     }
 
     const loadConversations = async () => {
@@ -602,8 +654,280 @@ export default {
       }
     }
 
+    const fileInput = ref(null)
+
     const attachFile = () => {
-      // Handle file attachment
+      // Trigger file input click
+      if (fileInput.value) {
+        fileInput.value.click()
+      }
+    }
+
+    const handleFileSelect = async (event) => {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      // Validate file type - only images
+      const validImageTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp']
+      if (!validImageTypes.includes(file.type)) {
+        // Show themed error message
+        showImageErrorModal()
+        // Reset file input
+        event.target.value = ''
+        return
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('Image is too large. Maximum size is 5MB.')
+        event.target.value = ''
+        return
+      }
+
+      // Upload the image
+      await uploadImage(file)
+      
+      // Reset file input
+      event.target.value = ''
+    }
+
+    const showImageErrorModal = () => {
+      // Create themed modal overlay
+      const modal = document.createElement('div')
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        backdrop-filter: blur(5px);
+      `
+
+      const modalContent = document.createElement('div')
+      modalContent.style.cssText = `
+        background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%);
+        border: 2px solid #ff8c42;
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 400px;
+        box-shadow: 0 10px 40px rgba(255, 140, 66, 0.3);
+        text-align: center;
+      `
+
+      modalContent.innerHTML = `
+        <div style="color: #ff8c42; font-size: 48px; margin-bottom: 16px;">
+          <i class="fas fa-exclamation-triangle"></i>
+        </div>
+        <h3 style="color: #ffffff; margin-bottom: 16px; font-weight: bold;">
+          Only Images Allowed
+        </h3>
+        <p style="color: #cccccc; margin-bottom: 24px; line-height: 1.6;">
+          Please upload an image file (JPEG, PNG, GIF, or WebP).<br>
+          <strong>Videos are not supported.</strong>
+        </p>
+        <button id="closeModal" style="
+          background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+          color: white;
+          border: none;
+          padding: 12px 32px;
+          border-radius: 8px;
+          font-weight: bold;
+          cursor: pointer;
+          transition: transform 0.2s;
+        ">
+          Got It
+        </button>
+      `
+
+      modal.appendChild(modalContent)
+      document.body.appendChild(modal)
+
+      // Add hover effect to button
+      const closeButton = modalContent.querySelector('#closeModal')
+      closeButton.addEventListener('mouseenter', () => {
+        closeButton.style.transform = 'scale(1.05)'
+      })
+      closeButton.addEventListener('mouseleave', () => {
+        closeButton.style.transform = 'scale(1)'
+      })
+
+      // Close modal on button click
+      closeButton.addEventListener('click', () => {
+        modal.remove()
+      })
+
+      // Close modal on overlay click
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          modal.remove()
+        }
+      })
+    }
+
+    const uploadImage = async (file) => {
+      if (!selectedConversation.value) return
+
+      console.log('Starting image upload:', {
+        conversationId: selectedConversation.value.id,
+        fileName: file.name,
+        fileSize: file.size,
+        hasToken: !!authStore.token
+      })
+
+      isLoading.value = true
+      try {
+        const formData = new FormData()
+        formData.append('file', file)
+        formData.append('messageType', 'image')
+
+        console.log('Making upload request to:', `/api/messaging/conversations/${selectedConversation.value.id}/upload`)
+
+        const response = await axios.post(
+          `/api/messaging/conversations/${selectedConversation.value.id}/upload`,
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data',
+              Authorization: `Bearer ${authStore.token}`
+            }
+          }
+        )
+
+        console.log('Upload response:', response.data)
+
+        if (response.data && response.data.data) {
+          // Don't add the message here - it will be added via Socket.io
+          console.log('✅ Upload successful, waiting for Socket.io message')
+          
+          // Scroll to bottom
+          nextTick(() => {
+            scrollToBottom()
+          })
+        }
+      } catch (error) {
+        console.error('Error uploading image:', error)
+        console.error('Error details:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          data: error.response?.data,
+          config: {
+            url: error.config?.url,
+            method: error.config?.method,
+            headers: error.config?.headers
+          }
+        })
+        
+        if (error.response?.data?.message) {
+          alert(error.response.data.message)
+        } else if (error.response?.data?.error) {
+          alert(error.response.data.error)
+        } else {
+          alert('Failed to upload image. Please try again.')
+        }
+      } finally {
+        isLoading.value = false
+      }
+    }
+
+    const handleImageClick = (imageUrl, event) => {
+      console.log('🖼️ handleImageClick called with:', imageUrl)
+      console.log('🖼️ Event details:', event)
+      
+      // Call the fullscreen function
+      openImageFullscreen(imageUrl, event)
+    }
+
+    const openImageFullscreen = (imageUrl, event) => {
+      console.log('🖼️ openImageFullscreen called with:', imageUrl)
+      console.log('🖼️ Event:', event)
+      
+      // Prevent any default behavior and stop propagation
+      if (event) {
+        event.preventDefault()
+        event.stopPropagation()
+        event.stopImmediatePropagation()
+        console.log('🖼️ Event prevented and stopped')
+      }
+      
+      // Validate image URL
+      if (!imageUrl || typeof imageUrl !== 'string') {
+        console.error('❌ Invalid image URL:', imageUrl)
+        alert('Invalid image URL')
+        return
+      }
+      
+      console.log('✅ Image URL is valid, creating overlay...')
+
+      // Create fullscreen overlay
+      const overlay = document.createElement('div')
+      overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10001;
+        cursor: zoom-out;
+      `
+
+      const img = document.createElement('img')
+      img.src = imageUrl
+      img.style.cssText = `
+        width: 600px;
+        max-width: 90vw;
+        max-height: 80vh;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      `
+
+      // Add error handling for image loading
+      img.onerror = () => {
+        console.error('❌ Failed to load image:', imageUrl)
+        overlay.innerHTML = `
+          <div style="color: white; text-align: center;">
+            <i class="fas fa-exclamation-triangle" style="font-size: 48px; margin-bottom: 16px;"></i>
+            <h3>Failed to load image</h3>
+            <p>URL: ${imageUrl}</p>
+            <button onclick="this.parentElement.parentElement.remove()" style="padding: 8px 16px; background: #ff6b35; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+          </div>
+        `
+      }
+
+      img.onload = () => {
+        console.log('✅ Image loaded successfully:', imageUrl)
+      }
+      
+      console.log('🖼️ Setting image src and adding to DOM...')
+
+      overlay.appendChild(img)
+      document.body.appendChild(overlay)
+
+      // Close on click
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.remove()
+        }
+      })
+
+      // Close on ESC key
+      const closeOnEsc = (e) => {
+        if (e.key === 'Escape') {
+          overlay.remove()
+          document.removeEventListener('keydown', closeOnEsc)
+        }
+      }
+      document.addEventListener('keydown', closeOnEsc)
     }
 
     // Message context menu
@@ -761,6 +1085,9 @@ export default {
         // Handle new messages
         messagingService.on('new_message', async (message) => {
           console.log('🔔 RECEIVER: Received new message via Socket.io:', message)
+          console.log('🔔 RECEIVER: Message content:', message.content)
+          console.log('🔔 RECEIVER: Message type:', message.message_type)
+          console.log('🔔 RECEIVER: Message created_at:', message.created_at)
           console.log('🔔 RECEIVER: Current selected conversation:', selectedConversation.value?.id)
           console.log('🔔 RECEIVER: Message conversation ID:', message.conversation_id)
           console.log('🔔 RECEIVER: Current user ID:', currentUserId.value)
@@ -769,6 +1096,24 @@ export default {
           // Add message to current conversation if it's the one being viewed
           if (selectedConversation.value && message.conversation_id === selectedConversation.value.id) {
             console.log('Adding message to current conversation')
+            
+            // Validate message data
+            if (!message.content && message.message_type !== 'image') {
+              console.warn('⚠️ RECEIVER: Received message with empty content:', message)
+              return
+            }
+            
+            if (!message.id) {
+              console.warn('⚠️ RECEIVER: Received message without ID:', message)
+              return
+            }
+            // Check if this message already exists (prevent duplicates)
+            const existingMessageIndex = messages.value.findIndex(msg => msg.id === message.id)
+            if (existingMessageIndex !== -1) {
+              console.log('⚠️ RECEIVER: Message already exists, skipping duplicate:', message.id)
+              return
+            }
+            
             // Check if this is replacing a temporary message
             const tempMessageIndex = messages.value.findIndex(msg => 
               msg.id.startsWith('temp_') && 
@@ -789,6 +1134,13 @@ export default {
                 type: message.sender.user_type
               } : null
             }
+            
+            console.log('🔔 RECEIVER: Creating new message object:', newMessage)
+            console.log('🔔 RECEIVER: Message type check:', {
+              messageType: newMessage.messageType,
+              isImage: newMessage.messageType === 'image',
+              content: newMessage.content
+            })
             
             if (tempMessageIndex !== -1) {
               // Replace temporary message with real one
@@ -986,10 +1338,17 @@ export default {
       isLoading,
       filteredConversations,
       formatTime,
+      scrollToBottom,
+      isImageMessage,
       selectConversation: selectConversationWithRoom,
       sendMessage,
       startNewConversation,
+      fileInput,
       attachFile,
+      handleFileSelect,
+      uploadImage,
+      handleImageClick,
+      openImageFullscreen,
       availableParticipants,
       showParticipantSelection,
       selectedParticipantId,
@@ -1061,8 +1420,11 @@ h5, h6 {
 
 /* Conversation Items */
 .conversations-list {
-  max-height: 500px;
+  height: 650px;
+  max-height: 650px;
   overflow-y: auto;
+  margin: 0 !important;
+  padding: 0 !important;
 }
 
 .conversation-item {
@@ -1110,8 +1472,16 @@ h5, h6 {
 
 /* Messages Container */
 .messages-container {
-  background: rgba(42, 42, 42, 0.5) !important;
-  backdrop-filter: blur(5px);
+  background: transparent !important;
+  backdrop-filter: none !important;
+  flex: 1 !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  margin: 0 !important;
+  padding: 15px 15px 80px 15px !important;
+  border-bottom: none !important;
+  margin-bottom: 0px !important;
 }
 
 .messages-container::-webkit-scrollbar {
@@ -1143,6 +1513,48 @@ h5, h6 {
   color: white;
   margin-left: auto;
   border: 1px solid var(--cyber-orange, #ff8c42);
+}
+
+/* Remove orange styling for image messages */
+.message-bubble.sent.image-message-bubble {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.message-bubble.sent .image-message {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.message-bubble.sent .image-message img {
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  background: transparent !important;
+}
+
+/* Remove outline for received image messages too */
+.message-bubble.received.image-message-bubble {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.message-bubble.received .image-message {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.message-bubble.received .image-message img {
+  border: 2px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+  background: transparent !important;
 }
 
 .message-bubble.received {
@@ -1184,6 +1596,14 @@ h5, h6 {
 .message-input {
   background: rgba(26, 26, 26, 0.9) !important;
   border-top: 1px solid var(--cyber-orange, #ff8c42) !important;
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  padding: 10px 15px !important;
+  margin-top: auto !important;
+  position: absolute !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
 }
 
 /* Form Controls */
@@ -1345,7 +1765,18 @@ i.text-primary {
 /* Responsive */
 @media (max-width: 768px) {
   .messages-container {
+    height: 250px !important;
+    max-height: 250px !important;
+  }
+
+  .conversations-list {
     height: 400px !important;
+    max-height: 400px !important;
+  }
+
+  .card.d-flex.flex-column {
+    height: 600px !important;
+    max-height: 600px !important;
   }
 
   .message-bubble {
@@ -1577,5 +2008,20 @@ i.text-primary {
 /* Ensure messages container takes full height */
 .messages-container {
   min-height: 0;
+}
+
+/* Fix the main chat card height */
+.card.d-flex.flex-column {
+  height: 800px !important;
+  max-height: 800px !important;
+}
+
+.card-body.d-flex.flex-column {
+  flex: 1 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  position: relative !important;
 }
 </style>
