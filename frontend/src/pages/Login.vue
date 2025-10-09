@@ -115,6 +115,13 @@
                   {{ isLoading ? 'Signing In...' : 'SIGN IN' }}
                 </button>
 
+                <!-- Forgot Password Link -->
+                <div ref="forgotPasswordLink" class="text-center mt-3">
+                  <router-link to="/forgot-password" class="cyberpunk-link">
+                    Forgot your password?
+                  </router-link>
+                </div>
+
                 <!-- Sign Up Link with Animation -->
                 <div ref="signupLink" class="text-center mt-4">
                   <p class="cyberpunk-signup-text">
@@ -155,6 +162,7 @@ export default {
     const passwordField = ref(null)
     const rememberField = ref(null)
     const submitButton = ref(null)
+    const forgotPasswordLink = ref(null)
     const signupLink = ref(null)
     const errorAlert = ref(null)
 
@@ -350,6 +358,16 @@ export default {
               '0 0 0 rgba(255, 140, 66, 0)',
               '0 0 30px rgba(255, 140, 66, 0.4)'
             ]
+          }, 'form-animation += 600')
+      }
+
+      if (forgotPasswordLink.value) {
+        loginTimeline
+          .add(forgotPasswordLink.value, {
+            y: [30, 0],
+            opacity: [0, 1],
+            scale: [0.95, 1],
+            rotateX: [10, 0]
           }, 'form-animation += 600')
       }
 
@@ -790,6 +808,7 @@ export default {
       passwordField,
       rememberField,
       submitButton,
+      forgotPasswordLink,
       signupLink,
       errorAlert,
       // Form data

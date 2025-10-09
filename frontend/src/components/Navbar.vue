@@ -81,7 +81,7 @@
               </li>
               <li><hr class="dropdown-divider"></li>
               <li>
-                <a href="#" @click="logout" class="dropdown-item text-danger">
+                <a href="#" @click.prevent="logout" class="dropdown-item text-danger">
                   <i class="fas fa-sign-out-alt me-2"></i>
                   Logout
                 </a>
@@ -112,8 +112,16 @@ export default {
     const userType = computed(() => authStore.userType)
 
     const logout = async () => {
-      await authStore.logout()
-      router.push('/')
+      try {
+        console.log('🚪 Navbar: Starting logout process...')
+        await authStore.logout()
+        console.log('🚪 Navbar: Logout completed, redirecting to home...')
+        router.push('/')
+      } catch (error) {
+        console.error('❌ Navbar: Logout error:', error)
+        // Still redirect even if there's an error
+        router.push('/')
+      }
     }
 
     // Custom toggle function as fallback

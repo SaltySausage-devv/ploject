@@ -1,13 +1,22 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '../lib/supabase'
+import { sendPasswordResetEmail } from '../utils/emailService'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
   const session = ref(null)
   const isLoading = ref(false)
 
-  const isAuthenticated = computed(() => !!session.value && !!user.value)
+  const isAuthenticated = computed(() => {
+    const authenticated = !!session.value && !!user.value
+    console.log('🔍 Auth state check:', {
+      hasSession: !!session.value,
+      hasUser: !!user.value,
+      isAuthenticated: authenticated
+    })
+    return authenticated
+  })
   const userType = computed(() => user.value?.user_type || null)
   const token = computed(() => session.value?.access_token || null)
 
@@ -163,11 +172,33 @@ export const useAuthStore = defineStore('auth', () => {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut()
+      console.log('🚪 Logging out user...')
+      
+      // Sign out from Supabase
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        console.error('❌ Supabase signOut error:', error)
+      } else {
+        console.log('✅ Supabase signOut successful')
+      }
+      
+      // Clear local state immediately
       user.value = null
       session.value = null
+      
+      console.log('✅ Local state cleared')
+      console.log('🔍 Auth state after logout:', {
+        isAuthenticated: isAuthenticated.value,
+        hasUser: !!user.value,
+        hasSession: !!session.value
+      })
+      
     } catch (error) {
-      console.error('Logout error:', error)
+      console.error('❌ Logout error:', error)
+      // Even if there's an error, clear local state
+      user.value = null
+      session.value = null
     }
   }
 
@@ -247,6 +278,89 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const forgotPassword = async (email) => {
+    isLoading.value = true
+    try {
+      console.log('🔐 Requesting password reset for email:', email)
+
+      // First, request a reset token from the backend
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process reset request')
+      }
+
+      // If we have a reset link (in development), send the email from frontend
+      if (data.resetLink) {
+        console.log('📧 Sending reset email from frontend...')
+        
+        const emailResult = await sendPasswordResetEmail(
+          email, 
+          data.resetLink, 
+          'User' // We don't have the user's name at this point
+        )
+        
+        if (!emailResult.success) {
+          console.warn('⚠️ Frontend email sending failed:', emailResult.error)
+          // Still return success to user for security
+        } else {
+          console.log('✅ Reset email sent successfully from frontend')
+        }
+      }
+
+      console.log('✅ Password reset request successful:', data.message)
+      return { success: true, message: data.message }
+    } catch (error) {
+      console.error('❌ Forgot password error:', error)
+      return {
+        success: false,
+        error: error.message || 'Failed to send reset email'
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const resetPassword = async (token, password) => {
+    isLoading.value = true
+    try {
+      console.log('🔐 Resetting password with token')
+
+      const response = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ token, password })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to reset password')
+      }
+
+      console.log('✅ Password reset successful:', data.message)
+      return { success: true, message: data.message }
+    } catch (error) {
+      console.error('❌ Reset password error:', error)
+      return {
+        success: false,
+        error: error.message || 'Failed to reset password'
+      }
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   return {
     user: userWithCamelCase, // Export the camelCase version for backwards compatibility
     rawUser: user, // Export raw user for direct access if needed
@@ -259,6 +373,8 @@ export const useAuthStore = defineStore('auth', () => {
     register,
     logout,
     initializeAuth,
-    updateProfile
+    updateProfile,
+    forgotPassword,
+    resetPassword
   }
 })
