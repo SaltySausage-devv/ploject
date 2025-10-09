@@ -1,10 +1,10 @@
 <template>
   <div class="messages-page">
     <div class="container py-5">
-      <div class="row">
+      <div class="row g-4" style="min-height: 80vh;">
         <!-- Conversations Sidebar -->
-        <div class="col-lg-4 mb-4">
-          <div class="card border-0 shadow-sm h-100">
+        <div class="col-lg-4 d-flex">
+          <div class="card border-0 shadow-sm w-100 d-flex flex-column">
             <div class="card-header bg-white border-bottom">
               <div class="d-flex align-items-center justify-content-between">
                 <h5 class="fw-bold mb-0">
@@ -17,7 +17,7 @@
                 </button>
               </div>
             </div>
-            <div class="card-body p-0">
+            <div class="card-body p-0 d-flex flex-column flex-grow-1">
               <!-- Search -->
               <div class="p-3 border-bottom">
                 <div class="input-group">
@@ -34,7 +34,7 @@
               </div>
 
               <!-- Conversations List -->
-              <div class="conversations-list">
+              <div class="conversations-list flex-grow-1 overflow-auto">
                 <div v-if="filteredConversations.length === 0" class="text-center py-4">
                   <i class="fas fa-inbox text-muted fs-1 mb-3"></i>
                   <p class="text-muted">No conversations yet</p>
@@ -78,12 +78,12 @@
         </div>
 
         <!-- Chat Area -->
-        <div class="col-lg-8">
+        <div class="col-lg-8 d-flex">
           <div
             :initial="{ opacity: 0, x: 30 }"
             :animate="{ opacity: 1, x: 0 }"
             :transition="{ duration: 0.6, delay: 0.1 }"
-            class="card border-0 shadow-sm h-100"
+            class="card border-0 shadow-sm w-100 d-flex flex-column"
           >
             <!-- Chat Header -->
             <div class="card-header bg-white border-bottom" v-if="selectedConversation">
@@ -101,7 +101,7 @@
             </div>
 
             <!-- Messages Area -->
-            <div class="card-body p-0 d-flex flex-column" style="height: 500px;">
+            <div class="card-body p-0 d-flex flex-column flex-grow-1">
               <div v-if="!selectedConversation" class="d-flex align-items-center justify-content-center h-100">
                 <div class="text-center">
                   <i class="fas fa-comments text-muted fs-1 mb-3"></i>
@@ -128,7 +128,8 @@
                   >
                     <div class="d-flex" :class="{ 'justify-content-end': message.senderId === currentUserId }">
                       <div class="message-bubble" :class="{ 'sent': message.senderId === currentUserId, 'received': message.senderId !== currentUserId }"
-                           @contextmenu.prevent="showMessageContextMenu($event, message)">
+                           :style="{ cursor: message.senderId === currentUserId ? 'context-menu' : 'default' }"
+                           @contextmenu.prevent="message.senderId === currentUserId ? showMessageContextMenu($event, message) : null">
                         <div v-if="message.messageType === 'text'" class="message-content">
                           {{ message.content }}
                         </div>
@@ -224,6 +225,40 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Message Confirmation Modal -->
+    <div v-if="showDeleteModal" class="modal-overlay" @click="cancelDelete">
+      <div class="modal-content" @click.stop>
+        <div class="modal-header">
+          <h3>
+            <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+            Delete Message
+          </h3>
+          <button @click="cancelDelete" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3 text-white">Are you sure you want to delete this message?</p>
+          <div class="message-preview p-3 mb-3" style="background: rgba(255, 140, 66, 0.1); border: 1px solid var(--cyber-orange); border-radius: 8px;">
+            <div class="text-muted small mb-1">Message preview:</div>
+            <div class="text-white">{{ messageToDelete?.content }}</div>
+          </div>
+          <div class="alert-warning p-3" style="background: rgba(255, 193, 7, 0.1); border: 1px solid #ffc107; border-radius: 8px; color: #ffc107;">
+            <i class="fas fa-info-circle me-2"></i>
+            This action cannot be undone. The message will be removed for both you and the recipient.
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary me-2" @click="cancelDelete">
+            <i class="fas fa-times me-2"></i>Cancel
+          </button>
+          <button type="button" class="btn btn-danger" @click="confirmDelete" :disabled="isDeleting">
+            <i class="fas fa-trash me-2" v-if="!isDeleting"></i>
+            <i class="fas fa-spinner fa-spin me-2" v-if="isDeleting"></i>
+            {{ isDeleting ? 'Deleting...' : 'Delete Message' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -244,6 +279,11 @@ export default {
     const messages = ref([])
     const newMessage = ref('')
     const isLoading = ref(false)
+    
+    // Delete modal variables
+    const showDeleteModal = ref(false)
+    const messageToDelete = ref(null)
+    const isDeleting = ref(false)
 
     const filteredConversations = computed(() => {
       if (!searchQuery.value) return conversations.value
@@ -547,18 +587,10 @@ export default {
             unreadCount: 0
           }
           
-          // Add the conversation to the list immediately so it can be updated by Socket.io
-          console.log('Adding new conversation to list:', mappedConversation.id)
-          const updatedConversations = [...conversations.value]
-          updatedConversations.unshift(mappedConversation)
-          conversations.value = updatedConversations
+          // DON'T add conversation to list yet - only add when first message is sent
+          console.log('Conversation created but NOT added to list yet:', mappedConversation.id)
           
-          console.log('Conversation added, total conversations:', conversations.value.length)
-          
-          // Force Vue to update the UI
-          await nextTick()
-          
-          // Select the conversation immediately
+          // Select the conversation immediately (this will show the chat interface)
           await selectConversationWithRoom(mappedConversation)
           
           // Join the new conversation room for real-time updates
@@ -576,31 +608,89 @@ export default {
 
     // Message context menu
     const showMessageContextMenu = (event, message) => {
+      // Remove any existing context menu
+      const existingMenu = document.querySelector('.context-menu')
+      if (existingMenu) {
+        existingMenu.remove()
+      }
+
       // Create context menu
       const contextMenu = document.createElement('div')
       contextMenu.className = 'context-menu'
-      contextMenu.innerHTML = `
-        <div class="context-menu-item" onclick="deleteMessage('${message.id}')">
-          <i class="fas fa-trash"></i> Delete Message
-        </div>
-        <div class="context-menu-item" onclick="copyMessage('${message.content}')">
-          <i class="fas fa-copy"></i> Copy Text
-        </div>
+      contextMenu.style.cssText = `
+        position: fixed;
+        left: ${event.clientX}px;
+        top: ${event.clientY}px;
+        z-index: 9999;
+        background: rgba(26, 26, 26, 0.95);
+        border: 2px solid var(--cyber-orange);
+        border-radius: 8px;
+        padding: 8px 0;
+        min-width: 150px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(10px);
       `
       
-      // Position the menu
-      contextMenu.style.position = 'fixed'
-      contextMenu.style.left = event.clientX + 'px'
-      contextMenu.style.top = event.clientY + 'px'
-      contextMenu.style.zIndex = '9999'
+      // Create delete option
+      const deleteOption = document.createElement('div')
+      deleteOption.className = 'context-menu-item'
+      deleteOption.style.cssText = `
+        padding: 8px 16px;
+        cursor: pointer;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.2s;
+      `
+      deleteOption.innerHTML = '<i class="fas fa-trash"></i> Delete Message'
+      deleteOption.addEventListener('click', () => {
+        deleteMessage(message.id)
+        contextMenu.remove()
+      })
+      deleteOption.addEventListener('mouseenter', () => {
+        deleteOption.style.backgroundColor = 'rgba(255, 140, 66, 0.2)'
+      })
+      deleteOption.addEventListener('mouseleave', () => {
+        deleteOption.style.backgroundColor = 'transparent'
+      })
+      
+      // Create copy option
+      const copyOption = document.createElement('div')
+      copyOption.className = 'context-menu-item'
+      copyOption.style.cssText = `
+        padding: 8px 16px;
+        cursor: pointer;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.2s;
+      `
+      copyOption.innerHTML = '<i class="fas fa-copy"></i> Copy Text'
+      copyOption.addEventListener('click', () => {
+        copyMessage(message.content)
+        contextMenu.remove()
+      })
+      copyOption.addEventListener('mouseenter', () => {
+        copyOption.style.backgroundColor = 'rgba(255, 140, 66, 0.2)'
+      })
+      copyOption.addEventListener('mouseleave', () => {
+        copyOption.style.backgroundColor = 'transparent'
+      })
+      
+      contextMenu.appendChild(deleteOption)
+      contextMenu.appendChild(copyOption)
       
       // Add to DOM
       document.body.appendChild(contextMenu)
       
       // Remove on click outside
-      const removeMenu = () => {
-        document.body.removeChild(contextMenu)
-        document.removeEventListener('click', removeMenu)
+      const removeMenu = (e) => {
+        if (!contextMenu.contains(e.target)) {
+          contextMenu.remove()
+          document.removeEventListener('click', removeMenu)
+        }
       }
       
       setTimeout(() => {
@@ -608,18 +698,40 @@ export default {
       }, 100)
     }
 
-    // Delete message function
-    const deleteMessage = async (messageId) => {
-      if (confirm('Are you sure you want to delete this message?')) {
-        try {
-          await messagingService.deleteMessage(messageId)
-          // Remove from local state
-          messages.value = messages.value.filter(msg => msg.id !== messageId)
-        } catch (error) {
-          console.error('Error deleting message:', error)
-          alert('Failed to delete message')
-        }
+    // Delete message function - shows modal instead of browser confirm
+    const deleteMessage = (messageId) => {
+      const message = messages.value.find(msg => msg.id === messageId)
+      if (message) {
+        messageToDelete.value = message
+        showDeleteModal.value = true
       }
+    }
+
+    // Confirm delete function
+    const confirmDelete = async () => {
+      if (!messageToDelete.value) return
+      
+      isDeleting.value = true
+      try {
+        await messagingService.deleteMessage(messageToDelete.value.id)
+        // Remove from local state
+        messages.value = messages.value.filter(msg => msg.id !== messageToDelete.value.id)
+        // Close modal
+        showDeleteModal.value = false
+        messageToDelete.value = null
+      } catch (error) {
+        console.error('Error deleting message:', error)
+        alert('Failed to delete message')
+      } finally {
+        isDeleting.value = false
+      }
+    }
+
+    // Cancel delete function
+    const cancelDelete = () => {
+      showDeleteModal.value = false
+      messageToDelete.value = null
+      isDeleting.value = false
     }
 
     // Copy message function
@@ -641,15 +753,18 @@ export default {
     // Set up Socket.io connection and message handling
     const setupMessaging = () => {
       if (authStore.session?.access_token) {
-        console.log('Setting up messaging with token:', authStore.session.access_token.substring(0, 20) + '...')
+        console.log('🔌 RECEIVER: Setting up messaging with token:', authStore.session.access_token.substring(0, 20) + '...')
+        console.log('🔌 RECEIVER: Current user ID:', currentUserId.value)
         // Connect to messaging service
         messagingService.connect(authStore.session.access_token)
         
         // Handle new messages
         messagingService.on('new_message', async (message) => {
-          console.log('Received new message:', message)
-          console.log('Current selected conversation:', selectedConversation.value?.id)
-          console.log('Message conversation ID:', message.conversation_id)
+          console.log('🔔 RECEIVER: Received new message via Socket.io:', message)
+          console.log('🔔 RECEIVER: Current selected conversation:', selectedConversation.value?.id)
+          console.log('🔔 RECEIVER: Message conversation ID:', message.conversation_id)
+          console.log('🔔 RECEIVER: Current user ID:', currentUserId.value)
+          console.log('🔔 RECEIVER: Message sender ID:', message.sender_id)
           
           // Add message to current conversation if it's the one being viewed
           if (selectedConversation.value && message.conversation_id === selectedConversation.value.id) {
@@ -682,14 +797,26 @@ export default {
               // Add new message
               messages.value.push(newMessage)
             }
+            
+            // Auto-mark messages as read when user is actively viewing the conversation
+            if (message.sender_id !== currentUserId.value) {
+              console.log('🔔 RECEIVER: Auto-marking messages as read since user is viewing conversation')
+              try {
+                await messagingService.markAsRead(message.conversation_id)
+                console.log('✅ RECEIVER: Messages marked as read successfully')
+              } catch (error) {
+                console.error('❌ RECEIVER: Error auto-marking messages as read:', error)
+              }
+            }
           }
           
           // ALWAYS update conversation list for ALL messages (this is the key fix!)
-          console.log('Updating conversation list for message')
+          console.log('🔔 RECEIVER: Updating conversation list for message')
+          console.log('🔔 RECEIVER: Current conversations list:', conversations.value.map(c => ({ id: c.id, participant: c.participant.name })))
           const conversationIndex = conversations.value.findIndex(conv => 
             conv.id === message.conversation_id
           )
-          console.log('Found conversation index:', conversationIndex)
+          console.log('🔔 RECEIVER: Found conversation index:', conversationIndex)
           
           if (conversationIndex !== -1) {
             console.log('Updating existing conversation in list')
@@ -722,6 +849,7 @@ export default {
           } else {
             // This is a new conversation that needs to be added to the list
             // This happens when someone else sends the first message to you
+            console.log('🔔 RECEIVER: Conversation not found in list, adding new conversation')
             const otherParticipant = message.sender
             const conversationToAdd = {
               id: message.conversation_id,
@@ -772,6 +900,28 @@ export default {
           console.error('Message error:', error)
           alert(`Failed to send message: ${error.error || 'Unknown error'}`)
         })
+        
+        // Handle message deletion
+        messagingService.on('message_deleted', (data) => {
+          console.log('🗑️ RECEIVER: Message deleted via Socket.io:', data)
+          // Remove the deleted message from the local messages array
+          messages.value = messages.value.filter(msg => msg.id !== data.messageId)
+        })
+        
+        // Handle messages read status update
+        messagingService.on('messages_read', (data) => {
+          console.log('✅ RECEIVER: Messages read via Socket.io:', data)
+          // Update read status for messages in the current conversation
+          if (selectedConversation.value && selectedConversation.value.id === data.conversationId) {
+            messages.value = messages.value.map(msg => {
+              // Update read status for messages sent by current user that were read by the other person
+              if (msg.senderId === currentUserId.value && !msg.readAt) {
+                return { ...msg, readAt: data.readAt }
+              }
+              return msg
+            })
+          }
+        })
       }
     }
 
@@ -799,7 +949,11 @@ export default {
       // Wait a moment for auth to be ready
       await new Promise(resolve => setTimeout(resolve, 100))
       
-      loadConversations()
+      // CRITICAL FIX: Load conversations FIRST, then setup messaging
+      console.log('🔄 Loading conversations first...')
+      await loadConversations()
+      console.log('✅ Conversations loaded:', conversations.value.length)
+      console.log('🔌 Setting up messaging...')
       setupMessaging()
       
       // Join all existing conversation rooms for real-time updates
@@ -841,7 +995,15 @@ export default {
       selectedParticipantId,
       participantSearchQuery,
       filteredParticipants,
-      createConversationWithParticipant
+      createConversationWithParticipant,
+      showMessageContextMenu,
+      deleteMessage,
+      copyMessage,
+      showDeleteModal,
+      messageToDelete,
+      isDeleting,
+      confirmDelete,
+      cancelDelete
     }
   }
 }
@@ -1260,6 +1422,50 @@ i.text-primary {
   background: #242424;
 }
 
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 20px;
+  border-top: 1px solid #424242;
+  background: #242424;
+  border-radius: 0 0 12px 12px;
+}
+
+.modal-footer .btn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.modal-footer .btn-secondary {
+  background: #6c757d;
+  border: 1px solid #6c757d;
+  color: white;
+}
+
+.modal-footer .btn-secondary:hover {
+  background: #5a6268;
+  border-color: #545b62;
+}
+
+.modal-footer .btn-danger {
+  background: #dc3545;
+  border: 1px solid #dc3545;
+  color: white;
+}
+
+.modal-footer .btn-danger:hover:not(:disabled) {
+  background: #c82333;
+  border-color: #bd2130;
+}
+
+.modal-footer .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .participant-search {
   margin-bottom: 16px;
 }
@@ -1345,5 +1551,31 @@ i.text-primary {
   background: #e55a2b;
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+/* Equal height panels */
+.messages-page .row {
+  align-items: stretch;
+}
+
+.messages-page .col-lg-4,
+.messages-page .col-lg-8 {
+  display: flex;
+  flex-direction: column;
+}
+
+.messages-page .card {
+  height: 100%;
+  min-height: 600px;
+}
+
+/* Ensure conversations list takes full height */
+.conversations-list {
+  min-height: 0;
+}
+
+/* Ensure messages container takes full height */
+.messages-container {
+  min-height: 0;
 }
 </style>

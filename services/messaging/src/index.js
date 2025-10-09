@@ -420,6 +420,7 @@ app.get('/messaging/conversations', verifyToken, async (req, res) => {
         )
       `)
       .or(`participant1_id.eq.${req.user.userId},participant2_id.eq.${req.user.userId}`)
+      .not('last_message_content', 'is', null) // Only return conversations that have messages
       .order('last_message_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -658,6 +659,13 @@ app.put('/messaging/conversations/:id/read', verifyToken, async (req, res) => {
       throw error;
     }
 
+    // Emit real-time read status update to all users in the conversation
+    io.to(`conversation_${id}`).emit('messages_read', {
+      conversationId: id,
+      readBy: req.user.userId,
+      readAt: new Date().toISOString()
+    });
+
     res.json({ message: 'Messages marked as read' });
   } catch (error) {
     console.error('Mark as read error:', error);
@@ -694,6 +702,13 @@ app.delete('/messaging/messages/:messageId', verifyToken, async (req, res) => {
     if (deleteError) {
       throw deleteError;
     }
+
+    // Emit real-time deletion event to all users in the conversation
+    io.to(`conversation_${message.conversation_id}`).emit('message_deleted', {
+      messageId: messageId,
+      conversationId: message.conversation_id,
+      deletedBy: req.user.userId
+    });
 
     res.json({ message: 'Message deleted successfully' });
   } catch (error) {

@@ -1,5 +1,5 @@
 <template>
-  <div class="home-page">
+  <div class="home-page" style="background: linear-gradient(135deg, #2a2a2a 0%, #1a1a1a 100%); min-height: 100vh;">
     <!-- Hero Section -->
     <section class="hero-section text-white py-5">
       <div class="container">
@@ -134,7 +134,7 @@ import { useAnimatedBackground } from '../composables/useAnimatedBackground'
 export default {
   name: 'Home',
   setup() {
-    const { setupScrollAnimations, createParticleEffect, setupParallaxEffect, setupMagneticEffect } = useScrollAnimations()
+    const { setupScrollAnimations, setupParallaxEffect, setupMagneticEffect } = useScrollAnimations()
     const { initAnimatedBackground, cleanup } = useAnimatedBackground()
     const features = ref([
       {
@@ -276,11 +276,11 @@ export default {
       // Add interactive hover effects
       setupInteractiveAnimations()
       
-      // Setup scroll-triggered animations
-      setupScrollAnimations()
+      // Scroll-triggered animations disabled to remove fireworks effect
+      // setupScrollAnimations()
       
-      // Setup parallax effects
-      setupParallaxEffect()
+      // Parallax effects disabled to remove scroll fireworks
+      // setupParallaxEffect()
     })
 
     onUnmounted(() => {
@@ -301,8 +301,7 @@ export default {
             ease: 'outBack'
           })
           
-          // Add particle effect on hover
-          createParticleEffect(card)
+          // Particle effect removed
         })
 
         card.addEventListener('mouseleave', () => {

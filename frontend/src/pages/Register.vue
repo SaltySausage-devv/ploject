@@ -255,7 +255,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { createTimeline, animate, createAnimatable, utils } from 'animejs'
@@ -899,6 +899,27 @@ export default {
       console.log('Press 3 for fast (2.0x)')
       console.log('Press P to pause/resume')
       console.log('Move your mouse to see interactive animations!')
+    })
+
+    onUnmounted(() => {
+      // Clean up event listeners
+      document.removeEventListener('keydown', handleKeyPress)
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseleave', handleMouseLeave)
+      
+      // Clean up floating elements
+      const floatingElements = document.querySelectorAll('.floating-icon')
+      floatingElements.forEach(element => {
+        if (element.parentNode) {
+          element.parentNode.removeChild(element)
+        }
+      })
+      
+      // Clean up background elements
+      const backgroundElements = document.querySelector('.register-background-elements')
+      if (backgroundElements && backgroundElements.parentNode) {
+        backgroundElements.parentNode.removeChild(backgroundElements)
+      }
     })
 
     return {

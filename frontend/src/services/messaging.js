@@ -47,7 +47,7 @@ class MessagingService {
           })
 
           this.socket.on('connect', () => {
-            console.log('Socket.io connected successfully')
+            console.log('🔌 RECEIVER: Socket.io connected successfully')
             this.isConnected = true
           })
 
@@ -106,6 +106,22 @@ class MessagingService {
       const handler = this.messageHandlers.get('message_error')
       if (handler) {
         handler(error)
+      }
+    })
+
+    this.socket.on('message_deleted', (data) => {
+      console.log('Socket.io received message_deleted:', data)
+      const handler = this.messageHandlers.get('message_deleted')
+      if (handler) {
+        handler(data)
+      }
+    })
+
+    this.socket.on('messages_read', (data) => {
+      console.log('Socket.io received messages_read:', data)
+      const handler = this.messageHandlers.get('messages_read')
+      if (handler) {
+        handler(data)
       }
     })
   }
