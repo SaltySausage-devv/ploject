@@ -9,134 +9,178 @@
         class="row mb-5"
       >
         <div class="col-12">
-          <div class="card border-0 shadow-sm">
-            <div class="card-body p-4">
-              <div class="d-flex align-items-center">
-                <div class="profile-avatar bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-4 spring-bounce" style="width: 80px; height: 80px;">
-                  <i class="fas fa-user text-primary fs-2"></i>
+          <div class="profile-header-container">
+            <!-- Background Gradient -->
+            <div class="profile-header-bg"></div>
+
+            <!-- Content -->
+            <div class="profile-header-content">
+              <!-- Left: Avatar and Info -->
+              <div class="profile-left-section">
+                <!-- Avatar -->
+                <div class="profile-avatar cyberpunk-avatar spring-bounce">
+                  <img
+                    v-if="user?.userType === 'tutor'"
+                    :src="`https://i.pravatar.cc/200?img=${Math.abs(user?.id?.split('-')[0].charCodeAt(0) || 0) % 70}`"
+                    :alt="`${user?.firstName} ${user?.lastName}`"
+                    class="avatar-image"
+                  />
+                  <div v-else class="avatar-placeholder">
+                    <i class="fas fa-user"></i>
+                  </div>
+                  <div class="avatar-status" :class="{ 'tutor': user?.userType === 'tutor' }"></div>
                 </div>
-                <div class="flex-grow-1">
-                  <h2 class="fw-bold mb-1">{{ user?.firstName }} {{ user?.lastName }}</h2>
-                  
-                  <div class="d-flex align-items-center gap-3">
-                    <span class="badge bg-primary">{{ userTypeLabels[user?.userType] }}</span>
-                    <span class="text-muted">
-                      <i class="fas fa-calendar-alt me-1"></i>
-                      Member since {{ formatDate(user?.createdAt) }}
+
+                <!-- User Info -->
+                <div class="profile-info">
+                  <h1 class="profile-title">{{ user?.firstName }} {{ user?.lastName }}</h1>
+                  <p class="profile-subtitle">{{ user?.email }}</p>
+
+                  <!-- Badges -->
+                  <div class="profile-badges">
+                    <span class="profile-badge" :class="user?.userType">
+                      <i :class="getUserTypeIcon(user?.userType)"></i>
+                      {{ userTypeLabels[user?.userType] }}
+                    </span>
+                    <span class="profile-badge date-badge">
+                      <i class="fas fa-calendar-check"></i>
+                      Oct 15, 2025
                     </span>
                   </div>
                 </div>
-                <div>
-                  <button class="btn btn-outline-primary" @click="editMode = !editMode">
-                    <i class="fas fa-edit me-2"></i>
-                    {{ editMode ? 'Cancel' : 'Edit Profile' }}
-                  </button>
-                </div>
               </div>
-            </div>
+
+              <!-- Right: Edit Button -->
+              <div class="profile-right-section">
+                <button class="profile-edit-btn" @click="editMode = !editMode">
+                  <i class="fas fa-edit"></i>
+                  {{ editMode ? 'CANCEL' : 'EDIT PROFILE' }}
+                </button>
+              </div>
+
+              </div>
           </div>
         </div>
       </motion.div>
 
       <div class="row">
         <!-- Profile Form -->
-        <div class="col-lg-8 mb-4">
+        <div class="col-12 mb-4">
           <!-- Basic Profile Form (for Students/Parents) -->
           <motion.div
             v-if="user?.userType !== 'tutor'"
             :initial="{ opacity: 0, y: 30 }"
             :animate="{ opacity: 1, y: 0 }"
             :transition="{ duration: 0.6, delay: 0.1 }"
-            class="card border-0 shadow-sm"
+            class="card cyberpunk-card"
           >
-            <div class="card-header bg-white border-bottom">
-              <h5 class="fw-bold mb-0">
-                <i class="fas fa-user-edit me-2 text-primary"></i>
-                Profile Information
+            <div class="card-header cyberpunk-header">
+              <h5 class="cyberpunk-title mb-0">
+                <i class="fas fa-user-edit me-2"></i>
+                PROFILE INFORMATION
               </h5>
+              <div v-if="editMode" class="edit-mode-indicator">
+                <i class="fas fa-pencil-alt me-1"></i>
+                EDITING MODE
+              </div>
             </div>
             <div class="card-body p-4">
               <form @submit.prevent="updateProfile">
                 <div class="row">
                   <div class="col-md-6 mb-3">
-                    <label class="form-label">First Name</label>
-                    <input
-                      type="text"
-                      v-model="profileForm.firstName"
-                      class="form-control"
-                      :disabled="!editMode"
-                      :placeholder="user?.firstName || 'First name'"
-                      required
-                    />
+                    <label class="form-label cyberpunk-label">FIRST NAME</label>
+                    <div class="cyberpunk-input-group">
+                      <input
+                        type="text"
+                        v-model="profileForm.firstName"
+                        class="form-control cyberpunk-input"
+                        :disabled="!editMode"
+                        :placeholder="user?.firstName || 'First name'"
+                        required
+                      />
+                      <i class="cyberpunk-input-icon fas fa-user"></i>
+                    </div>
                   </div>
                   <div class="col-md-6 mb-3">
-                    <label class="form-label">Last Name</label>
-                    <input
-                      type="text"
-                      v-model="profileForm.lastName"
-                      class="form-control"
-                      :disabled="!editMode"
-                      :placeholder="user?.lastName || 'Last name'"
-                      required
-                    />
+                    <label class="form-label cyberpunk-label">LAST NAME</label>
+                    <div class="cyberpunk-input-group">
+                      <input
+                        type="text"
+                        v-model="profileForm.lastName"
+                        class="form-control cyberpunk-input"
+                        :disabled="!editMode"
+                        :placeholder="user?.lastName || 'Last name'"
+                        required
+                      />
+                      <i class="cyberpunk-input-icon fas fa-user"></i>
+                    </div>
                   </div>
                 </div>
 
                 <div class="mb-3">
-                  <label class="form-label">Phone Number</label>
-                  <input
-                    type="tel"
-                    v-model="profileForm.phone"
-                    class="form-control"
-                    :disabled="!editMode"
-                    :placeholder="user?.phone || 'Enter your phone number'"
-                    placeholder="Enter your phone number"
-                  />
+                  <label class="form-label cyberpunk-label">PHONE NUMBER</label>
+                  <div class="cyberpunk-input-group">
+                    <input
+                      type="tel"
+                      v-model="profileForm.phone"
+                      class="form-control cyberpunk-input"
+                      :disabled="!editMode"
+                      :placeholder="user?.phone || 'Enter your phone number'"
+                    />
+                    <i class="cyberpunk-input-icon fas fa-phone"></i>
+                  </div>
                 </div>
 
                 <div class="mb-3">
-                  <label class="form-label">Date of Birth</label>
-                  <input
-                    type="date"
-                    v-model="profileForm.dateOfBirth"
-                    class="form-control"
-                    :disabled="!editMode"
-                  />
+                  <label class="form-label cyberpunk-label">DATE OF BIRTH</label>
+                  <div class="cyberpunk-input-group">
+                    <input
+                      type="date"
+                      v-model="profileForm.dateOfBirth"
+                      class="form-control cyberpunk-input"
+                      :disabled="!editMode"
+                    />
+                    <i class="cyberpunk-input-icon fas fa-calendar"></i>
+                  </div>
                 </div>
 
                 <div class="mb-3">
-                  <label class="form-label">Address</label>
-                  <textarea
-                    v-model="profileForm.address"
-                    class="form-control"
-                    :disabled="!editMode"
-                    rows="3"
-                    :placeholder="user?.address || 'Enter your address'"
-                    placeholder="Enter your address"
-                  ></textarea>
+                  <label class="form-label cyberpunk-label">ADDRESS</label>
+                  <div class="cyberpunk-input-group">
+                    <textarea
+                      v-model="profileForm.address"
+                      class="form-control cyberpunk-input"
+                      :disabled="!editMode"
+                      rows="3"
+                      :placeholder="user?.address || 'Enter your address'"
+                    ></textarea>
+                    <i class="cyberpunk-input-icon fas fa-map-marker-alt"></i>
+                  </div>
                 </div>
 
                 <div class="mb-3">
-                  <label class="form-label">Bio</label>
-                  <textarea
-                    v-model="profileForm.bio"
-                    class="form-control"
-                    :disabled="!editMode"
-                    rows="4"
-                    :placeholder="user?.bio || 'Tell us about yourself'"
-                    placeholder="Tell us about yourself"
-                  ></textarea>
+                  <label class="form-label cyberpunk-label">BIO</label>
+                  <div class="cyberpunk-input-group">
+                    <textarea
+                      v-model="profileForm.bio"
+                      class="form-control cyberpunk-input"
+                      :disabled="!editMode"
+                      rows="4"
+                      :placeholder="user?.bio || 'Tell us about yourself'"
+                    ></textarea>
+                    <i class="cyberpunk-input-icon fas fa-align-left"></i>
+                  </div>
                 </div>
 
-                <div v-if="editMode" class="d-flex gap-2">
-                  <button type="submit" class="btn btn-primary" :disabled="isLoading">
-                    <span v-if="isLoading" class="spinner me-2"></span>
-                    <i v-else class="fas fa-save me-2"></i>
-                    {{ isLoading ? 'Saving...' : 'Save Changes' }}
+                <div v-if="editMode" class="d-flex gap-2 mt-4">
+                  <button type="submit" class="btn btn-cyberpunk" :disabled="isLoading">
+                    <i v-if="!isLoading" class="fas fa-save me-2"></i>
+                    <span v-else class="spinner me-2"></span>
+                    {{ isLoading ? 'SAVING...' : 'SAVE CHANGES' }}
                   </button>
-                  <button type="button" @click="cancelEdit" class="btn btn-outline-secondary">
+                  <button type="button" @click="cancelEdit" class="btn btn-outline-light">
                     <i class="fas fa-times me-2"></i>
-                    Cancel
+                    CANCEL
                   </button>
                 </div>
               </form>
@@ -149,96 +193,36 @@
             :initial="{ opacity: 0, y: 30 }"
             :animate="{ opacity: 1, y: 0 }"
             :transition="{ duration: 0.6, delay: 0.1 }"
+            class="card cyberpunk-card"
           >
-            <TutorProfileForm
-              :edit-mode="editMode"
-              :user-id="user?.id"
-              @saved="handleTutorProfileSaved"
-              @cancel="cancelEdit"
-            />
+            <div class="card-header cyberpunk-header">
+              <h5 class="cyberpunk-title mb-0">
+                <i class="fas fa-graduation-cap me-2"></i>
+                TUTOR PROFILE
+              </h5>
+              <div v-if="editMode" class="edit-mode-indicator">
+                <i class="fas fa-pencil-alt me-1"></i>
+                EDITING MODE
+              </div>
+            </div>
+            <div class="card-body p-4">
+              <TutorProfileForm
+                :edit-mode="editMode"
+                :user-id="user?.id"
+                @saved="handleTutorProfileSaved"
+                @cancel="cancelEdit"
+              />
+            </div>
           </motion.div>
         </div>
 
-        <!-- Stats and Actions -->
-        <div class="col-lg-4">
-          <!-- Stats Card -->
-          <motion.div
-            :initial="{ opacity: 0, y: 30 }"
-            :animate="{ opacity: 1, y: 0 }"
-            :transition="{ duration: 0.6, delay: 0.2 }"
-            class="card border-0 shadow-sm mb-4"
-          >
-            <div class="card-header bg-white border-bottom">
-              <h6 class="fw-bold mb-0">Your Stats</h6>
-            </div>
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-muted">Total Bookings</span>
-                <span class="fw-bold">24</span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-muted">Completed Sessions</span>
-                <span class="fw-bold">18</span>
-              </div>
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <span class="text-muted">Average Rating</span>
-                <div class="d-flex align-items-center">
-                  <div class="rating me-2">
-                    <i class="fas fa-star star"></i>
-                    <i class="fas fa-star star"></i>
-                    <i class="fas fa-star star"></i>
-                    <i class="fas fa-star star"></i>
-                    <i class="fas fa-star star"></i>
-                  </div>
-                  <span class="fw-bold">4.8</span>
-                </div>
-              </div>
-              <div class="d-flex justify-content-between align-items-center">
-                <span class="text-muted">Member Since</span>
-                <span class="fw-bold">{{ formatDate(user?.createdAt) }}</span>
-              </div>
-            </div>
-          </motion.div>
-
-          <!-- Quick Actions -->
-          <motion.div
-            :initial="{ opacity: 0, y: 30 }"
-            :animate="{ opacity: 1, y: 0 }"
-            :transition="{ duration: 0.6, delay: 0.3 }"
-            class="card border-0 shadow-sm"
-          >
-            <div class="card-header bg-white border-bottom">
-              <h6 class="fw-bold mb-0">Quick Actions</h6>
-            </div>
-            <div class="card-body">
-              <div class="d-grid gap-2">
-                <router-link to="/search" class="btn btn-outline-primary">
-                  <i class="fas fa-search me-2"></i>
-                  Find Tutors
-                </router-link>
-                <router-link to="/messages" class="btn btn-outline-primary">
-                  <i class="fas fa-envelope me-2"></i>
-                  Messages
-                </router-link>
-                <router-link to="/dashboard" class="btn btn-outline-primary">
-                  <i class="fas fa-tachometer-alt me-2"></i>
-                  Dashboard
-                </router-link>
-                <button class="btn btn-outline-danger" @click="logout">
-                  <i class="fas fa-sign-out-alt me-2"></i>
-                  Logout
-                </button>
-              </div>
-            </div>
-          </motion.div>
         </div>
-      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import TutorProfileForm from '../components/TutorProfileForm.vue'
@@ -251,15 +235,22 @@ export default {
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
-    
-    const user = computed(() => authStore.user)
+
+    const user = computed(() => {
+      console.log('🔍 Profile.vue computed user called:', {
+        authStoreUser: authStore.user,
+        authStoreRawUser: authStore.rawUser,
+        isAuthenticated: authStore.isAuthenticated
+      })
+      return authStore.user
+    })
     const editMode = ref(false)
     const isLoading = ref(false)
-    
+
     const userTypeLabels = {
-      student: 'Student',
-      parent: 'Parents',
-      tutor: 'Tutor',
+      student: 'STUDENT',
+      parent: 'PARENT',
+      tutor: 'TUTOR',
     }
 
     const profileForm = reactive({
@@ -272,16 +263,44 @@ export default {
       bio: ''
     })
 
+    const tutorStats = reactive({
+      totalReviews: 0,
+      averageRating: 0,
+      hourlyRate: 0,
+      profileCompletion: 0
+    })
+
+    const profileCompletion = ref(0)
+
     const formatDate = (dateString) => {
       if (!dateString) return 'N/A'
       return new Date(dateString).toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric'
       })
     }
 
+    const getUserTypeIcon = (userType) => {
+      const icons = {
+        student: 'fas fa-user-graduate',
+        parent: 'fas fa-users',
+        tutor: 'fas fa-chalkboard-teacher'
+      }
+      return icons[userType] || 'fas fa-user'
+    }
+
+    const viewPublicProfile = () => {
+      if (user.value?.id) {
+        router.push(`/tutor/${user.value.id}`)
+      }
+    }
+
     const loadProfile = () => {
+      console.log('🔍 Profile.loadProfile called')
+      console.log('   User data:', user.value)
+      console.log('   User type:', user.value?.userType)
+
       if (user.value) {
         profileForm.firstName = user.value.firstName || ''
         profileForm.lastName = user.value.lastName || ''
@@ -290,15 +309,57 @@ export default {
         profileForm.dateOfBirth = user.value.dateOfBirth || ''
         profileForm.address = user.value.address || ''
         profileForm.bio = user.value.bio || ''
+
+        // Load tutor-specific data if user is a tutor
+        if (user.value.userType === 'tutor') {
+          console.log('✅ User is a tutor, loading tutor profile...')
+          loadTutorProfile()
+        } else {
+          console.log('❌ User is not a tutor, showing basic profile form')
+          console.log('   User type:', user.value.userType)
+        }
+      } else {
+        console.log('❌ No user data available')
+      }
+    }
+
+    const loadTutorProfile = async () => {
+      try {
+        const response = await fetch(`http://localhost:3003/profiles/tutor/${user.value.id}`, {
+          headers: {
+            'Authorization': `Bearer ${user.value.token}`,
+            'Content-Type': 'application/json'
+          }
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const profile = data.profile
+          console.log('Loaded tutor profile:', profile)
+
+          // Store tutor profile data for the TutorProfileForm component
+          if (profile) {
+            // This will be available for the TutorProfileForm component
+            window.tutorProfileData = profile
+
+            // Update stats
+            tutorStats.totalReviews = profile.total_reviews || 0
+            tutorStats.averageRating = profile.average_rating || 0
+            tutorStats.hourlyRate = profile.hourly_rate || 0
+            profileCompletion.value = profile.profile_completeness || 0
+          }
+        }
+      } catch (error) {
+        console.error('Error loading tutor profile:', error)
       }
     }
 
     const updateProfile = async () => {
       isLoading.value = true
-      
+
       try {
         const result = await authStore.updateProfile(profileForm)
-        
+
         if (result.success) {
           editMode.value = false
           // Show success message
@@ -329,8 +390,35 @@ export default {
     }
 
     onMounted(() => {
-      loadProfile()
+      console.log('🚀 Profile.vue onMounted called')
+      console.log('   Auth store state:', {
+        isAuthenticated: authStore.isAuthenticated,
+        hasUser: !!authStore.user,
+        hasRawUser: !!authStore.rawUser,
+        user: authStore.user
+      })
+
+      // Initialize auth if not already done
+      if (!authStore.isAuthenticated && !authStore.user) {
+        console.log('🔄 Initializing auth from Profile component...')
+        authStore.initializeAuth().then(() => {
+          console.log('✅ Auth initialization completed')
+          setTimeout(() => {
+            loadProfile()
+          }, 500) // Small delay to ensure user data is loaded
+        })
+      } else {
+        loadProfile()
+      }
     })
+
+    // Watch for user data changes (for auth initialization)
+    watch(user, (newUser, oldUser) => {
+      if (newUser && !oldUser) {
+        console.log('🔄 User data changed, reloading profile...')
+        loadProfile()
+      }
+    }, { immediate: false })
 
     return {
       user,
@@ -338,7 +426,11 @@ export default {
       isLoading,
       userTypeLabels,
       profileForm,
+      tutorStats,
+      profileCompletion,
       formatDate,
+      getUserTypeIcon,
+      viewPublicProfile,
       updateProfile,
       cancelEdit,
       logout,
@@ -351,210 +443,309 @@ export default {
 <style scoped>
 /* Cyberpunk Profile Page */
 .profile-page {
-  background: #1a1a1a !important;
+  background: transparent !important;
   min-height: 100vh;
-  color: var(--cyber-text, #ffffff);
+  position: relative;
+  z-index: 10;
 }
 
-/* Cards */
-.card {
-  background: rgba(26, 26, 26, 0.85) !important;
-  border: 2px solid var(--cyber-grey-light, #4a4a4a) !important;
-  border-radius: 15px;
-  box-shadow:
-    0 0 15px rgba(255, 140, 66, 0.1),
-    0 0 30px rgba(255, 140, 66, 0.05) !important;
+/* Profile Header Card */
+.cyberpunk-profile-header {
+  background: rgba(42, 42, 42, 0.9) !important;
+  border: 2px solid var(--cyber-orange) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(10px);
   transition: all 0.3s ease;
-  backdrop-filter: blur(8px);
-  color: var(--cyber-text, #ffffff) !important;
 }
 
-.card:hover {
-  border-color: var(--cyber-orange, #ff8c42) !important;
-  box-shadow: 0 0 25px rgba(255, 140, 66, 0.3) !important;
-  transform: translateY(-2px);
+.cyberpunk-profile-header:hover {
+  border-color: var(--cyber-yellow) !important;
+  transform: translateY(-3px);
 }
 
-.card-header {
-  background: rgba(255, 140, 66, 0.1) !important;
-  border-bottom: 1px solid var(--cyber-orange, #ff8c42) !important;
-  color: var(--cyber-text, #ffffff) !important;
-}
-
-.card-body {
-  color: var(--cyber-text, #ffffff) !important;
-}
-
-/* Headings and Text */
-h2, h3, h4, h5, h6 {
-  color: var(--cyber-text, #ffffff) !important;
-  text-shadow: 0 0 5px rgba(255, 140, 66, 0.3);
-}
-
-.text-muted {
-  color: var(--cyber-text-muted, #cccccc) !important;
-}
-
-.fw-bold {
-  color: var(--cyber-text, #ffffff) !important;
-}
-
-/* Profile Avatar */
-.profile-avatar {
+/* Avatar Styles */
+.cyberpunk-avatar {
+  position: relative;
+  width: 100px !important;
+  height: 100px !important;
   background: rgba(255, 140, 66, 0.2) !important;
-  border: 2px solid var(--cyber-orange, #ff8c42);
+  border: 3px solid var(--cyber-orange) !important;
+  border-radius: 50% !important;
+  overflow: hidden;
   transition: all 0.3s ease;
 }
 
-.profile-avatar:hover {
+.cyberpunk-avatar:hover {
   transform: scale(1.1);
-  background: linear-gradient(45deg, var(--cyber-orange, #ff8c42), var(--cyber-yellow, #ffd23f)) !important;
-  box-shadow: 0 0 20px rgba(255, 140, 66, 0.5);
+  border-color: var(--cyber-yellow) !important;
 }
 
-.profile-avatar:hover i {
-  color: white !important;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.profile-avatar i {
-  color: var(--cyber-orange, #ff8c42) !important;
+.avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(45deg, var(--cyber-orange), var(--cyber-yellow)) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 2.5rem;
 }
 
-/* Badges */
-.badge {
-  border: 1px solid var(--cyber-orange, #ff8c42);
-  font-weight: 600;
-  padding: 0.5em 0.8em;
-  border-radius: 6px;
+.avatar-status {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #10b981;
+  border: 2px solid #fff;
 }
 
-.badge.bg-primary {
+.avatar-status.tutor {
+  background: var(--cyber-orange);
+}
+
+/* Profile Badges */
+.profile-badges {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.user-type-badge {
   background: rgba(255, 140, 66, 0.2) !important;
-  color: var(--cyber-orange, #ff8c42) !important;
-  border-color: var(--cyber-orange, #ff8c42) !important;
+  color: var(--cyber-orange) !important;
+  border: 1px solid var(--cyber-orange) !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.75rem;
 }
 
-/* Rating Stars */
-.rating .star {
-  color: var(--cyber-yellow, #ffd23f);
-  font-size: 0.9rem;
-  text-shadow: 0 0 5px rgba(255, 210, 63, 0.5);
+.user-type-badge.student {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
 }
 
-/* Form Controls */
-.form-label {
-  color: var(--cyber-text, #ffffff) !important;
+.user-type-badge.parent {
+  background: rgba(16, 185, 129, 0.2) !important;
+  color: #10b981 !important;
+  border-color: #10b981 !important;
+}
+
+.cyberpunk-badge {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--cyber-text-muted) !important;
+  border: 1px solid var(--cyber-grey-light) !important;
   font-weight: 500;
+  font-size: 0.75rem;
+}
+
+/* Profile Name and Email */
+.cyberpunk-name {
+  color: var(--cyber-text) !important;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin-bottom: 0.5rem !important;
+}
+
+.cyberpunk-email {
+  color: var(--cyber-text-muted) !important;
+  margin-bottom: 0 !important;
+}
+
+/* Card Styles */
+.cyberpunk-card {
+  background: rgba(42, 42, 42, 0.9) !important;
+  border: 2px solid var(--cyber-orange) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.cyberpunk-card:hover {
+  border-color: var(--cyber-yellow) !important;
+  transform: translateY(-3px);
+}
+
+/* Card Header */
+.cyberpunk-header {
+  background: rgba(255, 140, 66, 0.1) !important;
+  border-bottom: 2px solid var(--cyber-orange) !important;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cyberpunk-title {
+  color: var(--cyber-orange) !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  margin: 0;
+  font-size: 1rem;
+}
+
+.edit-mode-indicator {
+  color: var(--cyber-yellow) !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  background: rgba(255, 210, 63, 0.1);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid var(--cyber-yellow);
+}
+
+/* Form Styles */
+.cyberpunk-label {
+  color: var(--cyber-text) !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.cyberpunk-input-group {
+  position: relative;
+}
+
+.cyberpunk-input {
+  background: var(--cyber-grey) !important;
+  border: 2px solid var(--cyber-grey-light) !important;
+  color: var(--cyber-text) !important;
+  border-radius: 8px !important;
+  padding: 0.75rem 1rem 0.75rem 2.5rem !important;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s ease;
+}
+
+.cyberpunk-input:focus {
+  background: var(--cyber-grey-light) !important;
+  border-color: var(--cyber-orange) !important;
+  color: var(--cyber-text) !important;
+  outline: none;
+}
+
+.cyberpunk-input:disabled {
+  background: var(--cyber-darker) !important;
+  color: var(--cyber-text-dim) !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.cyberpunk-input::placeholder {
+  color: var(--cyber-text-dim) !important;
+  font-style: italic;
+}
+
+.cyberpunk-input-icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--cyber-text-muted);
+  font-size: 0.875rem;
+}
+
+/* Action Buttons */
+.cyberpunk-action-btn {
+  background: var(--cyber-grey) !important;
+  border: 1px solid var(--cyber-grey-light) !important;
+  color: var(--cyber-text) !important;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-decoration: none;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.3s ease;
+  text-align: left;
+  display: flex;
+  align-items: center;
+}
+
+.cyberpunk-action-btn:hover {
+  background: var(--cyber-grey-light) !important;
+  border-color: var(--cyber-orange) !important;
+  color: var(--cyber-orange) !important;
+  text-decoration: none;
+  transform: translateX(3px);
+}
+
+/* Stats */
+.stat-item {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--cyber-grey-light);
+}
+
+.stat-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.stat-label {
+  color: var(--cyber-text-muted) !important;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   margin-bottom: 0.5rem;
 }
 
-.form-control {
-  background: rgba(42, 42, 42, 0.8) !important;
-  border: 2px solid var(--cyber-grey-light, #4a4a4a) !important;
-  color: var(--cyber-text, #ffffff) !important;
-  border-radius: 8px;
-  transition: all 0.3s ease;
+.stat-value {
+  color: var(--cyber-text) !important;
+  font-size: 1.25rem;
+  font-weight: 700;
 }
 
-.form-control:focus {
-  background: rgba(42, 42, 42, 0.95) !important;
-  border-color: var(--cyber-orange, #ff8c42) !important;
-  box-shadow: 0 0 15px rgba(255, 140, 66, 0.3) !important;
-  color: var(--cyber-text, #ffffff) !important;
+.cyberpunk-stat {
+  color: var(--cyber-orange) !important;
 }
 
-.form-control:disabled {
-  background: rgba(42, 42, 42, 0.5) !important;
-  opacity: 0.7;
-  cursor: not-allowed;
+/* Progress Bar */
+.cyberpunk-progress {
+  width: 100%;
+  height: 6px;
+  background: var(--cyber-darker) !important;
+  border: 1px solid var(--cyber-grey-light);
+  overflow: hidden;
+  margin-top: 0.5rem;
 }
 
-.form-control::placeholder {
-  color: var(--cyber-text-dim, #888888) !important;
+.cyberpunk-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--cyber-orange), var(--cyber-yellow)) !important;
+  transition: width 0.3s ease;
 }
 
-/* Buttons */
-.btn-primary {
-  background: linear-gradient(45deg, var(--cyber-orange, #ff8c42), var(--cyber-yellow, #ffd23f)) !important;
-  border: 2px solid var(--cyber-orange, #ff8c42) !important;
-  color: white !important;
-  font-weight: 600;
-  border-radius: 10px;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 20px rgba(255, 140, 66, 0.3);
+/* Rating */
+.cyberpunk-rating {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
-.btn-primary:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 0 30px rgba(255, 140, 66, 0.5) !important;
-  border-color: var(--cyber-orange, #ff8c42) !important;
+.cyberpunk-star {
+  color: var(--cyber-yellow) !important;
+  font-size: 0.875rem;
 }
 
-.btn-primary:disabled {
-  opacity: 0.7;
-  transform: none;
-  cursor: not-allowed;
-}
-
-.btn-outline-primary {
-  background: transparent !important;
-  border: 2px solid var(--cyber-orange, #ff8c42) !important;
-  color: var(--cyber-text, #ffffff) !important;
-  transition: all 0.3s ease;
-  border-radius: 10px;
-  font-weight: 600;
-}
-
-.btn-outline-primary:hover {
-  background: linear-gradient(45deg, var(--cyber-orange, #ff8c42), var(--cyber-yellow, #ffd23f)) !important;
-  border-color: var(--cyber-orange, #ff8c42) !important;
-  color: white !important;
-  transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(255, 140, 66, 0.5) !important;
-}
-
-.btn-outline-secondary {
-  background: transparent !important;
-  border: 2px solid var(--cyber-grey-light, #4a4a4a) !important;
-  color: var(--cyber-text, #ffffff) !important;
-  transition: all 0.3s ease;
-  border-radius: 10px;
-  font-weight: 600;
-}
-
-.btn-outline-secondary:hover {
-  background: rgba(74, 74, 74, 0.3) !important;
-  border-color: var(--cyber-grey-light, #4a4a4a) !important;
-  color: var(--cyber-text, #ffffff) !important;
-  transform: translateY(-2px);
-}
-
-.btn-outline-danger {
-  background: transparent !important;
-  border: 2px solid #ef4444 !important;
-  color: #ef4444 !important;
-  transition: all 0.3s ease;
-  border-radius: 10px;
-  font-weight: 600;
-}
-
-.btn-outline-danger:hover {
-  background: rgba(239, 68, 68, 0.2) !important;
-  border-color: #ef4444 !important;
-  color: #ef4444 !important;
-  transform: translateY(-2px);
-  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3) !important;
-}
-
-/* Icons */
-i.text-primary {
-  color: var(--cyber-orange, #ff8c42) !important;
-}
-
-/* Background Elements */
-.bg-white {
-  background: rgba(26, 26, 26, 0.5) !important;
+.cyberpunk-star-empty {
+  color: var(--cyber-text-dim) !important;
+  font-size: 0.875rem;
 }
 
 /* Spinner */
@@ -573,15 +764,314 @@ i.text-primary {
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive */
+/* Responsive Design */
 @media (max-width: 768px) {
-  .profile-avatar {
+  .profile-badges {
+    justify-content: center;
+  }
+
+  .cyberpunk-avatar {
+    width: 80px !important;
+    height: 80px !important;
+  }
+
+  .cyberpunk-name {
+    font-size: 1.5rem;
+  }
+
+  .cyberpunk-header {
+    flex-direction: column;
+    gap: 0.75rem;
+    text-align: center;
+  }
+
+  .cyberpunk-title {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .cyberpunk-avatar {
     width: 60px !important;
     height: 60px !important;
   }
 
-  .card-body {
-    padding: 1.5rem !important;
+  .cyberpunk-name {
+    font-size: 1.25rem;
+  }
+
+  .profile-badges {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+  }
+}
+
+/* Clean Profile Header */
+.profile-header-container {
+  background: rgba(42, 42, 42, 0.9);
+  border: 1px solid rgba(255, 152, 0, 0.2);
+  border-radius: 12px;
+  padding: 2.5rem;
+  margin-bottom: 2rem;
+}
+
+.profile-header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3rem;
+}
+
+.profile-left-section {
+  display: flex;
+  align-items: center;
+  gap: 3rem;
+  flex: 1;
+}
+
+.cyberpunk-avatar {
+  width: 120px;
+  height: 120px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #ffc107, #ff9800);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a1a1a;
+  font-size: 3rem;
+  font-weight: 600;
+  flex-shrink: 0;
+  border: 3px solid rgba(255, 152, 0, 0.3);
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.profile-right-section {
+  flex-shrink: 0;
+}
+
+.profile-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 0.5rem 0;
+  text-transform: capitalize;
+  letter-spacing: 0.5px;
+}
+
+.profile-subtitle {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+}
+
+.profile-details {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 0.25rem;
+}
+
+.profile-badges {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.profile-edit-btn {
+  padding: 1rem 2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  border: 2px solid #ffc107;
+  background: transparent;
+  color: #ffc107;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 60px;
+}
+
+.profile-edit-btn:hover {
+  background: rgba(255, 152, 0, 0.1);
+  border-color: #ff9800;
+  color: #ff9800;
+}
+
+.profile-edit-btn i {
+  font-size: 0.8rem;
+}
+
+.profile-badge {
+  padding: 0.5rem 1.25rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid;
+}
+
+.profile-badge.tutor {
+  background: rgba(255, 152, 0, 0.15);
+  border-color: rgba(255, 152, 0, 0.3);
+  color: #ffc107;
+}
+
+.profile-badge.student {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.3);
+  color: #3b82f6;
+}
+
+.profile-badge.parent {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #10b981;
+}
+
+.profile-badge.date-badge {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+
+.profile-quick-stats {
+  display: flex;
+  gap: 2rem;
+}
+
+.quick-stat {
+  text-align: center;
+  min-width: 80px;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quick-stat-value {
+  display: block;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #ffc107;
+  margin-bottom: 0.25rem;
+}
+
+.quick-stat-label {
+  display: block;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .profile-header-content {
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    text-align: center;
+  }
+
+  .profile-header-container {
+    padding: 2rem;
+  }
+
+  .profile-badges {
+    justify-content: center;
+  }
+
+  .profile-quick-stats {
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  .profile-title {
+    font-size: 2rem;
+  }
+
+  .profile-subtitle {
+    font-size: 1rem;
+  }
+
+  .cyberpunk-avatar {
+    width: 100px;
+    height: 100px;
+    font-size: 2.5rem;
+  }
+
+  .quick-stat {
+    min-width: 70px;
+    padding: 0.5rem;
+  }
+
+  .quick-stat-value {
+    font-size: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-header-container {
+    padding: 1.5rem;
+  }
+
+  .profile-header-content {
+    gap: 1.5rem;
+  }
+
+  .profile-title {
+    font-size: 1.75rem;
+  }
+
+  .profile-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .cyberpunk-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 2rem;
+  }
+
+  .profile-badges {
+    gap: 0.75rem;
+  }
+
+  .profile-badge {
+    padding: 0.4rem 1rem;
+    font-size: 0.8rem;
+  }
+
+  .profile-quick-stats {
+    gap: 1rem;
+  }
+
+  .quick-stat {
+    min-width: 60px;
+    padding: 0.5rem;
+  }
+
+  .quick-stat-value {
+    font-size: 1.25rem;
+  }
+
+  .quick-stat-label {
+    font-size: 0.7rem;
   }
 }
 </style>

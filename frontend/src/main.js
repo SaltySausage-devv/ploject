@@ -4,6 +4,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { MotionPlugin } from '@vueuse/motion'
 import App from './App.vue'
 import './style.css'
+import { useAuthStore } from './stores/auth'
 
 // Import pages
 import Home from './pages/Home.vue'
@@ -55,3 +56,8 @@ app.component('Navbar', Navbar)
 app.component('Footer', Footer)
 
 app.mount('#app')
+
+// Initialize auth store after app is mounted
+const authStore = useAuthStore()
+console.log('🚀 App mounted, initializing auth store...')
+authStore.initializeAuth()

@@ -1125,7 +1125,7 @@ export default {
           levels: profile.levels || [],
           hourlyRate: profile.hourly_rate || 0,
           groupRate: profile.group_rate || (profile.hourly_rate ? profile.hourly_rate * 0.8 : 0),
-          packageRate: profile.package_rates?.monthly || (profile.hourly_rate ? profile.hourly_rate * 4 : 0),
+          packageRate: profile.monthly_package || (profile.hourly_rate ? profile.hourly_rate * 4 : 0),
           location: profile.location?.address || profile.preferred_locations?.[0] || 'Singapore',
           teachingMode: profile.teaching_mode?.[0] || 'both',
           availability: ['now'], // TODO: Get from availability system

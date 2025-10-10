@@ -108,7 +108,9 @@ const tutorProfileSchema = Joi.object({
   previousExperience: Joi.string().allow('').optional(),
   hourlyRate: Joi.number().min(0).allow(null).optional(),
   groupRate: Joi.number().min(0).allow(null).optional(),
-  packageRates: Joi.object().optional(),
+  monthlyPackage: Joi.string().allow('').optional(),
+  weeklyPackage: Joi.string().allow('').optional(),
+  bulkPackage: Joi.string().allow('').optional(),
   location: Joi.object({
     address: Joi.string().allow('').optional(),
     latitude: Joi.number().allow(null).optional(),
@@ -133,7 +135,7 @@ const centreProfileSchema = Joi.object({
   subjects: Joi.array().items(Joi.string()).optional(),
   levels: Joi.array().items(Joi.string().valid('Primary', 'Secondary', 'JC', 'IB', 'IGCSE')).optional(),
   hourlyRate: Joi.number().min(0).optional(),
-  packageRates: Joi.object().optional(),
+  packageRates: Joi.array().optional(),
   facilities: Joi.array().items(Joi.string()).optional(),
   capacity: Joi.number().min(1).optional(),
   location: Joi.object({
@@ -153,7 +155,9 @@ const centreProfileSchema = Joi.object({
 app.get('/profiles/tutor/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('🔍 Fetching tutor profile for user_id:', id);
 
+    // Simple query without package_rates join first
     const { data: profile, error } = await supabase
       .from('tutor_profiles')
       .select(`
@@ -169,12 +173,37 @@ app.get('/profiles/tutor/:id', async (req, res) => {
       .single();
 
     if (error) {
+      console.error('❌ Profile fetch error:', error);
       return res.status(404).json({ error: 'Profile not found' });
     }
 
-    res.json({ profile });
+    // Try to get package rates separately if the table exists
+    let packageRates = [];
+    try {
+      const { data: rates } = await supabase
+        .from('package_rates')
+        .select('*')
+        .eq('tutor_profile_id', profile.id)
+        .eq('is_active', true);
+
+      packageRates = rates || [];
+    } catch (packageError) {
+      console.log('⚠️ Package rates table not found or error:', packageError.message);
+      // Continue without package rates
+    }
+
+    // Add package rates to the response if we found any
+    const response = {
+      profile: {
+        ...profile,
+        package_rates: packageRates
+      }
+    };
+
+    console.log('✅ Profile found:', profile.users?.first_name, profile.users?.last_name);
+    res.json(response);
   } catch (error) {
-    console.error('Tutor profile fetch error:', error);
+    console.error('❌ Tutor profile fetch error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -253,7 +282,9 @@ app.post('/profiles/tutor', verifyToken, async (req, res) => {
       previous_experience: value.previousExperience,
       hourly_rate: value.hourlyRate,
       group_rate: value.groupRate,
-      package_rates: value.packageRates,
+      monthly_package: value.monthlyPackage,
+      weekly_package: value.weeklyPackage,
+      bulk_package: value.bulkPackage,
       location: value.location,
       preferred_locations: value.preferredLocations,
       availability: value.availability,
@@ -293,6 +324,7 @@ app.post('/profiles/tutor', verifyToken, async (req, res) => {
       profile = data;
     }
 
+    
     res.status(existingProfile ? 200 : 201).json({
       message: existingProfile ? 'Tutor profile updated successfully' : 'Tutor profile created successfully',
       profile

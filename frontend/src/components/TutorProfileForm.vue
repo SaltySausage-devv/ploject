@@ -305,6 +305,43 @@
             </div>
           </div>
         </div>
+
+        <!-- Package Rates -->
+        <div class="mt-4">
+          <label class="form-label">Package Rates per Month</label>
+          <div class="row">
+            <div class="col-md-4 mb-3">
+              <input
+                type="text"
+                v-model="tutorProfile.monthlyPackage"
+                class="form-control"
+                :disabled="!editMode"
+                placeholder="e.g., $800/month"
+              />
+              <small class="text-muted">Monthly package rate</small>
+            </div>
+            <div class="col-md-4 mb-3">
+              <input
+                type="text"
+                v-model="tutorProfile.weeklyPackage"
+                class="form-control"
+                :disabled="!editMode"
+                placeholder="e.g., $200/week"
+              />
+              <small class="text-muted">Weekly package rate</small>
+            </div>
+            <div class="col-md-4 mb-3">
+              <input
+                type="text"
+                v-model="tutorProfile.bulkPackage"
+                class="form-control"
+                :disabled="!editMode"
+                placeholder="e.g., $500 for 10 sessions"
+              />
+              <small class="text-muted">Bulk session package</small>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -449,6 +486,9 @@ export default {
       specialties: [],
       hourlyRate: null,
       groupRate: null,
+      monthlyPackage: '',
+      weeklyPackage: '',
+      bulkPackage: '',
       locationAddress: '',
       preferredLocations: []
     })
@@ -477,7 +517,8 @@ export default {
 
       // Rates (15 points)
       if (tutorProfile.hourlyRate) completeness += 10
-      if (tutorProfile.groupRate) completeness += 5
+      if (tutorProfile.groupRate) completeness += 2
+      if (tutorProfile.monthlyPackage || tutorProfile.weeklyPackage || tutorProfile.bulkPackage) completeness += 3
 
       // Location (10 points)
       if (tutorProfile.locationAddress) completeness += 10
@@ -529,6 +570,7 @@ export default {
       tutorProfile.preferredLocations.splice(index, 1)
     }
 
+    
     const loadTutorProfile = async () => {
       try {
         const token = authStore.token
@@ -552,6 +594,9 @@ export default {
             specialties: profile.specialties || [],
             hourlyRate: profile.hourly_rate || null,
             groupRate: profile.group_rate || null,
+            monthlyPackage: profile.monthly_package || '',
+            weeklyPackage: profile.weekly_package || '',
+            bulkPackage: profile.bulk_package || '',
             locationAddress: profile.location?.address || '',
             preferredLocations: profile.preferred_locations || []
           })
@@ -581,6 +626,9 @@ export default {
           specialties: tutorProfile.specialties,
           hourlyRate: tutorProfile.hourlyRate,
           groupRate: tutorProfile.groupRate,
+          monthlyPackage: tutorProfile.monthlyPackage,
+          weeklyPackage: tutorProfile.weeklyPackage,
+          bulkPackage: tutorProfile.bulkPackage,
           location: {
             address: tutorProfile.locationAddress
           },
