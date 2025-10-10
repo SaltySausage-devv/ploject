@@ -1,0 +1,346 @@
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
+
+CREATE TABLE public.availability_slots (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tutor_id uuid,
+  centre_id uuid,
+  date date NOT NULL,
+  start_time time without time zone NOT NULL,
+  end_time time without time zone NOT NULL,
+  is_available boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT availability_slots_pkey PRIMARY KEY (id),
+  CONSTRAINT availability_slots_tutor_id_fkey FOREIGN KEY (tutor_id) REFERENCES public.users(id),
+  CONSTRAINT availability_slots_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.bookings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tutor_id uuid,
+  centre_id uuid,
+  student_id uuid,
+  subject text NOT NULL,
+  level text NOT NULL,
+  start_time timestamp with time zone NOT NULL,
+  end_time timestamp with time zone NOT NULL,
+  location text,
+  is_online boolean DEFAULT false,
+  notes text,
+  hourly_rate numeric NOT NULL,
+  total_amount numeric NOT NULL,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'confirmed'::text, 'completed'::text, 'cancelled'::text, 'expired'::text])),
+  confirmed_at timestamp with time zone,
+  cancelled_at timestamp with time zone,
+  cancellation_reason text,
+  rescheduled_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT bookings_pkey PRIMARY KEY (id),
+  CONSTRAINT bookings_tutor_id_fkey FOREIGN KEY (tutor_id) REFERENCES public.users(id),
+  CONSTRAINT bookings_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.users(id),
+  CONSTRAINT bookings_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.calendar_events (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  booking_id uuid,
+  user_id uuid,
+  google_event_id text NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT calendar_events_pkey PRIMARY KEY (id),
+  CONSTRAINT calendar_events_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id),
+  CONSTRAINT calendar_events_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.calendar_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  access_token text NOT NULL,
+  refresh_token text,
+  expiry_date timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT calendar_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT calendar_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.centre_profiles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  name text NOT NULL,
+  bio text,
+  subjects ARRAY,
+  levels ARRAY,
+  hourly_rate numeric,
+  package_rates jsonb,
+  facilities ARRAY,
+  capacity integer,
+  location jsonb NOT NULL,
+  operating_hours jsonb,
+  contact_info jsonb,
+  average_rating numeric DEFAULT 0,
+  total_reviews integer DEFAULT 0,
+  is_verified boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT centre_profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT centre_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.conversations (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  participant1_id uuid,
+  participant2_id uuid,
+  booking_id uuid,
+  last_message_at timestamp with time zone,
+  last_message_content text,
+  created_at timestamp with time zone DEFAULT now(),
+  status text DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'archived'::text, 'blocked'::text])),
+  CONSTRAINT conversations_pkey PRIMARY KEY (id),
+  CONSTRAINT conversations_participant1_id_fkey FOREIGN KEY (participant1_id) REFERENCES public.users(id),
+  CONSTRAINT conversations_participant2_id_fkey FOREIGN KEY (participant2_id) REFERENCES public.users(id),
+  CONSTRAINT conversations_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id)
+);
+CREATE TABLE public.earnings (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tutor_id uuid,
+  centre_id uuid,
+  booking_id uuid,
+  amount numeric NOT NULL,
+  commission numeric DEFAULT 0,
+  net_amount numeric NOT NULL,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'paid'::text, 'cancelled'::text])),
+  paid_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT earnings_pkey PRIMARY KEY (id),
+  CONSTRAINT earnings_tutor_id_fkey FOREIGN KEY (tutor_id) REFERENCES public.users(id),
+  CONSTRAINT earnings_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.users(id),
+  CONSTRAINT earnings_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id)
+);
+CREATE TABLE public.leaderboards (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  category text NOT NULL,
+  score integer NOT NULL,
+  rank integer,
+  period text NOT NULL CHECK (period = ANY (ARRAY['weekly'::text, 'monthly'::text, 'yearly'::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT leaderboards_pkey PRIMARY KEY (id),
+  CONSTRAINT leaderboards_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.location_cache (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  address text NOT NULL,
+  latitude numeric NOT NULL,
+  longitude numeric NOT NULL,
+  place_id text,
+  formatted_address text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT location_cache_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.messages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  conversation_id uuid,
+  sender_id uuid,
+  content text NOT NULL,
+  message_type text DEFAULT 'text'::text CHECK (message_type = ANY (ARRAY['text'::text, 'image'::text, 'file'::text, 'document'::text])),
+  file_name text,
+  file_size integer,
+  read_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  deleted_at timestamp with time zone,
+  archived_at timestamp with time zone,
+  CONSTRAINT messages_pkey PRIMARY KEY (id),
+  CONSTRAINT messages_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id),
+  CONSTRAINT messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.notification_preferences (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  email_notifications boolean DEFAULT true,
+  sms_notifications boolean DEFAULT true,
+  push_notifications boolean DEFAULT true,
+  booking_reminders boolean DEFAULT true,
+  message_notifications boolean DEFAULT true,
+  review_reminders boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notification_preferences_pkey PRIMARY KEY (id),
+  CONSTRAINT notification_preferences_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.notifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  type text NOT NULL CHECK (type = ANY (ARRAY['email'::text, 'sms'::text, 'push'::text])),
+  subject text,
+  message text NOT NULL,
+  data jsonb,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'sent'::text, 'failed'::text])),
+  sent_at timestamp with time zone,
+  read_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.profile_views (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tutor_id uuid,
+  centre_id uuid,
+  viewer_id uuid,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT profile_views_pkey PRIMARY KEY (id),
+  CONSTRAINT profile_views_tutor_id_fkey FOREIGN KEY (tutor_id) REFERENCES public.users(id),
+  CONSTRAINT profile_views_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.users(id),
+  CONSTRAINT profile_views_viewer_id_fkey FOREIGN KEY (viewer_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.push_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  token text NOT NULL,
+  platform text NOT NULL CHECK (platform = ANY (ARRAY['ios'::text, 'android'::text, 'web'::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT push_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.review_reports (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  review_id uuid,
+  reporter_id uuid,
+  reason text NOT NULL,
+  description text,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'resolved'::text, 'dismissed'::text])),
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT review_reports_pkey PRIMARY KEY (id),
+  CONSTRAINT review_reports_review_id_fkey FOREIGN KEY (review_id) REFERENCES public.reviews(id),
+  CONSTRAINT review_reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.reviews (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tutor_id uuid,
+  centre_id uuid,
+  student_id uuid,
+  booking_id uuid,
+  rating integer NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  comment text,
+  aspects jsonb,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT reviews_pkey PRIMARY KEY (id),
+  CONSTRAINT reviews_tutor_id_fkey FOREIGN KEY (tutor_id) REFERENCES public.users(id),
+  CONSTRAINT reviews_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.users(id),
+  CONSTRAINT reviews_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.users(id),
+  CONSTRAINT reviews_booking_id_fkey FOREIGN KEY (booking_id) REFERENCES public.bookings(id)
+);
+CREATE TABLE public.travel_times (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  origin_lat numeric NOT NULL,
+  origin_lng numeric NOT NULL,
+  destination_lat numeric NOT NULL,
+  destination_lng numeric NOT NULL,
+  travel_mode text NOT NULL,
+  duration_seconds integer NOT NULL,
+  distance_meters integer NOT NULL,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT travel_times_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.tutor_earnings (
+  id integer NOT NULL DEFAULT nextval('tutor_earnings_id_seq'::regclass),
+  tutor_id integer,
+  booking_id integer,
+  gross_amount numeric NOT NULL,
+  platform_fee numeric DEFAULT 0,
+  net_amount numeric NOT NULL,
+  payment_status character varying DEFAULT 'pending'::character varying CHECK (payment_status::text = ANY (ARRAY['pending'::character varying, 'paid'::character varying, 'cancelled'::character varying]::text[])),
+  paid_at timestamp with time zone,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT tutor_earnings_pkey PRIMARY KEY (id)
+);
+CREATE TABLE public.tutor_profiles (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid UNIQUE,
+  bio text,
+  subjects ARRAY,
+  levels ARRAY,
+  hourly_rate numeric,
+  package_rates jsonb,
+  qualifications jsonb,
+  experience integer,
+  teaching_mode ARRAY,
+  location jsonb,
+  availability jsonb,
+  average_rating numeric DEFAULT 0,
+  total_reviews integer DEFAULT 0,
+  is_verified boolean DEFAULT false,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  headline character varying,
+  teaching_philosophy text,
+  certifications jsonb DEFAULT '[]'::jsonb,
+  previous_experience text,
+  experience_years integer DEFAULT 0,
+  group_rate numeric,
+  preferred_locations ARRAY,
+  timezone character varying DEFAULT 'Asia/Singapore'::character varying,
+  profile_image_url text,
+  video_introduction_url text,
+  specialties ARRAY,
+  languages ARRAY DEFAULT ARRAY['English'::text],
+  preferred_student_levels ARRAY,
+  preferred_group_size integer DEFAULT 1,
+  achievements jsonb DEFAULT '[]'::jsonb,
+  total_students_taught integer DEFAULT 0,
+  verification_status character varying DEFAULT 'pending'::character varying,
+  verification_documents jsonb DEFAULT '[]'::jsonb,
+  profile_completeness integer DEFAULT 0,
+  is_active boolean DEFAULT true,
+  is_featured boolean DEFAULT false,
+  search_tags ARRAY,
+  student_success_stories jsonb DEFAULT '[]'::jsonb,
+  CONSTRAINT tutor_profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT tutor_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_badges (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  badge_type text NOT NULL,
+  badge_name text NOT NULL,
+  description text,
+  earned_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_badges_pkey PRIMARY KEY (id),
+  CONSTRAINT user_badges_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_points (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  points integer NOT NULL DEFAULT 0,
+  source text NOT NULL,
+  description text,
+  earned_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT user_points_pkey PRIMARY KEY (id),
+  CONSTRAINT user_points_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.users (
+  id uuid NOT NULL,
+  email text NOT NULL UNIQUE,
+  first_name text,
+  last_name text,
+  user_type text CHECK (user_type = ANY (ARRAY['student'::text, 'tutor'::text, 'centre'::text, 'admin'::text])),
+  phone text,
+  date_of_birth date,
+  address text,
+  bio text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  reset_token text,
+  reset_token_expires timestamp with time zone,
+  CONSTRAINT users_pkey PRIMARY KEY (id),
+  CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
+);
+CREATE TABLE public.verification_documents (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  profile_id uuid NOT NULL,
+  profile_type text NOT NULL CHECK (profile_type = ANY (ARRAY['tutor'::text, 'centre'::text])),
+  document_type text NOT NULL,
+  file_path text NOT NULL,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'approved'::text, 'rejected'::text])),
+  uploaded_at timestamp with time zone DEFAULT now(),
+  reviewed_at timestamp with time zone,
+  reviewed_by uuid,
+  CONSTRAINT verification_documents_pkey PRIMARY KEY (id),
+  CONSTRAINT verification_documents_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.users(id)
+);

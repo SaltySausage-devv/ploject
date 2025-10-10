@@ -40,43 +40,91 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // JWT verification middleware
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
-  
+
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
 
   try {
+    console.log('🔑 Verifying token...');
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+
+    // Handle both Supabase tokens (uses 'sub') and custom tokens (uses 'userId')
+    const userId = decoded.sub || decoded.userId;
+
+    console.log('✅ Token verified successfully');
+    console.log('   User ID:', userId);
+
+    // Fetch user type from database for Supabase tokens
+    const { data: userProfile, error: profileError } = await supabase
+      .from('users')
+      .select('user_type')
+      .eq('id', userId)
+      .single();
+
+    if (profileError || !userProfile) {
+      console.error('❌ Failed to fetch user profile:', profileError);
+      return res.status(403).json({ error: 'User profile not found' });
+    }
+
+    const userType = userProfile.user_type;
+    console.log('   User Type:', userType);
+
+    req.user = {
+      userId,
+      userType,
+      ...decoded
+    };
     next();
   } catch (error) {
+    console.error('❌ Token verification failed:', error.message);
     return res.status(401).json({ error: 'Invalid token' });
   }
 };
 
 // Validation schemas
 const tutorProfileSchema = Joi.object({
-  bio: Joi.string().max(1000).optional(),
+  headline: Joi.string().max(200).allow('').optional(),
+  bio: Joi.string().max(2000).allow('').optional(),
+  teachingPhilosophy: Joi.string().max(1000).allow('').optional(),
   subjects: Joi.array().items(Joi.string()).optional(),
   levels: Joi.array().items(Joi.string().valid('Primary', 'Secondary', 'JC', 'IB', 'IGCSE')).optional(),
-  hourlyRate: Joi.number().min(0).optional(),
-  packageRates: Joi.object().optional(),
+  teachingMode: Joi.array().items(Joi.string().valid('online', 'in-person', 'both')).optional(),
+  languages: Joi.array().items(Joi.string()).optional(),
   qualifications: Joi.array().items(Joi.object({
     degree: Joi.string().required(),
     institution: Joi.string().required(),
+    year: Joi.number().required(),
+    field: Joi.string().optional()
+  })).optional(),
+  certifications: Joi.array().items(Joi.object({
+    name: Joi.string().required(),
+    issuer: Joi.string().required(),
     year: Joi.number().required()
   })).optional(),
-  experience: Joi.number().min(0).optional(),
-  teachingMode: Joi.array().items(Joi.string().valid('online', 'in-person', 'both')).optional(),
+  experienceYears: Joi.number().min(0).allow(null).optional(),
+  previousExperience: Joi.string().allow('').optional(),
+  hourlyRate: Joi.number().min(0).allow(null).optional(),
+  groupRate: Joi.number().min(0).allow(null).optional(),
+  packageRates: Joi.object().optional(),
   location: Joi.object({
-    address: Joi.string().optional(),
-    latitude: Joi.number().optional(),
-    longitude: Joi.number().optional(),
-    radius: Joi.number().min(1).max(50).optional()
+    address: Joi.string().allow('').optional(),
+    latitude: Joi.number().allow(null).optional(),
+    longitude: Joi.number().allow(null).optional(),
+    radius: Joi.number().min(1).max(50).allow(null).optional()
   }).optional(),
-  availability: Joi.object().optional()
+  preferredLocations: Joi.array().items(Joi.string()).optional(),
+  availability: Joi.object().optional(),
+  timezone: Joi.string().optional(),
+  profileImageUrl: Joi.string().uri().optional(),
+  videoIntroductionUrl: Joi.string().uri().optional(),
+  specialties: Joi.array().items(Joi.string()).optional(),
+  preferredStudentLevels: Joi.array().items(Joi.string()).optional(),
+  preferredGroupSize: Joi.number().min(1).optional(),
+  achievements: Joi.array().optional(),
+  searchTags: Joi.array().items(Joi.string()).optional()
 });
 
 const centreProfileSchema = Joi.object({
@@ -162,36 +210,96 @@ app.get('/profiles/centre/:id', async (req, res) => {
 
 app.post('/profiles/tutor', verifyToken, async (req, res) => {
   try {
+    console.log('📝 POST /profiles/tutor - Creating/updating tutor profile');
+    console.log('   User ID:', req.user.userId);
+    console.log('   User Type:', req.user.userType);
+
     if (req.user.userType !== 'tutor') {
+      console.error('❌ User is not a tutor:', req.user.userType);
       return res.status(403).json({ error: 'Only tutors can create tutor profiles' });
     }
 
+    console.log('✅ User type check passed');
+    console.log('📦 Request body:', JSON.stringify(req.body, null, 2));
+
     const { error, value } = tutorProfileSchema.validate(req.body);
     if (error) {
+      console.error('❌ Validation error:', error.details[0].message);
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { data: profile, error: insertError } = await supabase
+    console.log('✅ Validation passed');
+
+    // Check if profile already exists (upsert pattern)
+    const { data: existingProfile } = await supabase
       .from('tutor_profiles')
-      .insert({
-        user_id: req.user.userId,
-        ...value,
-        created_at: new Date().toISOString()
-      })
-      .select()
+      .select('id')
+      .eq('user_id', req.user.userId)
       .single();
 
-    if (insertError) {
-      throw insertError;
+    // Convert camelCase to snake_case for database
+    const dbPayload = {
+      user_id: req.user.userId,
+      headline: value.headline,
+      bio: value.bio,
+      teaching_philosophy: value.teachingPhilosophy,
+      subjects: value.subjects,
+      levels: value.levels,
+      teaching_mode: value.teachingMode,
+      languages: value.languages,
+      qualifications: value.qualifications,
+      certifications: value.certifications,
+      experience_years: value.experienceYears,
+      previous_experience: value.previousExperience,
+      hourly_rate: value.hourlyRate,
+      group_rate: value.groupRate,
+      package_rates: value.packageRates,
+      location: value.location,
+      preferred_locations: value.preferredLocations,
+      availability: value.availability,
+      timezone: value.timezone || 'Asia/Singapore',
+      profile_image_url: value.profileImageUrl,
+      video_introduction_url: value.videoIntroductionUrl,
+      specialties: value.specialties,
+      preferred_student_levels: value.preferredStudentLevels,
+      preferred_group_size: value.preferredGroupSize,
+      achievements: value.achievements,
+      search_tags: value.searchTags,
+      updated_at: new Date().toISOString()
+    };
+
+    let profile;
+    if (existingProfile) {
+      // Update existing profile
+      const { data, error: updateError } = await supabase
+        .from('tutor_profiles')
+        .update(dbPayload)
+        .eq('id', existingProfile.id)
+        .select()
+        .single();
+
+      if (updateError) throw updateError;
+      profile = data;
+    } else {
+      // Create new profile
+      dbPayload.created_at = new Date().toISOString();
+      const { data, error: insertError } = await supabase
+        .from('tutor_profiles')
+        .insert(dbPayload)
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      profile = data;
     }
 
-    res.status(201).json({
-      message: 'Tutor profile created successfully',
+    res.status(existingProfile ? 200 : 201).json({
+      message: existingProfile ? 'Tutor profile updated successfully' : 'Tutor profile created successfully',
       profile
     });
   } catch (error) {
-    console.error('Tutor profile creation error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('Tutor profile save error:', error);
+    res.status(500).json({ error: 'Internal server error', details: error.message });
   }
 });
 

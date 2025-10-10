@@ -41,7 +41,9 @@
       <div class="row">
         <!-- Profile Form -->
         <div class="col-lg-8 mb-4">
+          <!-- Basic Profile Form (for Students/Parents) -->
           <motion.div
+            v-if="user?.userType !== 'tutor'"
             :initial="{ opacity: 0, y: 30 }"
             :animate="{ opacity: 1, y: 0 }"
             :transition="{ duration: 0.6, delay: 0.1 }"
@@ -140,6 +142,21 @@
               </form>
             </div>
           </motion.div>
+
+          <!-- Tutor Profile Form (for Tutors only) -->
+          <motion.div
+            v-else
+            :initial="{ opacity: 0, y: 30 }"
+            :animate="{ opacity: 1, y: 0 }"
+            :transition="{ duration: 0.6, delay: 0.1 }"
+          >
+            <TutorProfileForm
+              :edit-mode="editMode"
+              :user-id="user?.id"
+              @saved="handleTutorProfileSaved"
+              @cancel="cancelEdit"
+            />
+          </motion.div>
         </div>
 
         <!-- Stats and Actions -->
@@ -224,9 +241,13 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import TutorProfileForm from '../components/TutorProfileForm.vue'
 
 export default {
   name: 'Profile',
+  components: {
+    TutorProfileForm
+  },
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
@@ -239,8 +260,6 @@ export default {
       student: 'Student',
       parent: 'Parents',
       tutor: 'Tutor',
-      centre: 'Tuition Centre',
-      admin: 'Administrator'
     }
 
     const profileForm = reactive({
@@ -303,6 +322,12 @@ export default {
       router.push('/')
     }
 
+    const handleTutorProfileSaved = () => {
+      editMode.value = false
+      // Optionally show a success message
+      alert('Tutor profile saved successfully!')
+    }
+
     onMounted(() => {
       loadProfile()
     })
@@ -316,7 +341,8 @@ export default {
       formatDate,
       updateProfile,
       cancelEdit,
-      logout
+      logout,
+      handleTutorProfileSaved
     }
   }
 }
