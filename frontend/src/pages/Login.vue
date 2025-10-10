@@ -90,11 +90,7 @@
                   </div>
                 </div>
 
-                <!-- Success Alert -->
-                <div v-if="successMessage" class="cyberpunk-success-alert mb-4">
-                  <i class="fas fa-check-circle me-2"></i>
-                  {{ successMessage }}
-                </div>
+                
 
                 <!-- Error Alert with Animation -->
                 <div v-if="error" ref="errorAlert" class="cyberpunk-alert">
@@ -167,7 +163,6 @@ export default {
     const error = ref('')
     const isLoading = ref(false)
     const showPassword = ref(false)
-    const successMessage = ref('')
 
     // Advanced Anime.js v4 Login Page Animations
     const initLoginAnimations = async () => {
@@ -529,7 +524,6 @@ export default {
 
       isLoading.value = true
       error.value = ''
-      successMessage.value = '' // Clear success message when attempting login
 
       // Advanced loading animation for button
       if (submitButton.value) {
@@ -654,8 +648,36 @@ export default {
     onMounted(() => {
       // Check if redirected from password reset
       const urlParams = new URLSearchParams(window.location.search)
-      if (urlParams.get('reset') === 'success') {
-        successMessage.value = 'Password reset successful! Please log in with your new password.'
+      const hasShownResetToast = sessionStorage.getItem('resetToastShown') === '1'
+      if (urlParams.get('reset') === 'success' && !hasShownResetToast) {
+        // Delay briefly to ensure layout is ready post-redirect
+        setTimeout(() => {
+          const toast = document.createElement('div')
+          toast.className = 'login-toast'
+          toast.innerHTML = '<i class="fas fa-check-circle me-2"></i> Password Reset Successful'
+          // Inline styles to bypass scoped CSS limitations
+          toast.style.cssText = [
+            'position:fixed',
+            'top:80px', // below navbar
+            'left:50%',
+            'transform:translateX(-50%)',
+            'background:rgba(34,197,94,0.95)',
+            'color:#fff',
+            'padding:10px 16px',
+            'border-radius:8px',
+            'z-index:2147483647',
+            'box-shadow:0 10px 30px rgba(0,0,0,0.4)',
+            'display:flex',
+            'align-items:center',
+            'gap:8px'
+          ].join(';')
+          document.body.appendChild(toast)
+          // Mark as shown for this session so it won't reappear on back
+          sessionStorage.setItem('resetToastShown', '1')
+          setTimeout(() => {
+            if (toast.parentNode) toast.parentNode.removeChild(toast)
+          }, 3000)
+        }, 150)
         // Clear the URL parameter
         window.history.replaceState({}, '', '/login')
       }
@@ -704,7 +726,6 @@ export default {
       error,
       isLoading,
       showPassword,
-      successMessage,
       handleLogin
     }
   }
@@ -1090,6 +1111,29 @@ body, html {
   margin-bottom: 20px;
   text-shadow: 0 0 5px rgba(239, 68, 68, 0.3);
   box-shadow: 0 0 15px rgba(239, 68, 68, 0.2);
+}
+
+/* Short-lived toast for login page */
+.login-toast {
+  position: fixed;
+  top: 80px; /* below fixed navbar */
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(34, 197, 94, 0.95);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  z-index: 99999;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeSlideIn 200ms ease-out;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translate(-50%, -8px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 /* Cyberpunk Error Message */
