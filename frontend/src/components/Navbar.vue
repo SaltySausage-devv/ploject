@@ -43,10 +43,10 @@
             </router-link>
           </li>
           <li class="nav-item" v-if="!isAuthenticated">
-            <router-link to="/register" class="nav-link">
+            <a href="http://localhost:3000/register" class="nav-link">
               <i class="fas fa-user-plus me-1"></i>
               Sign Up
-            </router-link>
+            </a>
           </li>
           
           <li class="nav-item dropdown" v-if="isAuthenticated">

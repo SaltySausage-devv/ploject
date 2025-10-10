@@ -18,10 +18,10 @@
                   <i class="fas fa-search me-2"></i>
                   Find Tutors
                 </router-link>
-                <router-link to="/register" class="btn btn-cyberpunk btn-lg">
+                <a href="http://localhost:3000/register" class="btn btn-cyberpunk btn-lg">
                   <i class="fas fa-user-plus me-2"></i>
                   Join as Tutor
-                </router-link>
+                </a>
               </div>
             </div>
           </div>
@@ -108,10 +108,10 @@
                 Join thousands of students and tutors who trust OnlyTutor
               </p>
               <div class="d-flex gap-3 justify-content-center flex-wrap">
-                <router-link to="/register" class="btn btn-lg">
+                <a href="http://localhost:3000/register" class="btn btn-lg">
                   <i class="fas fa-user-plus me-2"></i>
                   Sign Up Now
-                </router-link>
+                </a>
                 <router-link to="/search" class="btn btn-outline-light btn-lg">
                   <i class="fas fa-search me-2"></i>
                   Browse Tutors
