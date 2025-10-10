@@ -1090,33 +1090,71 @@ export default {
       }
     }
 
-    const loadTutorData = (tutorId) => {
-      // In a real app, this would be an API call
-      // For now, we'll use our sample data
-      if (tutorsData[tutorId]) {
-        tutor.value = tutorsData[tutorId]
-        reviews.value = reviewsData[tutorId] || []
-        showAllReviews.value = false // Reset reviews visibility when loading new tutor
+    const loadTutorData = async (tutorId) => {
+      try {
+        console.log('Loading tutor profile for ID:', tutorId)
 
-        // Calculate average rating dynamically from reviews
-        if (reviews.value.length > 0) {
-          const totalRating = reviews.value.reduce((sum, review) => sum + review.rating, 0)
-          tutor.value.rating = Math.round(totalRating / reviews.value.length)
+        // Fetch tutor profile from API
+        const response = await fetch(`http://localhost:3003/profiles/tutor/${tutorId}`)
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch tutor profile')
         }
 
-        // Set review count dynamically from actual reviews array
-        tutor.value.reviews = reviews.value.length
+        const data = await response.json()
+        console.log('API Response:', data)
 
-        console.log('Loaded tutor:', tutor.value.name, 'with', reviews.value.length, 'reviews, avg rating:', tutor.value.rating)
-      } else {
-        console.log('Tutor not found, using default')
-        // Keep default tutor data
+        const profile = data.profile
+        const user = profile.users
+
+        // Transform API data to component format
+        tutor.value = {
+          id: profile.user_id,
+          name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Unknown Tutor',
+          subject: profile.subjects?.[0] || 'N/A',
+          level: profile.levels?.[0] || 'N/A',
+          avatar: profile.profile_image_url || `https://i.pravatar.cc/400?img=${Math.abs(profile.user_id.split('-')[0].charCodeAt(0)) % 70}`,
+          rating: profile.average_rating || 5,
+          bio: profile.bio || profile.headline || profile.teaching_philosophy || 'No bio available',
+          education: profile.qualifications?.[0] ?
+            `${profile.qualifications[0].degree}, ${profile.qualifications[0].institution}` :
+            'Not specified',
+          experience: profile.experience_years || 0,
+          experienceRange: profile.experience_years >= 5 ? '5+' : profile.experience_years >= 3 ? '3-5' : '1-2',
+          subjects: profile.subjects || [],
+          levels: profile.levels || [],
+          hourlyRate: profile.hourly_rate || 0,
+          groupRate: profile.group_rate || (profile.hourly_rate ? profile.hourly_rate * 0.8 : 0),
+          packageRate: profile.package_rates?.monthly || (profile.hourly_rate ? profile.hourly_rate * 4 : 0),
+          location: profile.location?.address || profile.preferred_locations?.[0] || 'Singapore',
+          teachingMode: profile.teaching_mode?.[0] || 'both',
+          availability: ['now'], // TODO: Get from availability system
+          reviews: profile.total_reviews || 0
+        }
+
+        // TODO: Fetch real reviews from reviews service
+        reviews.value = []
+        showAllReviews.value = false
+
+        console.log('Loaded tutor:', tutor.value.name)
+      } catch (error) {
+        console.error('Error loading tutor profile:', error)
+
+        // Fallback to hardcoded data if API fails
+        if (tutorsData[tutorId]) {
+          tutor.value = tutorsData[tutorId]
+          reviews.value = reviewsData[tutorId] || []
+          showAllReviews.value = false
+          console.log('Using fallback data for tutor:', tutorId)
+        } else {
+          console.log('Tutor not found, using default')
+        }
       }
     }
 
     onMounted(() => {
-      // Load tutor data based on route parameter
-      const tutorId = parseInt(route.params.id)
+      // Load tutor data based on route parameter (UUID)
+      const tutorId = route.params.id
       if (tutorId) {
         loadTutorData(tutorId)
       }
@@ -1130,9 +1168,8 @@ export default {
     // Watch for route changes to load different tutors
     watch(() => route.params.id, (newTutorId) => {
       if (newTutorId) {
-        const tutorId = parseInt(newTutorId)
-        loadTutorData(tutorId)
-        
+        loadTutorData(newTutorId)
+
         // Re-initialize animations for new tutor
         setTimeout(() => {
           initProfileAnimations()

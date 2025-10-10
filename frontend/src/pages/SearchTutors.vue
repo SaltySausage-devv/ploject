@@ -786,7 +786,7 @@ export default {
           location: profile.location?.address || profile.preferred_locations?.[0] || 'Singapore',
           teachingMode: profile.teaching_mode?.[0] || 'both',
           availability: ['now'], // TODO: Get from availability system
-          avatar: profile.profile_image_url || `https://i.pravatar.cc/400?img=${profile.user_id % 50}`
+          avatar: profile.profile_image_url || `https://i.pravatar.cc/400?img=${Math.abs(profile.user_id.split('-')[0].charCodeAt(0)) % 70}`
         }))
 
         // Apply client-side filters for ratings, experience, availability
