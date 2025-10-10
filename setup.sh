@@ -241,14 +241,25 @@ if [ $MISSING_MODULES -eq 0 ]; then
     print_success "All dependencies installed successfully!"
     echo ""
     print_info "You can now run:"
-    echo -e "  ${GREEN}npm run dev${NC}        - Start all services in development mode"
-    echo -e "  ${GREEN}npm run dev:frontend${NC} - Start only the frontend"
-    echo -e "  ${GREEN}npm run build${NC}      - Build for production"
+    echo -e "  ${GREEN}npm run dev${NC}            - Start all services in development mode"
+    echo -e "  ${GREEN}npm run dev:frontend${NC}   - Start only the frontend"
+    echo -e "  ${GREEN}npm run dev:messaging${NC}  - Start messaging service"
+    echo -e "  ${GREEN}npm run build${NC}          - Build for production"
+    echo ""
+    print_info "Helper scripts:"
+    echo -e "  ${GREEN}./kill-ports.sh${NC}        - Kill all processes on development ports"
+    echo -e "  ${GREEN}./start-dev.sh${NC}         - Start development environment (if available)"
     echo ""
 
     if [ ! -f ".env" ]; then
         print_warning "Don't forget to create your .env file with Supabase credentials!"
-        print_info "Copy env.example to .env and fill in your values"
+        if [ -f "env.example" ]; then
+            print_info "Creating .env from env.example..."
+            cp env.example .env
+            print_success ".env file created. Please edit it with your credentials."
+        else
+            print_info "Copy env.example to .env and fill in your values"
+        fi
     fi
 else
     print_error "Setup completed with $MISSING_MODULES errors"

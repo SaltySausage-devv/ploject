@@ -109,20 +109,42 @@ OnlyTutor/
 
 ## 🚀 Quick Start Guide
 
+> **📖 For detailed setup instructions, see [SETUP.md](./SETUP.md)**
+
 ### **Prerequisites**
-- Node.js 18+ 
+- Node.js 18+
 - npm or yarn
 - Docker (optional, for containerized deployment)
 - Supabase account
-- Google Cloud Platform account (for Calendar/Maps APIs)
+- Google Cloud Platform account (optional, for Calendar/Maps APIs)
 
 ### **1. Clone and Install Dependencies**
 
+**Windows:**
 ```bash
 # Clone the repository
 git clone <repository-url>
 cd OnlyTutor
 
+# Run setup script (installs everything automatically)
+setup.bat
+```
+
+**macOS/Linux:**
+```bash
+# Clone the repository
+git clone <repository-url>
+cd OnlyTutor
+
+# Make scripts executable
+chmod +x setup.sh kill-ports.sh
+
+# Run setup script (installs everything automatically)
+./setup.sh
+```
+
+**Or use npm:**
+```bash
 # Install all dependencies (root + all services + frontend)
 npm run install:all
 ```
@@ -177,19 +199,27 @@ psql -h your-db-host -U postgres -d postgres -f database/schema.sql
 
 ### **4. Start Development Servers**
 
-#### **Option A: Quick Start (All Services)**
+**Windows:**
 ```bash
-# Set environment variables and start all services
-chmod +x start-dev.sh
-./start-dev.sh
+# If ports are in use, clean them up first
+kill-ports.bat
+
+# Start all services
+start-dev.bat
 ```
 
-#### **Option B: Individual Services**
+**macOS/Linux:**
 ```bash
-# Start all services concurrently
-npm run dev
+# If ports are in use, clean them up first
+./kill-ports.sh
 
-# Or start individual services
+# Start all services
+npm run dev
+```
+
+**Individual Services:**
+```bash
+# Start individual services for debugging
 npm run dev:auth      # Port 3001
 npm run dev:users     # Port 3002
 npm run dev:profiles  # Port 3003
