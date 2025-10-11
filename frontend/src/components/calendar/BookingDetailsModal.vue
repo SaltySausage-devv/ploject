@@ -1,10 +1,17 @@
 <template>
-  <div class="modal fade show" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+  <div
+    class="modal fade show"
+    style="display: block; background-color: rgba(0, 0, 0, 0.5)"
+  >
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Booking Details</h5>
-          <button type="button" class="btn-close" @click="$emit('close')"></button>
+          <button
+            type="button"
+            class="btn-close"
+            @click="$emit('close')"
+          ></button>
         </div>
         <div class="modal-body">
           <!-- Booking Status Badge -->
@@ -14,27 +21,58 @@
             </span>
           </div>
 
+          <!-- Pending Reschedule Request Alert -->
+          <div
+            v-if="booking.reschedule_status === 'pending'"
+            class="alert alert-warning mb-3"
+          >
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <i class="fas fa-clock me-2"></i>
+                <strong>Reschedule Request Pending</strong>
+                <p class="mb-0 mt-1">
+                  {{ getRescheduleRequestMessage }}
+                </p>
+              </div>
+              <button
+                class="btn btn-sm btn-outline-warning"
+                @click="showRescheduleRequestModal = true"
+              >
+                View Request
+              </button>
+            </div>
+          </div>
+
           <!-- Booking Information -->
           <div class="row mb-4">
             <div class="col-md-6">
               <h6 class="text-muted">Session Details</h6>
+              <p class="mb-2"><strong>Title:</strong> {{ booking.title }}</p>
               <p class="mb-2">
-                <strong>Title:</strong> {{ booking.title }}
+                <strong>Date:</strong>
+                {{ formatDate(booking.start || booking.start_time) }}
               </p>
               <p class="mb-2">
-                <strong>Date:</strong> {{ formatDate(booking.start || booking.start_time) }}
+                <strong>Time:</strong>
+                {{ formatTime(booking.start || booking.start_time) }} -
+                {{ formatTime(booking.end || booking.end_time) }}
               </p>
               <p class="mb-2">
-                <strong>Time:</strong> {{ formatTime(booking.start || booking.start_time) }} - {{ formatTime(booking.end || booking.end_time) }}
-              </p>
-              <p class="mb-2">
-                <strong>Duration:</strong> {{ calculateDuration(booking.start || booking.start_time, booking.end || booking.end_time) }}
+                <strong>Duration:</strong>
+                {{
+                  calculateDuration(
+                    booking.start || booking.start_time,
+                    booking.end || booking.end_time
+                  )
+                }}
               </p>
               <p v-if="booking.is_online" class="mb-2">
-                <strong>Type:</strong> <i class="fas fa-video me-1"></i> Online Session
+                <strong>Type:</strong> <i class="fas fa-video me-1"></i> Online
+                Session
               </p>
               <p v-else class="mb-2">
-                <strong>Type:</strong> <i class="fas fa-map-marker-alt me-1"></i> In-person Session
+                <strong>Type:</strong>
+                <i class="fas fa-map-marker-alt me-1"></i> In-person Session
               </p>
               <p v-if="booking.location && !booking.is_online" class="mb-2">
                 <strong>Location:</strong> {{ booking.location }}
@@ -44,21 +82,41 @@
               <h6 class="text-muted">Participants</h6>
               <div class="mb-3">
                 <div class="d-flex align-items-center mb-2">
-                  <div class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                    {{ getInitials(booking.tutor?.first_name + ' ' + booking.tutor?.last_name) }}
+                  <div
+                    class="avatar-sm bg-primary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                    style="width: 32px; height: 32px"
+                  >
+                    {{
+                      getInitials(
+                        booking.tutor?.first_name +
+                          " " +
+                          booking.tutor?.last_name
+                      )
+                    }}
                   </div>
                   <div>
-                    <strong>Tutor:</strong><br>
-                    {{ booking.tutor?.first_name }} {{ booking.tutor?.last_name }}
+                    <strong>Tutor:</strong><br />
+                    {{ booking.tutor?.first_name }}
+                    {{ booking.tutor?.last_name }}
                   </div>
                 </div>
                 <div class="d-flex align-items-center">
-                  <div class="avatar-sm bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-                    {{ getInitials(booking.student?.first_name + ' ' + booking.student?.last_name) }}
+                  <div
+                    class="avatar-sm bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center me-2"
+                    style="width: 32px; height: 32px"
+                  >
+                    {{
+                      getInitials(
+                        booking.student?.first_name +
+                          " " +
+                          booking.student?.last_name
+                      )
+                    }}
                   </div>
                   <div>
-                    <strong>Student:</strong><br>
-                    {{ booking.student?.first_name }} {{ booking.student?.last_name }}
+                    <strong>Student:</strong><br />
+                    {{ booking.student?.first_name }}
+                    {{ booking.student?.last_name }}
                   </div>
                 </div>
               </div>
@@ -70,22 +128,39 @@
               <p class="mb-2">
                 <strong>Total Amount:</strong> ${{ booking.total_amount }}
               </p>
-              <span :class="getPaymentStatusClass(booking.payment_status)" class="badge">
+              <span
+                :class="getPaymentStatusClass(booking.payment_status)"
+                class="badge"
+              >
                 {{ formatPaymentStatus(booking.payment_status) }}
               </span>
             </div>
           </div>
 
           <!-- Meeting Links -->
-          <div v-if="booking.is_online && (booking.google_meet_link || booking.zoom_meeting_link)" class="mb-4">
+          <div
+            v-if="
+              booking.is_online &&
+              (booking.google_meet_link || booking.zoom_meeting_link)
+            "
+            class="mb-4"
+          >
             <h6 class="text-muted">Meeting Links</h6>
             <div v-if="booking.google_meet_link" class="mb-2">
-              <a :href="booking.google_meet_link" target="_blank" class="btn btn-outline-primary btn-sm me-2">
+              <a
+                :href="booking.google_meet_link"
+                target="_blank"
+                class="btn btn-outline-primary btn-sm me-2"
+              >
                 <i class="fab fa-google me-1"></i> Join Google Meet
               </a>
             </div>
             <div v-if="booking.zoom_meeting_link" class="mb-2">
-              <a :href="booking.zoom_meeting_link" target="_blank" class="btn btn-outline-primary btn-sm me-2">
+              <a
+                :href="booking.zoom_meeting_link"
+                target="_blank"
+                class="btn btn-outline-primary btn-sm me-2"
+              >
                 <i class="fab fa-zoom me-1"></i> Join Zoom Meeting
               </a>
             </div>
@@ -121,7 +196,10 @@
               @click="confirmBooking"
               :disabled="loading"
             >
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <span
+                v-if="loading"
+                class="spinner-border spinner-border-sm me-2"
+              ></span>
               <i class="fas fa-check me-2"></i>Confirm Booking
             </button>
 
@@ -131,7 +209,10 @@
               @click="completeBooking"
               :disabled="loading"
             >
-              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <span
+                v-if="loading"
+                class="spinner-border spinner-border-sm me-2"
+              ></span>
               <i class="fas fa-check-double me-2"></i>Mark as Completed
             </button>
 
@@ -145,7 +226,11 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="$emit('close')">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click="$emit('close')"
+          >
             Close
           </button>
         </div>
@@ -167,235 +252,290 @@
       @close="showCancelModal = false"
       @cancelled="handleCancelled"
     />
+
+    <!-- Reschedule Request Modal -->
+    <RescheduleRequestModal
+      v-if="
+        showRescheduleRequestModal && booking.reschedule_status === 'pending'
+      "
+      :booking="booking"
+      @close="showRescheduleRequestModal = false"
+      @responded="handleRescheduleRequestResponded"
+    />
   </div>
 </template>
 
 <script>
-import { ref, computed } from 'vue'
-import { useAuthStore } from '../../stores/auth'
-import { useToast } from '../../composables/useToast'
-import RescheduleModal from './RescheduleModal.vue'
-import CancelModal from './CancelModal.vue'
+import { ref, computed } from "vue";
+import { useAuthStore } from "../../stores/auth";
+import { useToast } from "../../composables/useToast";
+import RescheduleModal from "./RescheduleModal.vue";
+import CancelModal from "./CancelModal.vue";
+import RescheduleRequestModal from "./RescheduleRequestModal.vue";
 
 export default {
-  name: 'BookingDetailsModal',
+  name: "BookingDetailsModal",
   components: {
     RescheduleModal,
-    CancelModal
+    CancelModal,
+    RescheduleRequestModal,
   },
   props: {
     booking: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
-  emits: ['close', 'updated'],
+  emits: ["close", "updated"],
   setup(props, { emit }) {
-    const authStore = useAuthStore()
-    const { showToast } = useToast()
+    const authStore = useAuthStore();
+    const { showToast } = useToast();
 
     // Reactive data
-    const loading = ref(false)
-    const showRescheduleModal = ref(false)
-    const showCancelModal = ref(false)
+    const loading = ref(false);
+    const showRescheduleModal = ref(false);
+    const showCancelModal = ref(false);
+    const showRescheduleRequestModal = ref(false);
 
     // Computed properties
     const isTutor = computed(() => {
-      return authStore.userType === 'tutor' && authStore.user?.id === props.booking.tutor_id
-    })
+      return (
+        authStore.userType === "tutor" &&
+        authStore.user?.id === props.booking.tutor_id
+      );
+    });
 
     const isStudent = computed(() => {
-      return authStore.userType === 'student' && authStore.user?.id === props.booking.student_id
-    })
+      return (
+        authStore.userType === "student" &&
+        authStore.user?.id === props.booking.student_id
+      );
+    });
 
     const canReschedule = computed(() => {
-      return ['scheduled', 'confirmed'].includes(props.booking.status) && (isTutor.value || isStudent.value)
-    })
+      return (
+        ["scheduled", "confirmed"].includes(props.booking.status) &&
+        (isTutor.value || isStudent.value)
+      );
+    });
 
     const canCancel = computed(() => {
-      return ['scheduled', 'confirmed'].includes(props.booking.status) && (isTutor.value || isStudent.value)
-    })
+      return (
+        ["scheduled", "confirmed"].includes(props.booking.status) &&
+        (isTutor.value || isStudent.value)
+      );
+    });
 
     const canConfirm = computed(() => {
-      return props.booking.status === 'scheduled' && isTutor.value
-    })
+      return props.booking.status === "scheduled" && isTutor.value;
+    });
 
     const canComplete = computed(() => {
-      return props.booking.status === 'confirmed' && isTutor.value && isPastBooking()
-    })
+      return (
+        props.booking.status === "confirmed" && isTutor.value && isPastBooking()
+      );
+    });
 
     const canJoinMeeting = computed(() => {
-      return props.booking.is_online &&
-             ['confirmed'].includes(props.booking.status) &&
-             isWithinMeetingWindow()
-    })
+      return (
+        props.booking.is_online &&
+        ["confirmed"].includes(props.booking.status) &&
+        isWithinMeetingWindow()
+      );
+    });
+
+    const getRescheduleRequestMessage = computed(() => {
+      if (props.booking.reschedule_status !== "pending") return "";
+
+      const isRequester =
+        props.booking.reschedule_requested_by === authStore.user?.id;
+      if (isRequester) {
+        return "Waiting for the other party to respond to your reschedule request.";
+      } else {
+        const requesterType = props.booking.reschedule_requester_type;
+        return `The ${requesterType} has requested to reschedule this session.`;
+      }
+    });
 
     // Methods
     function getInitials(name) {
       return name
-        .split(' ')
-        .map(word => word[0])
-        .join('')
+        .split(" ")
+        .map((word) => word[0])
+        .join("")
         .toUpperCase()
-        .slice(0, 2)
+        .slice(0, 2);
     }
 
     function formatDate(dateString) {
       const options = {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }
-      return new Date(dateString).toLocaleDateString('en-US', options)
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      };
+      return new Date(dateString).toLocaleDateString("en-US", options);
     }
 
     function formatTime(dateString) {
-      return new Date(dateString).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      return new Date(dateString).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     }
 
     function calculateDuration(startTime, endTime) {
-      const start = new Date(startTime)
-      const end = new Date(endTime)
-      const duration = (end - start) / (1000 * 60 * 60) // Duration in hours
+      const start = new Date(startTime);
+      const end = new Date(endTime);
+      const duration = (end - start) / (1000 * 60 * 60); // Duration in hours
 
-      if (duration === 1) return '1 hour'
-      return `${duration} hours`
+      if (duration === 1) return "1 hour";
+      return `${duration} hours`;
     }
 
     function getStatusClass(status) {
       const classes = {
-        scheduled: 'bg-secondary',
-        confirmed: 'bg-success',
-        completed: 'bg-primary',
-        cancelled: 'bg-danger',
-        no_show: 'bg-warning'
-      }
-      return classes[status] || 'bg-secondary'
+        scheduled: "bg-secondary",
+        confirmed: "bg-success",
+        completed: "bg-primary",
+        cancelled: "bg-danger",
+        no_show: "bg-warning",
+      };
+      return classes[status] || "bg-secondary";
     }
 
     function getPaymentStatusClass(status) {
       const classes = {
-        pending: 'bg-warning',
-        paid: 'bg-success',
-        refunded: 'bg-info',
-        partially_refunded: 'bg-secondary'
-      }
-      return classes[status] || 'bg-secondary'
+        pending: "bg-warning",
+        paid: "bg-success",
+        refunded: "bg-info",
+        partially_refunded: "bg-secondary",
+      };
+      return classes[status] || "bg-secondary";
     }
 
     function formatStatus(status) {
       const formatted = {
-        scheduled: 'Scheduled',
-        confirmed: 'Confirmed',
-        completed: 'Completed',
-        cancelled: 'Cancelled',
-        no_show: 'No Show'
-      }
-      return formatted[status] || status
+        scheduled: "Scheduled",
+        confirmed: "Confirmed",
+        completed: "Completed",
+        cancelled: "Cancelled",
+        no_show: "No Show",
+      };
+      return formatted[status] || status;
     }
 
     function formatPaymentStatus(status) {
       const formatted = {
-        pending: 'Pending',
-        paid: 'Paid',
-        refunded: 'Refunded',
-        partially_refunded: 'Partially Refunded'
-      }
-      return formatted[status] || status
+        pending: "Pending",
+        paid: "Paid",
+        refunded: "Refunded",
+        partially_refunded: "Partially Refunded",
+      };
+      return formatted[status] || status;
     }
 
     function isPastBooking() {
-      return new Date(props.booking.end || props.booking.end_time) < new Date()
+      return new Date(props.booking.end || props.booking.end_time) < new Date();
     }
 
     function isWithinMeetingWindow() {
-      const now = new Date()
-      const startTime = new Date(props.booking.start || props.booking.start_time)
-      const endTime = new Date(props.booking.end || props.booking.end_time)
+      const now = new Date();
+      const startTime = new Date(
+        props.booking.start || props.booking.start_time
+      );
+      const endTime = new Date(props.booking.end || props.booking.end_time);
 
       // Allow joining 15 minutes before start time
-      const joinWindow = new Date(startTime.getTime() - 15 * 60 * 1000)
+      const joinWindow = new Date(startTime.getTime() - 15 * 60 * 1000);
 
-      return now >= joinWindow && now <= endTime
+      return now >= joinWindow && now <= endTime;
     }
 
     async function confirmBooking() {
       try {
-        loading.value = true
+        loading.value = true;
 
-        const response = await fetch(`/api/bookings/${props.booking.id}/confirm`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authStore.token}`
+        const response = await fetch(
+          `/api/bookings/${props.booking.id}/confirm`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${authStore.token}`,
+            },
           }
-        })
+        );
 
         if (!response.ok) {
-          throw new Error('Failed to confirm booking')
+          throw new Error("Failed to confirm booking");
         }
 
-        showToast('Booking confirmed successfully', 'success')
-        emit('updated')
-
+        showToast("Booking confirmed successfully", "success");
+        emit("updated");
       } catch (error) {
-        console.error('Error confirming booking:', error)
-        showToast('Failed to confirm booking', 'error')
+        console.error("Error confirming booking:", error);
+        showToast("Failed to confirm booking", "error");
       } finally {
-        loading.value = false
+        loading.value = false;
       }
     }
 
     async function completeBooking() {
       try {
-        loading.value = true
+        loading.value = true;
 
-        const response = await fetch(`/api/bookings/${props.booking.id}/complete`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${authStore.token}`
+        const response = await fetch(
+          `/api/bookings/${props.booking.id}/complete`,
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${authStore.token}`,
+            },
           }
-        })
+        );
 
         if (!response.ok) {
-          throw new Error('Failed to complete booking')
+          throw new Error("Failed to complete booking");
         }
 
-        showToast('Booking marked as completed', 'success')
-        emit('updated')
-
+        showToast("Booking marked as completed", "success");
+        emit("updated");
       } catch (error) {
-        console.error('Error completing booking:', error)
-        showToast('Failed to complete booking', 'error')
+        console.error("Error completing booking:", error);
+        showToast("Failed to complete booking", "error");
       } finally {
-        loading.value = false
+        loading.value = false;
       }
     }
 
     function joinMeeting() {
-      const meetLink = props.booking.google_meet_link || props.booking.zoom_meeting_link
+      const meetLink =
+        props.booking.google_meet_link || props.booking.zoom_meeting_link;
       if (meetLink) {
-        window.open(meetLink, '_blank')
+        window.open(meetLink, "_blank");
       }
     }
 
     function handleRescheduled() {
-      showRescheduleModal.value = false
-      emit('updated')
+      showRescheduleModal.value = false;
+      emit("updated");
     }
 
     function handleCancelled() {
-      showCancelModal.value = false
-      emit('updated')
+      showCancelModal.value = false;
+      emit("updated");
+    }
+
+    function handleRescheduleRequestResponded() {
+      showRescheduleRequestModal.value = false;
+      emit("updated");
     }
 
     return {
       loading,
       showRescheduleModal,
       showCancelModal,
+      showRescheduleRequestModal,
       isTutor,
       isStudent,
       canReschedule,
@@ -403,6 +543,7 @@ export default {
       canConfirm,
       canComplete,
       canJoinMeeting,
+      getRescheduleRequestMessage,
       getInitials,
       formatDate,
       formatTime,
@@ -415,10 +556,11 @@ export default {
       completeBooking,
       joinMeeting,
       handleRescheduled,
-      handleCancelled
-    }
-  }
-}
+      handleCancelled,
+      handleRescheduleRequestResponded,
+    };
+  },
+};
 </script>
 
 <style scoped>
@@ -601,5 +743,30 @@ strong {
 
 .flex-wrap {
   flex-wrap: wrap;
+}
+
+.alert-warning {
+  background-color: rgba(255, 193, 7, 0.15);
+  border: 1px solid rgba(255, 193, 7, 0.5);
+  color: #ffc107;
+}
+
+.btn-outline-warning {
+  border-color: #ffc107;
+  color: #ffc107;
+  background: transparent;
+  font-size: 0.875rem;
+  padding: 0.25rem 0.75rem;
+}
+
+.btn-outline-warning:hover {
+  background-color: #ffc107;
+  border-color: #ffc107;
+  color: #212529;
+}
+
+.alert p {
+  font-size: 0.875rem;
+  color: rgba(255, 193, 7, 0.9);
 }
 </style>

@@ -1262,6 +1262,81 @@ app.get('/messaging/bookings', verifyToken, async (req, res) => {
 
 // RabbitMQ functions removed - using direct Socket.io + Supabase messaging
 
+// System message endpoint (for other services to send messages with Socket.IO broadcast)
+app.post('/messaging/system-message', verifyToken, async (req, res) => {
+  try {
+    const { conversationId, content, messageType = 'text' } = req.body;
+
+    if (!conversationId || !content) {
+      return res.status(400).json({ error: 'conversationId and content are required' });
+    }
+
+    // Verify user is participant in conversation
+    const { data: conversation } = await supabase
+      .from('conversations')
+      .select('participant1_id, participant2_id')
+      .eq('id', conversationId)
+      .single();
+
+    if (!conversation || 
+        (conversation.participant1_id !== req.user.userId && 
+         conversation.participant2_id !== req.user.userId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Insert message into database
+    const { data: message, error: insertError } = await supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        sender_id: req.user.userId,
+        content: content,
+        message_type: messageType,
+        created_at: new Date().toISOString()
+      })
+      .select(`
+        *,
+        sender:sender_id (
+          first_name,
+          last_name,
+          user_type
+        )
+      `)
+      .single();
+
+    if (insertError) {
+      throw insertError;
+    }
+
+    // Broadcast message to conversation room via Socket.IO
+    console.log(`📢 Broadcasting ${messageType} message to room: conversation_${conversationId}`);
+    io.to(`conversation_${conversationId}`).emit('new_message', message);
+
+    // Update conversation last message
+    const lastMessagePreview = messageType === 'text' ? content : 
+                              messageType === 'reschedule_request' ? 'Reschedule request sent' :
+                              messageType === 'reschedule_accepted' ? 'Reschedule request accepted' :
+                              messageType === 'reschedule_rejected' ? 'Reschedule request declined' : 
+                              'New message';
+
+    await supabase
+      .from('conversations')
+      .update({
+        last_message_at: new Date().toISOString(),
+        last_message_content: lastMessagePreview
+      })
+      .eq('id', conversationId);
+
+    res.status(201).json({
+      message: 'System message sent successfully',
+      data: message
+    });
+  } catch (error) {
+    console.error('System message error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 

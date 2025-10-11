@@ -247,18 +247,36 @@
                             <div v-if="getBookingData(message)">
                               <p class="mb-2">
                                 <strong>Session Type:</strong>
-                                {{ getBookingData(message).isOnline ? 'Online Session' : 'On-site Session' }}
+                                {{
+                                  getBookingData(message).isOnline
+                                    ? "Online Session"
+                                    : "On-site Session"
+                                }}
                               </p>
-                              <p v-if="!getBookingData(message).isOnline && getBookingData(message).tuteeLocation" class="mb-2">
-                                <strong>Location:</strong> {{ getBookingData(message).tuteeLocation }}
+                              <p
+                                v-if="
+                                  !getBookingData(message).isOnline &&
+                                  getBookingData(message).tuteeLocation
+                                "
+                                class="mb-2"
+                              >
+                                <strong>Location:</strong>
+                                {{ getBookingData(message).tuteeLocation }}
                               </p>
-                              <p v-if="getBookingData(message).notes" class="mb-2">
-                                <strong>Notes:</strong> {{ getBookingData(message).notes }}
+                              <p
+                                v-if="getBookingData(message).notes"
+                                class="mb-2"
+                              >
+                                <strong>Notes:</strong>
+                                {{ getBookingData(message).notes }}
                               </p>
                             </div>
                             <div class="booking-actions">
                               <button
-                                v-if="message.senderId !== currentUserId && authStore.user?.user_type === 'tutor'"
+                                v-if="
+                                  message.senderId !== currentUserId &&
+                                  authStore.user?.user_type === 'tutor'
+                                "
                                 class="btn btn-primary btn-sm me-2"
                                 @click="handleBookingOffer(message)"
                               >
@@ -286,15 +304,27 @@
                             <div v-if="getBookingData(message)">
                               <p class="mb-2">
                                 <strong>Proposed Time:</strong>
-                                {{ formatDateTime(getBookingData(message).proposedTime) }}
+                                {{
+                                  formatDateTime(
+                                    getBookingData(message).proposedTime
+                                  )
+                                }}
                               </p>
-                              <p v-if="getBookingData(message).finalLocation" class="mb-2">
-                                <strong>Location:</strong> {{ getBookingData(message).finalLocation }}
+                              <p
+                                v-if="getBookingData(message).finalLocation"
+                                class="mb-2"
+                              >
+                                <strong>Location:</strong>
+                                {{ getBookingData(message).finalLocation }}
                               </p>
                             </div>
                             <div class="booking-actions">
                               <button
-                                v-if="message.senderId !== currentUserId && (authStore.user?.user_type === 'student' || authStore.user?.user_type === 'parent')"
+                                v-if="
+                                  message.senderId !== currentUserId &&
+                                  (authStore.user?.user_type === 'student' ||
+                                    authStore.user?.user_type === 'parent')
+                                "
                                 class="btn btn-success btn-sm me-2"
                                 @click="confirmBooking(message)"
                               >
@@ -304,7 +334,11 @@
                               <button
                                 v-if="message.senderId !== currentUserId"
                                 class="btn btn-outline-secondary btn-sm"
-                                @click="sendMessage('I would like to discuss alternative times')"
+                                @click="
+                                  sendMessage(
+                                    'I would like to discuss alternative times'
+                                  )
+                                "
                               >
                                 <i class="fas fa-comment me-1"></i>
                                 Discuss
@@ -315,26 +349,218 @@
 
                         <!-- Booking Confirmation Message -->
                         <div
-                          v-else-if="message.messageType === 'booking_confirmation'"
+                          v-else-if="
+                            message.messageType === 'booking_confirmation'
+                          "
                           class="message-content booking-message booking-confirmation"
                         >
                           <div class="booking-header">
                             <i class="fas fa-check-circle me-2"></i>
-                            <span class="booking-title">Booking Confirmed!</span>
+                            <span class="booking-title"
+                              >Booking Confirmed!</span
+                            >
                           </div>
                           <div class="booking-details">
                             <div v-if="getBookingData(message)">
                               <p class="mb-2">
                                 <strong>Time:</strong>
-                                {{ formatDateTime(getBookingData(message).confirmedTime) }}
+                                {{
+                                  formatDateTime(
+                                    getBookingData(message).confirmedTime
+                                  )
+                                }}
                               </p>
-                              <p v-if="getBookingData(message).location" class="mb-2">
-                                <strong>Location:</strong> {{ getBookingData(message).location }}
+                              <p
+                                v-if="getBookingData(message).location"
+                                class="mb-2"
+                              >
+                                <strong>Location:</strong>
+                                {{ getBookingData(message).location }}
                               </p>
                               <p class="mb-0 text-success">
                                 <i class="fas fa-check-circle me-1"></i>
                                 Session has been booked and added to calendar
                               </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Reschedule Request Message -->
+                        <div
+                          v-else-if="
+                            message.messageType === 'reschedule_request'
+                          "
+                          class="message-content booking-message reschedule-request"
+                        >
+                          <div class="booking-header">
+                            <i class="fas fa-calendar-alt me-2"></i>
+                            <span class="booking-title"
+                              >Reschedule Request</span
+                            >
+                          </div>
+                          <div class="booking-details">
+                            <div v-if="getBookingData(message)">
+                              <p class="mb-2">
+                                <strong>Subject:</strong>
+                                {{ getBookingData(message).subject }}
+                              </p>
+                              <p class="mb-2">
+                                <strong>Current Time:</strong>
+                                {{
+                                  formatDateTime(
+                                    getBookingData(message).currentStartTime
+                                  )
+                                }}
+                                -
+                                {{
+                                  formatTime(
+                                    getBookingData(message).currentEndTime
+                                  )
+                                }}
+                              </p>
+                              <p class="mb-2 text-primary">
+                                <strong>Proposed New Time:</strong>
+                                {{
+                                  formatDateTime(
+                                    getBookingData(message).proposedStartTime
+                                  )
+                                }}
+                                -
+                                {{
+                                  formatTime(
+                                    getBookingData(message).proposedEndTime
+                                  )
+                                }}
+                              </p>
+                              <p
+                                v-if="getBookingData(message).reason"
+                                class="mb-2"
+                              >
+                                <strong>Reason:</strong>
+                                {{ getBookingData(message).reason }}
+                              </p>
+                            </div>
+                            <div class="booking-actions">
+                              <button
+                                v-if="message.senderId !== currentUserId"
+                                class="btn btn-primary btn-sm me-2"
+                                @click="$router.push('/calendar')"
+                              >
+                                <i class="fas fa-calendar-check me-1"></i>
+                                View in Calendar
+                              </button>
+                              <span v-else class="booking-status text-warning">
+                                <i class="fas fa-clock me-1"></i>
+                                Awaiting response
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Reschedule Accepted Message -->
+                        <div
+                          v-else-if="
+                            message.messageType === 'reschedule_accepted'
+                          "
+                          class="message-content booking-message reschedule-accepted"
+                        >
+                          <div class="booking-header">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span class="booking-title"
+                              >Reschedule Accepted</span
+                            >
+                          </div>
+                          <div class="booking-details">
+                            <div v-if="getBookingData(message)">
+                              <p class="mb-2 text-success">
+                                <i class="fas fa-check-circle me-1"></i>
+                                Your reschedule request has been accepted!
+                              </p>
+                              <p class="mb-2">
+                                <strong>New Time:</strong>
+                                {{
+                                  formatDateTime(
+                                    getBookingData(message).newStartTime
+                                  )
+                                }}
+                                -
+                                {{
+                                  formatTime(getBookingData(message).newEndTime)
+                                }}
+                              </p>
+                              <p
+                                v-if="getBookingData(message).responseMessage"
+                                class="mb-2"
+                              >
+                                <strong>Message:</strong>
+                                {{ getBookingData(message).responseMessage }}
+                              </p>
+                            </div>
+                            <div class="booking-actions">
+                              <button
+                                class="btn btn-outline-primary btn-sm"
+                                @click="$router.push('/calendar')"
+                              >
+                                <i class="fas fa-calendar me-1"></i>
+                                View Calendar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Reschedule Rejected Message -->
+                        <div
+                          v-else-if="
+                            message.messageType === 'reschedule_rejected'
+                          "
+                          class="message-content booking-message reschedule-rejected"
+                        >
+                          <div class="booking-header">
+                            <i class="fas fa-times-circle me-2"></i>
+                            <span class="booking-title"
+                              >Reschedule Declined</span
+                            >
+                          </div>
+                          <div class="booking-details">
+                            <div v-if="getBookingData(message)">
+                              <p class="mb-2 text-danger">
+                                <i class="fas fa-times-circle me-1"></i>
+                                Your reschedule request was declined
+                              </p>
+                              <p class="mb-2">
+                                <strong>Original Time Remains:</strong>
+                                {{
+                                  formatDateTime(
+                                    getBookingData(message).originalStartTime
+                                  )
+                                }}
+                                -
+                                {{
+                                  formatTime(
+                                    getBookingData(message).originalEndTime
+                                  )
+                                }}
+                              </p>
+                              <p
+                                v-if="getBookingData(message).responseMessage"
+                                class="mb-2"
+                              >
+                                <strong>Message:</strong>
+                                {{ getBookingData(message).responseMessage }}
+                              </p>
+                            </div>
+                            <div class="booking-actions">
+                              <button
+                                class="btn btn-outline-secondary btn-sm"
+                                @click="
+                                  sendMessage(
+                                    'Can we discuss alternative times?'
+                                  )
+                                "
+                              >
+                                <i class="fas fa-comment me-1"></i>
+                                Discuss
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -621,14 +847,20 @@
     </div>
 
     <!-- Booking Offer Modal -->
-    <div v-if="showBookingOfferModal" class="modal-overlay" @click="showBookingOfferModal = false">
+    <div
+      v-if="showBookingOfferModal"
+      class="modal-overlay"
+      @click="showBookingOfferModal = false"
+    >
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>
             <i class="fas fa-calendar-plus me-2 text-primary"></i>
             Book a Session
           </h3>
-          <button @click="showBookingOfferModal = false" class="close-btn">&times;</button>
+          <button @click="showBookingOfferModal = false" class="close-btn">
+            &times;
+          </button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="createBookingOffer">
@@ -708,29 +940,53 @@
     </div>
 
     <!-- Calendar Modal -->
-    <div v-if="showCalendarModal" class="modal-overlay" @click="showCalendarModal = false">
+    <div
+      v-if="showCalendarModal"
+      class="modal-overlay"
+      @click="showCalendarModal = false"
+    >
       <div class="modal-content calendar-modal" @click.stop>
         <div class="modal-header">
           <h3>
             <i class="fas fa-calendar me-2 text-primary"></i>
             Availability Calendar
           </h3>
-          <button @click="showCalendarModal = false" class="close-btn">&times;</button>
+          <button @click="showCalendarModal = false" class="close-btn">
+            &times;
+          </button>
         </div>
         <div class="modal-body">
           <div class="calendar-container">
             <div class="calendar-header">
-              <button class="btn btn-sm btn-outline-secondary" @click="previousMonth">
+              <button
+                class="btn btn-sm btn-outline-secondary"
+                @click="previousMonth"
+              >
                 <i class="fas fa-chevron-left"></i>
               </button>
               <h5 class="mb-0">{{ currentMonthYear }}</h5>
-              <button class="btn btn-sm btn-outline-secondary" @click="nextMonth">
+              <button
+                class="btn btn-sm btn-outline-secondary"
+                @click="nextMonth"
+              >
                 <i class="fas fa-chevron-right"></i>
               </button>
             </div>
             <div class="calendar-grid">
               <div class="calendar-weekdays">
-                <div v-for="day in ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']" :key="day" class="calendar-weekday">
+                <div
+                  v-for="day in [
+                    'Sun',
+                    'Mon',
+                    'Tue',
+                    'Wed',
+                    'Thu',
+                    'Fri',
+                    'Sat',
+                  ]"
+                  :key="day"
+                  class="calendar-weekday"
+                >
                   {{ day }}
                 </div>
               </div>
@@ -741,8 +997,8 @@
                   class="calendar-day"
                   :class="{
                     'other-month': !day.currentMonth,
-                    'today': day.isToday,
-                    'has-availability': day.hasAvailability
+                    today: day.isToday,
+                    'has-availability': day.hasAvailability,
                   }"
                   @click="selectDate(day)"
                 >
@@ -757,7 +1013,7 @@
                   v-for="slot in timeSlots"
                   :key="slot.time"
                   class="btn btn-outline-primary btn-sm m-1"
-                  :class="{ 'active': selectedTimeSlot === slot.time }"
+                  :class="{ active: selectedTimeSlot === slot.time }"
                   @click="selectedTimeSlot = slot.time"
                   :disabled="!slot.available"
                 >
@@ -791,14 +1047,20 @@
     </div>
 
     <!-- Booking Proposal Modal -->
-    <div v-if="showBookingProposalModal" class="modal-overlay" @click="showBookingProposalModal = false">
+    <div
+      v-if="showBookingProposalModal"
+      class="modal-overlay"
+      @click="showBookingProposalModal = false"
+    >
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>
             <i class="fas fa-calendar-check me-2 text-primary"></i>
             Respond to Booking Request
           </h3>
-          <button @click="showBookingProposalModal = false" class="close-btn">&times;</button>
+          <button @click="showBookingProposalModal = false" class="close-btn">
+            &times;
+          </button>
         </div>
         <div class="modal-body">
           <div v-if="selectedBookingOffer" class="booking-request-details mb-3">
@@ -807,10 +1069,15 @@
                 <h6 class="card-title">Booking Request Details</h6>
                 <p class="mb-2">
                   <strong>Session Type:</strong>
-                  {{ selectedBookingOffer.isOnline ? 'Online Session' : 'On-site Session' }}
+                  {{
+                    selectedBookingOffer.isOnline
+                      ? "Online Session"
+                      : "On-site Session"
+                  }}
                 </p>
                 <p v-if="selectedBookingOffer.tuteeLocation" class="mb-2">
-                  <strong>Preferred Location:</strong> {{ selectedBookingOffer.tuteeLocation }}
+                  <strong>Preferred Location:</strong>
+                  {{ selectedBookingOffer.tuteeLocation }}
                 </p>
                 <p v-if="selectedBookingOffer.notes" class="mb-0">
                   <strong>Notes:</strong> {{ selectedBookingOffer.notes }}
@@ -856,7 +1123,8 @@
                   value="tutee"
                 />
                 <label class="form-check-label" for="useTuteeLocation">
-                  Use tutee's suggested location: {{ selectedBookingOffer.tuteeLocation }}
+                  Use tutee's suggested location:
+                  {{ selectedBookingOffer.tuteeLocation }}
                 </label>
               </div>
               <div class="form-check mb-2">
@@ -872,7 +1140,10 @@
                   Use my location
                 </label>
               </div>
-              <div v-if="bookingProposal.locationChoice === 'tutor'" class="mt-2">
+              <div
+                v-if="bookingProposal.locationChoice === 'tutor'"
+                class="mt-2"
+              >
                 <input
                   type="text"
                   class="form-control"
@@ -884,7 +1155,9 @@
 
             <!-- Additional Notes -->
             <div class="mb-3">
-              <label class="form-label fw-bold">Additional Notes (Optional)</label>
+              <label class="form-label fw-bold"
+                >Additional Notes (Optional)</label
+              >
               <textarea
                 class="form-control"
                 v-model="bookingProposal.notes"
@@ -956,17 +1229,17 @@ export default {
     // Booking offer form data
     const bookingOffer = ref({
       isOnline: true,
-      tuteeLocation: '',
-      notes: ''
+      tuteeLocation: "",
+      notes: "",
     });
 
     // Booking proposal form data
     const bookingProposal = ref({
-      proposedDate: '',
-      proposedTime: '',
-      locationChoice: 'tutee',
-      tutorLocation: '',
-      notes: ''
+      proposedDate: "",
+      proposedTime: "",
+      locationChoice: "tutee",
+      tutorLocation: "",
+      notes: "",
     });
 
     // Calendar variables
@@ -1006,30 +1279,57 @@ export default {
 
       // Students and parents can book sessions with tutors
       return (
-        (currentUserType === 'student' || currentUserType === 'parent') &&
-        participantType === 'tutor'
+        (currentUserType === "student" || currentUserType === "parent") &&
+        participantType === "tutor"
       );
     });
 
     // Calendar computed properties
     const currentMonthYear = computed(() => {
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
       ];
       return `${months[currentMonth.value]} ${currentYear.value}`;
     });
 
     const selectedDateFormatted = computed(() => {
-      if (!selectedDate.value) return '';
-      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      if (!selectedDate.value) return "";
+      const options = {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      };
       return selectedDate.value.toLocaleDateString(undefined, options);
     });
 
     const calendarDays = computed(() => {
-      const firstDay = new Date(currentYear.value, currentMonth.value, 1).getDay();
-      const daysInMonth = new Date(currentYear.value, currentMonth.value + 1, 0).getDate();
-      const daysInPrevMonth = new Date(currentYear.value, currentMonth.value, 0).getDate();
+      const firstDay = new Date(
+        currentYear.value,
+        currentMonth.value,
+        1
+      ).getDay();
+      const daysInMonth = new Date(
+        currentYear.value,
+        currentMonth.value + 1,
+        0
+      ).getDate();
+      const daysInPrevMonth = new Date(
+        currentYear.value,
+        currentMonth.value,
+        0
+      ).getDate();
 
       const days = [];
       const today = new Date();
@@ -1038,10 +1338,14 @@ export default {
       for (let i = firstDay - 1; i >= 0; i--) {
         days.push({
           day: daysInPrevMonth - i,
-          date: new Date(currentYear.value, currentMonth.value - 1, daysInPrevMonth - i),
+          date: new Date(
+            currentYear.value,
+            currentMonth.value - 1,
+            daysInPrevMonth - i
+          ),
           currentMonth: false,
           isToday: false,
-          hasAvailability: false
+          hasAvailability: false,
         });
       }
 
@@ -1053,7 +1357,7 @@ export default {
           date,
           currentMonth: true,
           isToday: date.toDateString() === today.toDateString(),
-          hasAvailability: Math.random() > 0.3 // Simulate some availability
+          hasAvailability: Math.random() > 0.3, // Simulate some availability
         });
       }
 
@@ -1065,7 +1369,7 @@ export default {
           date: new Date(currentYear.value, currentMonth.value + 1, day),
           currentMonth: false,
           isToday: false,
-          hasAvailability: false
+          hasAvailability: false,
         });
       }
 
@@ -1076,10 +1380,12 @@ export default {
       const slots = [];
       for (let hour = 9; hour <= 21; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
-          const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+          const time = `${hour.toString().padStart(2, "0")}:${minute
+            .toString()
+            .padStart(2, "0")}`;
           slots.push({
             time,
-            available: Math.random() > 0.4 // Simulate availability
+            available: Math.random() > 0.4, // Simulate availability
           });
         }
       }
@@ -1087,7 +1393,9 @@ export default {
     });
 
     const canSendProposal = computed(() => {
-      return authStore.user?.user_type === 'tutor' && selectedBookingOffer.value;
+      return (
+        authStore.user?.user_type === "tutor" && selectedBookingOffer.value
+      );
     });
 
     const formatTime = (dateString) => {
@@ -1875,40 +2183,40 @@ export default {
 
       isCreatingBooking.value = true;
       try {
-        const response = await fetch('/api/messaging/booking-offers', {
-          method: 'POST',
+        const response = await fetch("/api/messaging/booking-offers", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authStore.token}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authStore.token}`,
           },
           body: JSON.stringify({
             conversationId: selectedConversation.value.id,
             isOnline: bookingOffer.value.isOnline,
             tuteeLocation: bookingOffer.value.tuteeLocation,
-            notes: bookingOffer.value.notes
-          })
+            notes: bookingOffer.value.notes,
+          }),
         });
 
         if (!response.ok) {
-          throw new Error('Failed to create booking offer');
+          throw new Error("Failed to create booking offer");
         }
 
         const data = await response.json();
-        console.log('Booking offer created:', data);
+        console.log("Booking offer created:", data);
 
         // Reset form and close modal
         bookingOffer.value = {
           isOnline: true,
-          tuteeLocation: '',
-          notes: ''
+          tuteeLocation: "",
+          notes: "",
         };
         showBookingOfferModal.value = false;
 
         // Show success message
-        alert('Booking request sent successfully!');
+        alert("Booking request sent successfully!");
       } catch (error) {
-        console.error('Error creating booking offer:', error);
-        alert('Failed to send booking request. Please try again.');
+        console.error("Error creating booking offer:", error);
+        alert("Failed to send booking request. Please try again.");
       } finally {
         isCreatingBooking.value = false;
       }
@@ -1919,76 +2227,80 @@ export default {
 
       // Validate required fields
       if (!bookingProposal.value.proposedDate) {
-        alert('Please select a date for the booking');
+        alert("Please select a date for the booking");
         return;
       }
       if (!bookingProposal.value.proposedTime) {
-        alert('Please select a time for the booking');
+        alert("Please select a time for the booking");
         return;
       }
 
       isCreatingProposal.value = true;
       try {
-        const proposedDateTime = new Date(`${bookingProposal.value.proposedDate}T${bookingProposal.value.proposedTime}`);
+        const proposedDateTime = new Date(
+          `${bookingProposal.value.proposedDate}T${bookingProposal.value.proposedTime}`
+        );
 
         // Check if the date is valid
         if (isNaN(proposedDateTime.getTime())) {
-          throw new Error('Invalid date or time selected');
+          throw new Error("Invalid date or time selected");
         }
 
-        let finalLocation = '';
+        let finalLocation = "";
         if (selectedBookingOffer.value.isOnline) {
-          finalLocation = 'Online Session';
-        } else if (bookingProposal.value.locationChoice === 'tutee') {
+          finalLocation = "Online Session";
+        } else if (bookingProposal.value.locationChoice === "tutee") {
           finalLocation = selectedBookingOffer.value.tuteeLocation;
         } else {
           finalLocation = bookingProposal.value.tutorLocation;
           if (!finalLocation) {
-            alert('Please enter a location for the session');
+            alert("Please enter a location for the session");
             isCreatingProposal.value = false;
             return;
           }
         }
 
-        const response = await fetch('/api/messaging/booking-proposals', {
-          method: 'POST',
+        const response = await fetch("/api/messaging/booking-proposals", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authStore.token}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authStore.token}`,
           },
           body: JSON.stringify({
             bookingOfferId: selectedBookingOffer.value.id,
             proposedTime: proposedDateTime.toISOString(),
             tutorLocation: bookingProposal.value.tutorLocation,
-            finalLocation: finalLocation
-          })
+            finalLocation: finalLocation,
+          }),
         });
 
         if (!response.ok) {
           const errorData = await response.json();
-          console.error('Backend error:', errorData);
-          throw new Error(errorData.error || 'Failed to create booking proposal');
+          console.error("Backend error:", errorData);
+          throw new Error(
+            errorData.error || "Failed to create booking proposal"
+          );
         }
 
         const data = await response.json();
-        console.log('Booking proposal created:', data);
+        console.log("Booking proposal created:", data);
 
         // Reset form and close modal
         bookingProposal.value = {
-          proposedDate: '',
-          proposedTime: '',
-          locationChoice: 'tutee',
-          tutorLocation: '',
-          notes: ''
+          proposedDate: "",
+          proposedTime: "",
+          locationChoice: "tutee",
+          tutorLocation: "",
+          notes: "",
         };
         showBookingProposalModal.value = false;
         selectedBookingOffer.value = null;
 
         // Show success message
-        alert('Booking proposal sent successfully!');
+        alert("Booking proposal sent successfully!");
       } catch (error) {
-        console.error('Error creating booking proposal:', error);
-        alert('Failed to send booking proposal. Please try again.');
+        console.error("Error creating booking proposal:", error);
+        alert("Failed to send booking proposal. Please try again.");
       } finally {
         isCreatingProposal.value = false;
       }
@@ -2026,35 +2338,35 @@ export default {
       isSendingProposal.value = true;
       try {
         const proposedDateTime = new Date(selectedDate.value);
-        const [hours, minutes] = selectedTimeSlot.value.split(':');
+        const [hours, minutes] = selectedTimeSlot.value.split(":");
         proposedDateTime.setHours(parseInt(hours), parseInt(minutes));
 
-        const response = await fetch('/api/messaging/booking-proposals', {
-          method: 'POST',
+        const response = await fetch("/api/messaging/booking-proposals", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authStore.token}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authStore.token}`,
           },
           body: JSON.stringify({
             bookingOfferId: selectedBookingOffer.value?.id,
             proposedTime: proposedDateTime.toISOString(),
-            tutorLocation: '',
-            finalLocation: 'Tutor Location'
-          })
+            tutorLocation: "",
+            finalLocation: "Tutor Location",
+          }),
         });
 
         if (!response.ok) {
-          throw new Error('Failed to create booking proposal');
+          throw new Error("Failed to create booking proposal");
         }
 
         showCalendarModal.value = false;
         selectedDate.value = null;
         selectedTimeSlot.value = null;
 
-        alert('Booking proposal sent successfully!');
+        alert("Booking proposal sent successfully!");
       } catch (error) {
-        console.error('Error sending booking proposal:', error);
-        alert('Failed to send booking proposal. Please try again.');
+        console.error("Error sending booking proposal:", error);
+        alert("Failed to send booking proposal. Please try again.");
       } finally {
         isSendingProposal.value = false;
       }
@@ -2065,21 +2377,21 @@ export default {
       try {
         return JSON.parse(message.content);
       } catch (error) {
-        console.error('Error parsing booking data:', error);
+        console.error("Error parsing booking data:", error);
         return null;
       }
     };
 
     const formatDateTime = (dateTimeString) => {
-      if (!dateTimeString) return '';
+      if (!dateTimeString) return "";
       const date = new Date(dateTimeString);
-      return date.toLocaleString('en-US', {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
+      return date.toLocaleString("en-US", {
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
       });
     };
 
@@ -2090,7 +2402,7 @@ export default {
           id: bookingData.bookingOfferId,
           isOnline: bookingData.isOnline,
           tuteeLocation: bookingData.tuteeLocation,
-          notes: bookingData.notes
+          notes: bookingData.notes,
         };
         showBookingProposalModal.value = true;
       }
@@ -2101,29 +2413,31 @@ export default {
       if (!bookingData) return;
 
       try {
-        const response = await fetch('/api/messaging/booking-confirmations', {
-          method: 'POST',
+        const response = await fetch("/api/messaging/booking-confirmations", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authStore.token}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authStore.token}`,
           },
           body: JSON.stringify({
-            bookingOfferId: bookingData.bookingOfferId
-          })
+            bookingOfferId: bookingData.bookingOfferId,
+          }),
         });
 
         if (!response.ok) {
-          throw new Error('Failed to confirm booking');
+          throw new Error("Failed to confirm booking");
         }
 
         const data = await response.json();
-        console.log('Booking confirmed:', data);
+        console.log("Booking confirmed:", data);
 
         // Show success message
-        alert('Booking confirmed successfully! The session has been added to your calendar.');
+        alert(
+          "Booking confirmed successfully! The session has been added to your calendar."
+        );
       } catch (error) {
-        console.error('Error confirming booking:', error);
-        alert('Failed to confirm booking. Please try again.');
+        console.error("Error confirming booking:", error);
+        alert("Failed to confirm booking. Please try again.");
       }
     };
 
@@ -2276,10 +2590,26 @@ export default {
             // and message is from another user
             if (message.sender_id !== currentUserId.value && message.sender) {
               const senderName = `${message.sender.first_name} ${message.sender.last_name}`;
-              const messagePreview =
-                message.message_type === "image"
-                  ? "📷 Sent an image"
-                  : message.content;
+
+              // Generate user-friendly message preview based on message type
+              let messagePreview;
+              if (message.message_type === "image") {
+                messagePreview = "📷 Sent an image";
+              } else if (message.message_type === "reschedule_request") {
+                messagePreview = "📅 Reschedule booking request";
+              } else if (message.message_type === "reschedule_accepted") {
+                messagePreview = "✅ Reschedule request accepted";
+              } else if (message.message_type === "reschedule_rejected") {
+                messagePreview = "❌ Reschedule request rejected";
+              } else if (message.message_type === "booking_offer") {
+                messagePreview = "📋 Booking offer";
+              } else if (message.message_type === "booking_proposal") {
+                messagePreview = "📝 Booking proposal";
+              } else if (message.message_type === "booking_confirmation") {
+                messagePreview = "✅ Booking confirmed";
+              } else {
+                messagePreview = message.content;
+              }
 
               showMessageNotification({
                 senderName,
@@ -3256,7 +3586,11 @@ i.text-primary {
 
 /* Booking Actions */
 .booking-actions {
-  background: linear-gradient(135deg, rgba(255, 140, 66, 0.1), rgba(255, 210, 63, 0.05)) !important;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 140, 66, 0.1),
+    rgba(255, 210, 63, 0.05)
+  ) !important;
   border-bottom: 2px solid var(--cyber-orange, #ff8c42) !important;
 }
 
@@ -3267,7 +3601,11 @@ i.text-primary {
 }
 
 .booking-actions .btn-primary {
-  background: linear-gradient(45deg, var(--cyber-orange, #ff8c42), var(--cyber-yellow, #ffd23f)) !important;
+  background: linear-gradient(
+    45deg,
+    var(--cyber-orange, #ff8c42),
+    var(--cyber-yellow, #ffd23f)
+  ) !important;
   border: 2px solid var(--cyber-orange, #ff8c42) !important;
 }
 
@@ -3536,14 +3874,16 @@ i.text-primary {
   font-weight: 600;
 }
 
-.form-control, .form-select {
+.form-control,
+.form-select {
   background: #2c2c2c;
   border: 1px solid #424242;
   color: #ffffff;
   border-radius: 6px;
 }
 
-.form-control:focus, .form-select:focus {
+.form-control:focus,
+.form-select:focus {
   background: #2c2c2c;
   border-color: #ff8c42;
   box-shadow: 0 0 0 2px rgba(255, 140, 66, 0.2);
@@ -3585,7 +3925,11 @@ i.text-primary {
 }
 
 .booking-header {
-  background: linear-gradient(45deg, rgba(255, 140, 66, 0.2), rgba(255, 210, 63, 0.1));
+  background: linear-gradient(
+    45deg,
+    rgba(255, 140, 66, 0.2),
+    rgba(255, 210, 63, 0.1)
+  );
   padding: 12px 16px;
   border-bottom: 1px solid #424242;
   display: flex;
@@ -3595,18 +3939,57 @@ i.text-primary {
 }
 
 .booking-offer .booking-header {
-  background: linear-gradient(45deg, rgba(255, 140, 66, 0.2), rgba(255, 210, 63, 0.1));
+  background: linear-gradient(
+    45deg,
+    rgba(255, 140, 66, 0.2),
+    rgba(255, 210, 63, 0.1)
+  );
   border-bottom: 1px solid #ff8c42;
 }
 
 .booking-proposal .booking-header {
-  background: linear-gradient(45deg, rgba(40, 167, 69, 0.2), rgba(40, 167, 69, 0.1));
+  background: linear-gradient(
+    45deg,
+    rgba(40, 167, 69, 0.2),
+    rgba(40, 167, 69, 0.1)
+  );
   border-bottom: 1px solid #28a745;
 }
 
 .booking-confirmation .booking-header {
-  background: linear-gradient(45deg, rgba(40, 167, 69, 0.2), rgba(40, 167, 69, 0.1));
+  background: linear-gradient(
+    45deg,
+    rgba(40, 167, 69, 0.2),
+    rgba(40, 167, 69, 0.1)
+  );
   border-bottom: 1px solid #28a745;
+}
+
+.reschedule-request .booking-header {
+  background: linear-gradient(
+    45deg,
+    rgba(13, 110, 253, 0.2),
+    rgba(13, 110, 253, 0.1)
+  );
+  border-bottom: 1px solid #0d6efd;
+}
+
+.reschedule-accepted .booking-header {
+  background: linear-gradient(
+    45deg,
+    rgba(40, 167, 69, 0.2),
+    rgba(40, 167, 69, 0.1)
+  );
+  border-bottom: 1px solid #28a745;
+}
+
+.reschedule-rejected .booking-header {
+  background: linear-gradient(
+    45deg,
+    rgba(220, 53, 69, 0.2),
+    rgba(220, 53, 69, 0.1)
+  );
+  border-bottom: 1px solid #dc3545;
 }
 
 .booking-title {

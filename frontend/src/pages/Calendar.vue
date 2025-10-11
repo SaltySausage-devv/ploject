@@ -14,11 +14,7 @@
             </div>
           </div>
 
-          <FullCalendar
-            v-else
-            ref="calendarRef"
-            :options="calendarOptions"
-          />
+          <FullCalendar v-else ref="calendarRef" :options="calendarOptions" />
         </div>
       </div>
     </div>
@@ -30,50 +26,48 @@
       @close="selectedBooking = null"
       @updated="handleBookingUpdated"
     />
-
-    </div>
+  </div>
 </template>
 
 <script>
-import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '../stores/auth'
-import FullCalendar from '@fullcalendar/vue3'
-import dayGridPlugin from '@fullcalendar/daygrid'
-import timeGridPlugin from '@fullcalendar/timegrid'
-import interactionPlugin from '@fullcalendar/interaction'
-import listPlugin from '@fullcalendar/list'
-import BookingDetailsModal from '../components/calendar/BookingDetailsModal.vue'
-import { useToast } from '../composables/useToast'
+import { ref, computed, onMounted } from "vue";
+import { useAuthStore } from "../stores/auth";
+import FullCalendar from "@fullcalendar/vue3";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import listPlugin from "@fullcalendar/list";
+import BookingDetailsModal from "../components/calendar/BookingDetailsModal.vue";
+import { useToast } from "../composables/useToast";
 
 export default {
-  name: 'Calendar',
+  name: "Calendar",
   components: {
     FullCalendar,
-    BookingDetailsModal
+    BookingDetailsModal,
   },
   setup() {
-    const authStore = useAuthStore()
-    const { showToast } = useToast()
+    const authStore = useAuthStore();
+    const { showToast } = useToast();
 
     // Reactive data
-    const loading = ref(true)
-    const bookings = ref([])
-    const selectedBooking = ref(null)
-    const calendarRef = ref(null)
+    const loading = ref(true);
+    const bookings = ref([]);
+    const selectedBooking = ref(null);
+    const calendarRef = ref(null);
 
-  
     // Computed properties
-    const userType = computed(() => authStore.userType)
-    const currentUserId = computed(() => authStore.user?.id)
+    const userType = computed(() => authStore.userType);
+    const currentUserId = computed(() => authStore.user?.id);
 
     // Calendar configuration
     const calendarOptions = computed(() => ({
       plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin],
-      initialView: 'dayGridMonth',
+      initialView: "dayGridMonth",
       headerToolbar: {
-        left: 'prev,next today',
-        center: 'title',
-        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        left: "prev,next today",
+        center: "title",
+        right: "dayGridMonth,timeGridWeek,timeGridDay",
       },
       editable: true,
       selectable: true,
@@ -86,53 +80,82 @@ export default {
       eventDrop: handleEventDrop,
       eventResize: handleEventResize,
       eventDidMount: handleEventDidMount,
-      height: '700px',
+      height: "700px",
       aspectRatio: 1.5,
       eventTimeFormat: {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
       },
       views: {
         dayGridMonth: {
-          titleFormat: { year: 'numeric', month: 'long' }
+          titleFormat: { year: "numeric", month: "long" },
         },
         timeGridWeek: {
-          titleFormat: { year: 'numeric', month: 'short', day: 'numeric' }
+          titleFormat: { year: "numeric", month: "short", day: "numeric" },
         },
         timeGridDay: {
-          titleFormat: { year: 'numeric', month: 'long', day: 'numeric' }
-        }
-      }
-    }))
+          titleFormat: { year: "numeric", month: "long", day: "numeric" },
+        },
+      },
+    }));
 
     // Methods
     async function fetchCalendarData() {
       try {
-        loading.value = true
+        loading.value = true;
+
+        // Check if user is logged in
+        console.log("📅 Calendar: Checking auth state...", {
+          hasToken: !!authStore.token,
+          hasUser: !!authStore.user,
+          token: authStore.token?.substring(0, 20) + "...",
+          userId: authStore.user?.id,
+        });
+
+        if (!authStore.token || !authStore.user) {
+          console.warn(
+            "⚠️ No auth token or user found, showing empty calendar"
+          );
+          bookings.value = [];
+          loading.value = false;
+          return;
+        }
 
         // Fetch bookings for a wide date range (1 year back to 2 years forward)
-        const startDate = new Date()
-        startDate.setFullYear(startDate.getFullYear() - 1)
-        const endDate = new Date()
-        endDate.setFullYear(endDate.getFullYear() + 2)
+        const startDate = new Date();
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        const endDate = new Date();
+        endDate.setFullYear(endDate.getFullYear() + 2);
 
-        const bookingsResponse = await fetch(`/api/calendar?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
-          headers: {
-            'Authorization': `Bearer ${authStore.token}`
+        const bookingsResponse = await fetch(
+          `/api/calendar?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authStore.token}`,
+            },
           }
-        })
+        );
 
         if (bookingsResponse.ok) {
-          const { data } = await bookingsResponse.json()
-          console.log('📅 Received bookings from API:', data)
-          console.log('📊 Total bookings received:', data?.length || 0)
+          const { data } = await bookingsResponse.json();
+          console.log("📅 Received bookings from API:", data);
+          console.log("📊 Total bookings received:", data?.length || 0);
 
           // Filter out cancelled bookings
-          const allBookings = (data || []).filter(booking => booking.status !== 'cancelled')
+          const allBookings = (data || []).filter(
+            (booking) => booking.status !== "cancelled"
+          );
 
-          bookings.value = allBookings.map(booking => {
-            console.log('Mapping booking:', booking.id, 'Status:', booking.status, 'Start:', booking.start)
+          bookings.value = allBookings.map((booking) => {
+            console.log(
+              "Mapping booking:",
+              booking.id,
+              "Status:",
+              booking.status,
+              "Start:",
+              booking.start
+            );
             return {
               id: booking.id,
               title: booking.title || `${booking.subject} - ${booking.level}`,
@@ -141,118 +164,145 @@ export default {
               backgroundColor: getEventColor(booking.status),
               borderColor: getEventColor(booking.status),
               extendedProps: {
-                type: 'booking',
-                ...booking
-              }
-            }
-          })
-          console.log('✅ Formatted bookings for FullCalendar:', bookings.value)
-          console.log('📊 Total events to display:', bookings.value.length)
+                type: "booking",
+                ...booking,
+              },
+            };
+          });
+          console.log(
+            "✅ Formatted bookings for FullCalendar:",
+            bookings.value
+          );
+          console.log("📊 Total events to display:", bookings.value.length);
         } else {
-          const errorText = await bookingsResponse.text()
-          console.error('❌ Failed to fetch bookings:', errorText)
-          showToast('Failed to load calendar data', 'error')
+          const errorText = await bookingsResponse.text();
+          console.error("❌ Failed to fetch bookings:", errorText);
+          // Don't show error toast, just show empty calendar
+          bookings.value = [];
         }
-
       } catch (error) {
-        console.error('Error fetching calendar data:', error)
-        showToast('Failed to load calendar data', 'error')
+        console.error("Error fetching calendar data:", error);
+        // Don't show error toast, just show empty calendar
+        bookings.value = [];
       } finally {
-        loading.value = false
+        loading.value = false;
       }
     }
 
     function getEventColor(status) {
-      if (status === 'confirmed') return '#ff6b35'  // Orange - matches theme
-      if (status === 'completed') return '#4ecdc4'  // Teal - nice contrast
-      if (status === 'cancelled') return '#6c757d'  // Grey
-      if (status === 'pending') return '#ffa726'    // Light orange
-      return '#8e8ea0'  // Default grey
+      if (status === "confirmed") return "#ff6b35"; // Orange - matches theme
+      if (status === "completed") return "#4ecdc4"; // Teal - nice contrast
+      if (status === "cancelled") return "#6c757d"; // Grey
+      if (status === "pending") return "#ffa726"; // Light orange
+      return "#8e8ea0"; // Default grey
     }
 
     function handleEventClick(info) {
-      const { event } = info
-      const { type } = event.extendedProps
+      const { event } = info;
+      const { type } = event.extendedProps;
 
-      if (type === 'booking') {
-        selectedBooking.value = event.extendedProps
+      if (type === "booking") {
+        selectedBooking.value = event.extendedProps;
       }
     }
 
     function handleDateSelect(info) {
       // Future: Could allow booking request creation
-      console.log('Date selected:', info.start, info.end)
+      console.log("Date selected:", info.start, info.end);
     }
 
     function handleEventDrop(info) {
       // Handle event drag and drop
-      updateEventTiming(info.event)
+      updateEventTiming(info.event);
     }
 
     function handleEventResize(info) {
       // Handle event resize
-      updateEventTiming(info.event)
+      updateEventTiming(info.event);
     }
 
     async function updateEventTiming(event) {
-      const { type } = event.extendedProps
+      const { type } = event.extendedProps;
 
       try {
-        let endpoint = ''
-        let payload = {}
+        let endpoint = "";
+        let payload = {};
 
-        if (type === 'booking') {
-          endpoint = `/api/calendar/bookings/${event.id}`
+        if (type === "booking") {
+          endpoint = `/api/calendar/bookings/${event.id}`;
           payload = {
             start_time: event.start.toISOString(),
-            end_time: event.end.toISOString()
-          }
+            end_time: event.end.toISOString(),
+          };
         }
 
         const response = await fetch(endpoint, {
-          method: 'PUT',
+          method: "PUT",
           headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authStore.token}`
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authStore.token}`,
           },
-          body: JSON.stringify(payload)
-        })
+          body: JSON.stringify(payload),
+        });
 
         if (response.ok) {
-          showToast('Event updated successfully', 'success')
+          showToast("Event updated successfully", "success");
         } else {
           // Revert the change if it failed
-          event.revert()
-          showToast('Failed to update event', 'error')
+          event.revert();
+          showToast("Failed to update event", "error");
         }
       } catch (error) {
-        event.revert()
-        console.error('Error updating event:', error)
-        showToast('Failed to update event', 'error')
+        event.revert();
+        console.error("Error updating event:", error);
+        showToast("Failed to update event", "error");
       }
     }
 
     function handleEventDidMount(info) {
       // Add custom styling or tooltips
-      const { event } = info
-      const { type } = event.extendedProps
+      const { event } = info;
+      const { type } = event.extendedProps;
 
-      if (type === 'booking') {
+      if (type === "booking") {
         // Add booking status indicator
-        info.el.classList.add('booking-event')
+        info.el.classList.add("booking-event");
       }
     }
 
     function handleBookingUpdated() {
-      selectedBooking.value = null
-      fetchCalendarData()
-      showToast('Booking updated successfully', 'success')
+      selectedBooking.value = null;
+      fetchCalendarData();
+      showToast("Booking updated successfully", "success");
     }
 
     // Lifecycle
-    onMounted(() => {
-      fetchCalendarData()
-    })
+    onMounted(async () => {
+      console.log("📅 Calendar mounted, checking auth state...");
+      console.log("📅 Auth token available:", !!authStore.token);
+      console.log("📅 Auth user available:", !!authStore.user);
+
+      // Wait for auth to be ready (max 3 seconds)
+      const maxWaitTime = 3000; // 3 seconds
+      const checkInterval = 100; // Check every 100ms
+      let elapsed = 0;
+
+      while (!authStore.token && elapsed < maxWaitTime) {
+        console.log(`⏳ Waiting for auth... (${elapsed}ms)`);
+        await new Promise((resolve) => setTimeout(resolve, checkInterval));
+        elapsed += checkInterval;
+      }
+
+      if (authStore.token) {
+        console.log("✅ Auth ready, fetching calendar data");
+      } else {
+        console.warn(
+          "⚠️ Auth not ready after timeout, will show empty calendar"
+        );
+      }
+
+      fetchCalendarData();
+    });
 
     return {
       loading,
@@ -266,10 +316,10 @@ export default {
       handleEventDrop,
       handleEventResize,
       handleEventDidMount,
-      handleBookingUpdated
-    }
-  }
-}
+      handleBookingUpdated,
+    };
+  },
+};
 </script>
 
 <style scoped>
@@ -294,7 +344,7 @@ h1 {
 
 /* FullCalendar custom styles */
 :deep(.fc) {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   height: 100% !important;
 }
 

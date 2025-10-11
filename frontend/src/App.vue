@@ -134,10 +134,26 @@ export default {
             if (!isOnMessagesPage) {
               console.log("🌐 APP: Showing notification!");
               const senderName = `${message.sender.first_name} ${message.sender.last_name}`;
-              const messagePreview =
-                message.message_type === "image"
-                  ? "📷 Sent an image"
-                  : message.content;
+
+              // Generate user-friendly message preview based on message type
+              let messagePreview;
+              if (message.message_type === "image") {
+                messagePreview = "📷 Sent an image";
+              } else if (message.message_type === "reschedule_request") {
+                messagePreview = "📅 Reschedule booking request";
+              } else if (message.message_type === "reschedule_accepted") {
+                messagePreview = "✅ Reschedule request accepted";
+              } else if (message.message_type === "reschedule_rejected") {
+                messagePreview = "❌ Reschedule request rejected";
+              } else if (message.message_type === "booking_offer") {
+                messagePreview = "📋 Booking offer";
+              } else if (message.message_type === "booking_proposal") {
+                messagePreview = "📝 Booking proposal";
+              } else if (message.message_type === "booking_confirmation") {
+                messagePreview = "✅ Booking confirmed";
+              } else {
+                messagePreview = message.content;
+              }
 
               showMessageNotification({
                 senderName,

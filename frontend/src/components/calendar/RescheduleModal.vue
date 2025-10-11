@@ -1,17 +1,25 @@
 <template>
-  <div class="modal fade show" style="display: block; background-color: rgba(0, 0, 0, 0.5);">
+  <div
+    class="modal fade show"
+    style="display: block; background-color: rgba(0, 0, 0, 0.5)"
+  >
     <div class="modal-dialog">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">Reschedule Booking</h5>
-          <button type="button" class="btn-close" @click="$emit('close')"></button>
+          <button
+            type="button"
+            class="btn-close"
+            @click="$emit('close')"
+          ></button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="handleSubmit">
             <!-- Current Booking Info -->
             <div class="alert alert-info mb-3">
-              <strong>Current Booking:</strong><br>
-              {{ formatDate(booking.start_time) }} at {{ formatTime(booking.start_time) }}
+              <strong>Current Booking:</strong><br />
+              {{ formatDate(booking.start_time) }} at
+              {{ formatTime(booking.start_time) }}
             </div>
 
             <!-- New Date Selection -->
@@ -23,7 +31,7 @@
                 class="form-control"
                 :min="today"
                 required
-              >
+              />
             </div>
 
             <!-- New Time Selection -->
@@ -35,7 +43,7 @@
                   v-model="newStartTime"
                   class="form-control"
                   required
-                >
+                />
               </div>
               <div class="col-md-6">
                 <label class="form-label">End Time</label>
@@ -44,7 +52,7 @@
                   v-model="newEndTime"
                   class="form-control"
                   required
-                >
+                />
               </div>
             </div>
 
@@ -61,9 +69,13 @@
             </div>
 
             <!-- Summary -->
-            <div v-if="newDate && newStartTime && newEndTime" class="alert alert-success">
-              <strong>New Time:</strong><br>
-              {{ formatDate(newDate) }} from {{ newStartTime }} to {{ newEndTime }}
+            <div
+              v-if="newDate && newStartTime && newEndTime"
+              class="alert alert-success"
+            >
+              <strong>New Time:</strong><br />
+              {{ formatDate(newDate) }} from {{ newStartTime }} to
+              {{ newEndTime }}
               <span v-if="isValidTimeRange" class="text-success">
                 ✓ Valid time range
               </span>
@@ -74,7 +86,11 @@
           </form>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" @click="$emit('close')">
+          <button
+            type="button"
+            class="btn btn-secondary"
+            @click="$emit('close')"
+          >
             Cancel
           </button>
           <button
@@ -83,8 +99,11 @@
             @click="handleSubmit"
             :disabled="loading || !isValidForm"
           >
-            <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-            Reschedule Booking
+            <span
+              v-if="loading"
+              class="spinner-border spinner-border-sm me-2"
+            ></span>
+            Send Reschedule Request
           </button>
         </div>
       </div>
@@ -93,99 +112,123 @@
 </template>
 
 <script>
-import { ref, computed } from 'vue'
-import { useToast } from '../../composables/useToast'
+import { ref, computed } from "vue";
+import { useToast } from "../../composables/useToast";
+import { useAuthStore } from "../../stores/auth";
 
 export default {
-  name: 'RescheduleModal',
+  name: "RescheduleModal",
   props: {
     booking: {
       type: Object,
-      required: true
-    }
+      required: true,
+    },
   },
-  emits: ['close', 'rescheduled'],
+  emits: ["close", "rescheduled"],
   setup(props, { emit }) {
-    const { showToast } = useToast()
+    const { showToast } = useToast();
+    const authStore = useAuthStore();
 
     // Reactive data
-    const loading = ref(false)
-    const newDate = ref('')
-    const newStartTime = ref('')
-    const newEndTime = ref('')
-    const reason = ref('')
+    const loading = ref(false);
+    const newDate = ref("");
+    const newStartTime = ref("");
+    const newEndTime = ref("");
+    const reason = ref("");
 
     // Computed properties
     const today = computed(() => {
-      return new Date().toISOString().split('T')[0]
-    })
+      return new Date().toISOString().split("T")[0];
+    });
 
     const isValidTimeRange = computed(() => {
-      return newStartTime.value && newEndTime.value && newStartTime.value < newEndTime.value
-    })
+      return (
+        newStartTime.value &&
+        newEndTime.value &&
+        newStartTime.value < newEndTime.value
+      );
+    });
 
     const isValidForm = computed(() => {
-      return newDate.value && newStartTime.value && newEndTime.value && reason.value && isValidTimeRange.value
-    })
+      return (
+        newDate.value &&
+        newStartTime.value &&
+        newEndTime.value &&
+        reason.value &&
+        isValidTimeRange.value
+      );
+    });
 
     // Methods
     function formatDate(dateString) {
       const options = {
-        weekday: 'short',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }
-      return new Date(dateString).toLocaleDateString('en-US', options)
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      };
+      return new Date(dateString).toLocaleDateString("en-US", options);
     }
 
     function formatTime(dateString) {
-      return new Date(dateString).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+      return new Date(dateString).toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
     }
 
     async function handleSubmit() {
       try {
-        loading.value = true
+        loading.value = true;
 
         if (!isValidForm.value) {
-          showToast('Please fill in all required fields', 'error')
-          return
+          showToast("Please fill in all required fields", "error");
+          return;
         }
 
         // Create new datetime strings
-        const newStartDateTime = new Date(`${newDate.value}T${newStartTime.value}`)
-        const newEndDateTime = new Date(`${newDate.value}T${newEndTime.value}`)
+        const newStartDateTime = new Date(
+          `${newDate.value}T${newStartTime.value}`
+        );
+        const newEndDateTime = new Date(`${newDate.value}T${newEndTime.value}`);
 
         const payload = {
           start_time: newStartDateTime.toISOString(),
           end_time: newEndDateTime.toISOString(),
-          reschedule_reason: reason.value
-        }
+          reschedule_reason: reason.value,
+        };
 
-        const response = await fetch(`/api/bookings/${props.booking.id}/reschedule`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('supabase.token')}`
-          },
-          body: JSON.stringify(payload)
-        })
+        const response = await fetch(
+          `/api/calendar/bookings/${props.booking.id}/reschedule`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authStore.token}`,
+            },
+            body: JSON.stringify(payload),
+          }
+        );
 
         if (!response.ok) {
-          throw new Error('Failed to reschedule booking')
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || "Failed to send reschedule request"
+          );
         }
 
-        showToast('Booking rescheduled successfully', 'success')
-        emit('rescheduled')
-
+        const result = await response.json();
+        showToast(
+          result.message ||
+            "Reschedule request sent successfully. Waiting for confirmation.",
+          "success"
+        );
+        emit("rescheduled");
       } catch (error) {
-        console.error('Error rescheduling booking:', error)
-        showToast('Failed to reschedule booking', 'error')
+        console.error("Error rescheduling booking:", error);
+        showToast("Failed to reschedule booking", "error");
       } finally {
-        loading.value = false
+        loading.value = false;
       }
     }
 
@@ -200,10 +243,10 @@ export default {
       isValidForm,
       formatDate,
       formatTime,
-      handleSubmit
-    }
-  }
-}
+      handleSubmit,
+    };
+  },
+};
 </script>
 
 <style scoped>

@@ -58,10 +58,20 @@ CREATE TABLE public.bookings (
   google_calendar_event_id text,
   google_meet_link text,
   zoom_meeting_link text,
+  pending_reschedule_start_time timestamp with time zone,
+  pending_reschedule_end_time timestamp with time zone,
+  reschedule_requested_by uuid,
+  reschedule_requester_type text CHECK (reschedule_requester_type = ANY (ARRAY['tutor'::text, 'student'::text])),
+  reschedule_reason text,
+  reschedule_status text CHECK (reschedule_status = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text])),
+  reschedule_requested_at timestamp with time zone,
+  reschedule_responded_at timestamp with time zone,
+  reschedule_response_message text,
   CONSTRAINT bookings_pkey PRIMARY KEY (id),
   CONSTRAINT bookings_tutor_id_fkey FOREIGN KEY (tutor_id) REFERENCES public.users(id),
   CONSTRAINT bookings_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.users(id),
-  CONSTRAINT bookings_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.users(id)
+  CONSTRAINT bookings_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.users(id),
+  CONSTRAINT bookings_reschedule_requested_by_fkey FOREIGN KEY (reschedule_requested_by) REFERENCES public.users(id)
 );
 CREATE TABLE public.calendar_events (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -176,7 +186,7 @@ CREATE TABLE public.messages (
   conversation_id uuid,
   sender_id uuid,
   content text NOT NULL,
-  message_type text DEFAULT 'text'::text CHECK (message_type = ANY (ARRAY['text'::text, 'image'::text, 'file'::text, 'document'::text, 'booking_offer'::text, 'booking_proposal'::text, 'booking_confirmation'::text])),
+  message_type text DEFAULT 'text'::text CHECK (message_type = ANY (ARRAY['text'::text, 'image'::text, 'file'::text, 'document'::text, 'booking_offer'::text, 'booking_proposal'::text, 'booking_confirmation'::text, 'reschedule_request'::text, 'reschedule_accepted'::text, 'reschedule_rejected'::text])),
   file_name text,
   file_size integer,
   read_at timestamp with time zone,

@@ -5,6 +5,7 @@ const rateLimit = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
+const axios = require('axios');
 require('dotenv').config({ path: '../../.env' });
 
 const app = express();
@@ -29,6 +30,29 @@ const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100
 });
+
+// Helper function to send messages via messaging service (with Socket.IO broadcast)
+async function sendMessageViaMessagingService(conversationId, content, messageType, authToken) {
+  try {
+    const messagingServiceUrl = process.env.MESSAGING_SERVICE_URL || 'http://localhost:3005';
+    const response = await axios.post(`${messagingServiceUrl}/messaging/system-message`, {
+      conversationId,
+      content,
+      messageType
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+
+    console.log('✅ Message sent via messaging service:', response.data);
+    return true;
+  } catch (error) {
+    console.error('❌ Error sending message via messaging service:', error.response?.data || error.message);
+    return false;
+  }
+}
 app.use(limiter);
 
 // JWT verification middleware - using Supabase token
@@ -134,7 +158,19 @@ app.get('/calendar', verifyToken, async (req, res) => {
       location: booking.location,
       notes: booking.notes,
       tutor_id: booking.tutor_id,
-      student_id: booking.student_id
+      student_id: booking.student_id,
+      start_time: booking.start_time,
+      end_time: booking.end_time,
+      // Include reschedule request fields
+      reschedule_status: booking.reschedule_status,
+      pending_reschedule_start_time: booking.pending_reschedule_start_time,
+      pending_reschedule_end_time: booking.pending_reschedule_end_time,
+      reschedule_requested_by: booking.reschedule_requested_by,
+      reschedule_requester_type: booking.reschedule_requester_type,
+      reschedule_reason: booking.reschedule_reason,
+      reschedule_requested_at: booking.reschedule_requested_at,
+      reschedule_responded_at: booking.reschedule_responded_at,
+      reschedule_response_message: booking.reschedule_response_message
     }));
 
     console.log(`📤 Sending ${formattedBookings.length} formatted bookings`);
@@ -470,6 +506,7 @@ app.put('/bookings/:id', verifyToken, async (req, res) => {
   }
 });
 
+// Create a reschedule request (sends invitation to other party)
 app.post('/bookings/:id/reschedule', verifyToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -490,24 +527,110 @@ app.post('/bookings/:id/reschedule', verifyToken, async (req, res) => {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
-    // Update booking
+    // Check if there's already a pending reschedule request
+    if (booking.reschedule_status === 'pending') {
+      return res.status(400).json({ error: 'There is already a pending reschedule request for this booking' });
+    }
+
+    // Determine requester type
+    const requesterType = booking.tutor_id === req.user.userId ? 'tutor' : 'student';
+
+    // Update booking with reschedule request details
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update({
-        start_time,
-        end_time,
-        rescheduled_at: new Date().toISOString(),
-        notes: reschedule_reason
+        pending_reschedule_start_time: start_time,
+        pending_reschedule_end_time: end_time,
+        reschedule_requested_by: req.user.userId,
+        reschedule_requester_type: requesterType,
+        reschedule_reason: reschedule_reason,
+        reschedule_status: 'pending',
+        reschedule_requested_at: new Date().toISOString(),
+        reschedule_responded_at: null,
+        reschedule_response_message: null
       })
       .eq('id', id)
       .select()
       .single();
 
     if (updateError) {
-      throw updateError;
+      console.error('Reschedule request creation error:', updateError);
+      return res.status(500).json({ error: 'Failed to create reschedule request' });
     }
 
-    res.json({ data: updatedBooking });
+    // Send notification to the other party via messaging system
+    const recipientId = requesterType === 'tutor' ? booking.student_id : booking.tutor_id;
+    console.log(`📧 Sending notification to user ${recipientId} about reschedule request for booking ${id}`);
+
+    try {
+      // Find or create conversation between tutor and student
+      const { data: existingConversations } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`and(participant1_id.eq.${booking.tutor_id},participant2_id.eq.${booking.student_id}),and(participant1_id.eq.${booking.student_id},participant2_id.eq.${booking.tutor_id})`)
+        .limit(1);
+
+      let conversationId;
+
+      if (existingConversations && existingConversations.length > 0) {
+        conversationId = existingConversations[0].id;
+      } else {
+        // Create new conversation
+        const { data: newConversation, error: convError } = await supabase
+          .from('conversations')
+          .insert({
+            participant1_id: booking.tutor_id,
+            participant2_id: booking.student_id,
+            booking_id: booking.id,
+            created_at: new Date().toISOString()
+          })
+          .select('id')
+          .single();
+
+        if (convError) {
+          console.error('Failed to create conversation:', convError);
+        } else {
+          conversationId = newConversation.id;
+        }
+      }
+
+      if (conversationId) {
+        // Format the reschedule request message data
+        const messageContent = JSON.stringify({
+          bookingId: booking.id,
+          currentStartTime: booking.start_time,
+          currentEndTime: booking.end_time,
+          proposedStartTime: start_time,
+          proposedEndTime: end_time,
+          reason: reschedule_reason || 'No reason provided',
+          requesterType: requesterType,
+          subject: booking.subject || 'Tutoring Session',
+          location: booking.location
+        });
+
+        // Get auth token from request
+        const authToken = req.headers.authorization?.split(' ')[1];
+        
+        // Send message via messaging service (with Socket.IO broadcast)
+        const sent = await sendMessageViaMessagingService(
+          conversationId,
+          messageContent,
+          'reschedule_request',
+          authToken
+        );
+
+        if (sent) {
+          console.log(`✅ Reschedule notification sent to user ${recipientId} via messaging service`);
+        } else {
+          console.error('Failed to send reschedule notification via messaging service');
+        }
+      }
+    } catch (notificationError) {
+      // Don't fail the whole operation if notification fails
+      console.error('Error sending reschedule notification:', notificationError);
+    }
+
+    res.status(201).json({ data: updatedBooking, message: 'Reschedule request sent successfully' });
   } catch (error) {
     console.error('Booking reschedule error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -637,6 +760,225 @@ app.post('/bookings/:id/complete', verifyToken, async (req, res) => {
     res.json({ data: updatedBooking });
   } catch (error) {
     console.error('Booking completion error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Accept a reschedule request
+app.post('/bookings/:id/reschedule/accept', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    const { response_message } = req.body;
+
+    // Get booking
+    const { data: booking, error: fetchError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Verify user is the recipient (not the requester)
+    if (booking.reschedule_requested_by === userId) {
+      return res.status(403).json({ error: 'Cannot accept your own reschedule request' });
+    }
+
+    // Verify user is involved in the booking
+    if (booking.tutor_id !== userId && booking.student_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Check if there's a pending reschedule request
+    if (booking.reschedule_status !== 'pending') {
+      return res.status(400).json({ error: 'No pending reschedule request found' });
+    }
+
+    // Update the booking: apply new times and clear reschedule request fields
+    const { data: updatedBooking, error: updateError } = await supabase
+      .from('bookings')
+      .update({
+        start_time: booking.pending_reschedule_start_time,
+        end_time: booking.pending_reschedule_end_time,
+        rescheduled_at: new Date().toISOString(),
+        reschedule_status: 'accepted',
+        reschedule_responded_at: new Date().toISOString(),
+        reschedule_response_message: response_message || 'Accepted',
+        // Clear pending fields after accepting
+        pending_reschedule_start_time: null,
+        pending_reschedule_end_time: null
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Send notification to requester
+    console.log(`📧 Sending notification to user ${booking.reschedule_requested_by} that reschedule was accepted`);
+
+    try {
+      // Find conversation between tutor and student
+      const { data: existingConversations } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`and(participant1_id.eq.${booking.tutor_id},participant2_id.eq.${booking.student_id}),and(participant1_id.eq.${booking.student_id},participant2_id.eq.${booking.tutor_id})`)
+        .limit(1);
+
+      if (existingConversations && existingConversations.length > 0) {
+        const conversationId = existingConversations[0].id;
+        
+        // Format the acceptance message data
+        const messageContent = JSON.stringify({
+          bookingId: booking.id,
+          newStartTime: updatedBooking.start_time,
+          newEndTime: updatedBooking.end_time,
+          responseMessage: response_message || '',
+          subject: booking.subject || 'Tutoring Session',
+          location: booking.location
+        });
+
+        // Get auth token from request
+        const authToken = req.headers.authorization?.split(' ')[1];
+        
+        // Send message via messaging service (with Socket.IO broadcast)
+        const sent = await sendMessageViaMessagingService(
+          conversationId,
+          messageContent,
+          'reschedule_accepted',
+          authToken
+        );
+
+        if (sent) {
+          console.log(`✅ Acceptance notification sent to user ${booking.reschedule_requested_by} via messaging service`);
+        } else {
+          console.error('Failed to send acceptance notification via messaging service');
+        }
+      }
+    } catch (notificationError) {
+      // Don't fail the whole operation if notification fails
+      console.error('Error sending acceptance notification:', notificationError);
+    }
+
+    res.json({ 
+      data: updatedBooking, 
+      message: 'Reschedule request accepted successfully. Booking has been updated.' 
+    });
+  } catch (error) {
+    console.error('Accept reschedule request error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reject a reschedule request
+app.post('/bookings/:id/reschedule/reject', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.userId;
+    const { response_message } = req.body;
+
+    // Get booking
+    const { data: booking, error: fetchError } = await supabase
+      .from('bookings')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !booking) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    // Verify user is the recipient (not the requester)
+    if (booking.reschedule_requested_by === userId) {
+      return res.status(403).json({ error: 'Cannot reject your own reschedule request' });
+    }
+
+    // Verify user is involved in the booking
+    if (booking.tutor_id !== userId && booking.student_id !== userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    // Check if there's a pending reschedule request
+    if (booking.reschedule_status !== 'pending') {
+      return res.status(400).json({ error: 'No pending reschedule request found' });
+    }
+
+    // Update the booking: reject and clear reschedule request fields
+    const { data: updatedBooking, error: updateError } = await supabase
+      .from('bookings')
+      .update({
+        reschedule_status: 'rejected',
+        reschedule_responded_at: new Date().toISOString(),
+        reschedule_response_message: response_message || 'Rejected',
+        // Clear pending fields after rejecting
+        pending_reschedule_start_time: null,
+        pending_reschedule_end_time: null
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    // Send notification to requester
+    console.log(`📧 Sending notification to user ${booking.reschedule_requested_by} that reschedule was rejected`);
+
+    try {
+      // Find conversation between tutor and student
+      const { data: existingConversations } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`and(participant1_id.eq.${booking.tutor_id},participant2_id.eq.${booking.student_id}),and(participant1_id.eq.${booking.student_id},participant2_id.eq.${booking.tutor_id})`)
+        .limit(1);
+
+      if (existingConversations && existingConversations.length > 0) {
+        const conversationId = existingConversations[0].id;
+        
+        // Format the rejection message data
+        const messageContent = JSON.stringify({
+          bookingId: booking.id,
+          originalStartTime: booking.start_time,
+          originalEndTime: booking.end_time,
+          responseMessage: response_message || '',
+          subject: booking.subject || 'Tutoring Session',
+          location: booking.location
+        });
+
+        // Get auth token from request
+        const authToken = req.headers.authorization?.split(' ')[1];
+        
+        // Send message via messaging service (with Socket.IO broadcast)
+        const sent = await sendMessageViaMessagingService(
+          conversationId,
+          messageContent,
+          'reschedule_rejected',
+          authToken
+        );
+
+        if (sent) {
+          console.log(`✅ Rejection notification sent to user ${booking.reschedule_requested_by} via messaging service`);
+        } else {
+          console.error('Failed to send rejection notification via messaging service');
+        }
+      }
+    } catch (notificationError) {
+      // Don't fail the whole operation if notification fails
+      console.error('Error sending rejection notification:', notificationError);
+    }
+
+    res.json({ 
+      data: updatedBooking,
+      message: 'Reschedule request rejected. Original booking time remains unchanged.' 
+    });
+  } catch (error) {
+    console.error('Reject reschedule request error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
