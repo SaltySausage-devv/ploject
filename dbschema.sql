@@ -177,6 +177,22 @@ CREATE TABLE public.notifications (
   CONSTRAINT notifications_pkey PRIMARY KEY (id),
   CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.package_rates (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  tutor_profile_id uuid,
+  package_type character varying NOT NULL,
+  package_name character varying NOT NULL,
+  price numeric NOT NULL,
+  discount_percentage numeric DEFAULT 0.0,
+  description text,
+  number_of_sessions integer,
+  validity_period_days integer,
+  is_active boolean DEFAULT true,
+  created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT package_rates_pkey PRIMARY KEY (id),
+  CONSTRAINT package_rates_tutor_profile_id_fkey FOREIGN KEY (tutor_profile_id) REFERENCES public.tutor_profiles(id)
+);
 CREATE TABLE public.profile_views (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   tutor_id uuid,
@@ -291,6 +307,9 @@ CREATE TABLE public.tutor_profiles (
   is_featured boolean DEFAULT false,
   search_tags ARRAY,
   student_success_stories jsonb DEFAULT '[]'::jsonb,
+  monthly_package text DEFAULT ''::text,
+  weekly_package text DEFAULT ''::text,
+  bulk_package text DEFAULT ''::text,
   CONSTRAINT tutor_profiles_pkey PRIMARY KEY (id),
   CONSTRAINT tutor_profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
