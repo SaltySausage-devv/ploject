@@ -16,7 +16,6 @@ import Dashboard from './pages/Dashboard.vue'
 import SearchTutors from './pages/SearchTutors.vue'
 import TutorProfile from './pages/TutorProfile.vue'
 import Messages from './pages/Messages.vue'
-import Analytics from './pages/Analytics.vue'
 import Profile from './pages/Profile.vue'
 
 // Import components
@@ -33,7 +32,6 @@ const routes = [
   { path: '/search', name: 'SearchTutors', component: SearchTutors },
   { path: '/tutor/:id', name: 'TutorProfile', component: TutorProfile },
   { path: '/messages', name: 'Messages', component: Messages },
-  { path: '/analytics', name: 'Analytics', component: Analytics },
   { path: '/profile', name: 'Profile', component: Profile },
 ]
 
