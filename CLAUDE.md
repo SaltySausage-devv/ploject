@@ -24,9 +24,6 @@ setup.bat
 
 **macOS/Linux:**
 ```bash
-# Make the script executable
-chmod +x setup.sh
-
 # Run the setup script
 ./setup.sh
 
@@ -35,12 +32,6 @@ chmod +x setup.sh
 # - Install all dependencies with progress tracking
 # - Verify all installations with colorful output
 # - Create .env from env.example if missing
-```
-
-**Using npm:**
-```bash
-# Install all dependencies (root, frontend, and all services)
-npm run install:all
 ```
 
 ### Running the Application
@@ -106,10 +97,7 @@ docker-compose down         # Stop all services
 
 **Port Already in Use (Windows):**
 ```bash
-# Kill all development processes on ports 3000-3012
-kill-ports.bat
-
-# Or manually kill a specific port
+# Manually kill a specific port
 netstat -ano | findstr :3005
 taskkill /F /PID [PID]
 ```
@@ -118,9 +106,6 @@ taskkill /F /PID [PID]
 ```bash
 # Find and kill process on specific port
 lsof -ti:3005 | xargs kill -9
-
-# Or use the kill-all script
-pkill -f "node.*services"
 ```
 
 ## Architecture

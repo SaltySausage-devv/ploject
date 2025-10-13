@@ -332,16 +332,20 @@
                                 Accept & Book
                               </button>
                               <button
-                                v-if="message.senderId !== currentUserId"
-                                class="btn btn-outline-secondary btn-sm"
+                                v-if="
+                                  message.senderId !== currentUserId &&
+                                  (authStore.user?.user_type === 'student' ||
+                                    authStore.user?.user_type === 'parent')
+                                "
+                                class="btn btn-danger btn-sm"
                                 @click="
                                   sendMessage(
                                     'I would like to discuss alternative times'
                                   )
                                 "
                               >
-                                <i class="fas fa-comment me-1"></i>
-                                Discuss
+                                <i class="fas fa-times me-1"></i>
+                                Reject
                               </button>
                             </div>
                           </div>
@@ -551,15 +555,11 @@
                             </div>
                             <div class="booking-actions">
                               <button
-                                class="btn btn-outline-secondary btn-sm"
-                                @click="
-                                  sendMessage(
-                                    'Can we discuss alternative times?'
-                                  )
-                                "
+                                class="btn btn-primary btn-sm"
+                                @click="$router.push('/calendar')"
                               >
-                                <i class="fas fa-comment me-1"></i>
-                                Discuss
+                                <i class="fas fa-calendar me-1"></i>
+                                View Calendar
                               </button>
                             </div>
                           </div>
@@ -1063,26 +1063,28 @@
           </button>
         </div>
         <div class="modal-body">
-          <div v-if="selectedBookingOffer" class="booking-request-details mb-3">
-            <div class="card">
-              <div class="card-body">
-                <h6 class="card-title">Booking Request Details</h6>
-                <p class="mb-2">
-                  <strong>Session Type:</strong>
-                  {{
-                    selectedBookingOffer.isOnline
-                      ? "Online Session"
-                      : "On-site Session"
-                  }}
-                </p>
-                <p v-if="selectedBookingOffer.tuteeLocation" class="mb-2">
-                  <strong>Preferred Location:</strong>
-                  {{ selectedBookingOffer.tuteeLocation }}
-                </p>
-                <p v-if="selectedBookingOffer.notes" class="mb-0">
-                  <strong>Notes:</strong> {{ selectedBookingOffer.notes }}
-                </p>
-              </div>
+          <div v-if="selectedBookingOffer" class="booking-request-summary mb-3">
+            <div class="summary-header">
+              <i class="fas fa-info-circle me-2"></i>
+              <span>Student Request</span>
+            </div>
+            <div class="summary-content">
+              <span class="summary-item">
+                <i class="fas fa-laptop me-1"></i>
+                {{
+                  selectedBookingOffer.isOnline
+                    ? "Online"
+                    : "On-site"
+                }}
+              </span>
+              <span v-if="selectedBookingOffer.tuteeLocation" class="summary-item">
+                <i class="fas fa-map-marker-alt me-1"></i>
+                {{ selectedBookingOffer.tuteeLocation }}
+              </span>
+              <span v-if="selectedBookingOffer.notes" class="summary-item notes-item">
+                <i class="fas fa-sticky-note me-1"></i>
+                {{ selectedBookingOffer.notes }}
+              </span>
             </div>
           </div>
 
@@ -3584,42 +3586,6 @@ i.text-primary {
   position: relative !important;
 }
 
-/* Booking Actions */
-.booking-actions {
-  background: linear-gradient(
-    135deg,
-    rgba(255, 140, 66, 0.1),
-    rgba(255, 210, 63, 0.05)
-  ) !important;
-  border-bottom: 2px solid var(--cyber-orange, #ff8c42) !important;
-}
-
-.booking-actions .btn {
-  border-radius: 10px;
-  font-weight: 600;
-  transition: all 0.3s ease;
-}
-
-.booking-actions .btn-primary {
-  background: linear-gradient(
-    45deg,
-    var(--cyber-orange, #ff8c42),
-    var(--cyber-yellow, #ffd23f)
-  ) !important;
-  border: 2px solid var(--cyber-orange, #ff8c42) !important;
-}
-
-.booking-actions .btn-outline-secondary {
-  background: transparent !important;
-  border: 2px solid var(--cyber-grey-light, #4a4a4a) !important;
-  color: var(--cyber-text, #ffffff) !important;
-}
-
-.booking-actions .btn-outline-secondary:hover {
-  background: rgba(74, 74, 74, 0.3) !important;
-  border-color: var(--cyber-orange, #ff8c42) !important;
-  color: var(--cyber-orange, #ff8c42) !important;
-}
 
 /* Modal Styles */
 .modal-overlay {
@@ -3849,23 +3815,61 @@ i.text-primary {
   color: white !important;
 }
 
-/* Booking Request Details */
-.booking-request-details .card {
-  background: #2c2c2c;
-  border: 1px solid #424242;
+/* Booking Request Summary - Compact Design */
+.booking-request-summary {
+  background: rgba(255, 140, 66, 0.08);
+  border: 1px solid rgba(255, 140, 66, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
 }
 
-.booking-request-details .card-title {
-  color: #ffd23f;
+.booking-request-summary .summary-header {
+  background: rgba(255, 140, 66, 0.12);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
   font-weight: 600;
-}
-
-.booking-request-details .card-body {
-  color: #ffffff;
-}
-
-.booking-request-details strong {
   color: #ff8c42;
+  border-bottom: 1px solid rgba(255, 140, 66, 0.2);
+}
+
+.booking-request-summary .summary-content {
+  padding: 10px 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.booking-request-summary .summary-item {
+  display: inline-flex;
+  align-items: center;
+  font-size: 12px;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 140, 66, 0.2);
+}
+
+.booking-request-summary .summary-item i {
+  color: #ff8c42;
+  font-size: 11px;
+}
+
+.booking-request-summary .notes-item {
+  flex: 1 1 100%;
+  background: rgba(255, 140, 66, 0.1);
+  border-color: rgba(255, 140, 66, 0.3);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.booking-request-summary .notes-item i {
+  color: #ffd23f;
 }
 
 /* Form Controls in Modal */
@@ -3921,111 +3925,138 @@ i.text-primary {
   border-radius: 12px !important;
   padding: 0 !important;
   overflow: hidden;
-  max-width: 400px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+  max-width: 380px;
+}
+
+/* Wider reschedule cards */
+.reschedule-request,
+.reschedule-accepted,
+.reschedule-rejected {
+  max-width: 450px !important;
 }
 
 .booking-header {
-  background: linear-gradient(
-    45deg,
-    rgba(255, 140, 66, 0.2),
-    rgba(255, 210, 63, 0.1)
-  );
+  background: rgba(255, 140, 66, 0.12);
   padding: 12px 16px;
-  border-bottom: 1px solid #424242;
+  border-bottom: 1px solid rgba(66, 66, 66, 0.6);
   display: flex;
   align-items: center;
   font-weight: 600;
   color: #ffffff;
 }
 
+.booking-header i {
+  font-size: 14px;
+  color: #ff8c42;
+}
+
 .booking-offer .booking-header {
-  background: linear-gradient(
-    45deg,
-    rgba(255, 140, 66, 0.2),
-    rgba(255, 210, 63, 0.1)
-  );
-  border-bottom: 1px solid #ff8c42;
+  background: rgba(255, 140, 66, 0.12);
+  border-bottom: 1px solid rgba(255, 140, 66, 0.3);
+}
+
+.booking-offer .booking-header i {
+  color: #ff8c42;
 }
 
 .booking-proposal .booking-header {
-  background: linear-gradient(
-    45deg,
-    rgba(40, 167, 69, 0.2),
-    rgba(40, 167, 69, 0.1)
-  );
-  border-bottom: 1px solid #28a745;
+  background: rgba(40, 167, 69, 0.12);
+  border-bottom: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.booking-proposal .booking-header i {
+  color: #28a745;
 }
 
 .booking-confirmation .booking-header {
-  background: linear-gradient(
-    45deg,
-    rgba(40, 167, 69, 0.2),
-    rgba(40, 167, 69, 0.1)
-  );
-  border-bottom: 1px solid #28a745;
+  background: rgba(40, 167, 69, 0.12);
+  border-bottom: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.booking-confirmation .booking-header i {
+  color: #28a745;
 }
 
 .reschedule-request .booking-header {
-  background: linear-gradient(
-    45deg,
-    rgba(13, 110, 253, 0.2),
-    rgba(13, 110, 253, 0.1)
-  );
-  border-bottom: 1px solid #0d6efd;
+  background: rgba(13, 110, 253, 0.12);
+  border-bottom: 1px solid rgba(13, 110, 253, 0.3);
+}
+
+.reschedule-request .booking-header i {
+  color: #0d6efd;
 }
 
 .reschedule-accepted .booking-header {
-  background: linear-gradient(
-    45deg,
-    rgba(40, 167, 69, 0.2),
-    rgba(40, 167, 69, 0.1)
-  );
-  border-bottom: 1px solid #28a745;
+  background: rgba(40, 167, 69, 0.12);
+  border-bottom: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.reschedule-accepted .booking-header i {
+  color: #28a745;
 }
 
 .reschedule-rejected .booking-header {
-  background: linear-gradient(
-    45deg,
-    rgba(220, 53, 69, 0.2),
-    rgba(220, 53, 69, 0.1)
-  );
-  border-bottom: 1px solid #dc3545;
+  background: rgba(220, 53, 69, 0.12);
+  border-bottom: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.reschedule-rejected .booking-header i {
+  color: #dc3545;
 }
 
 .booking-title {
   color: #ffffff;
   font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
 }
 
 .booking-details {
-  padding: 16px;
+  padding: 14px 16px 16px 16px;
   color: #ffffff;
+  background: #2c2c2c;
 }
 
 .booking-details p {
   margin-bottom: 8px;
   font-size: 13px;
   line-height: 1.4;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.booking-details p:last-of-type:not(:has(button)) {
+  margin-bottom: 0;
 }
 
 .booking-details strong {
-  color: #ff8c42;
+  color: #aaaaaa;
   font-weight: 600;
+  min-width: fit-content;
 }
 
 .booking-actions {
   margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #424242;
+  padding-top: 0;
+  border-top: none;
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .booking-status {
   font-size: 12px;
   display: flex;
   align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(255, 193, 7, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 193, 7, 0.3);
+  color: #ffc107;
 }
 
 .booking-status.text-warning {
@@ -4034,46 +4065,84 @@ i.text-primary {
 
 .booking-status.text-success {
   color: #28a745 !important;
+  background: rgba(40, 167, 69, 0.1);
+  border: 1px solid rgba(40, 167, 69, 0.3);
 }
 
 .booking-actions .btn {
-  padding: 6px 12px;
+  padding: 6px 16px;
   font-size: 12px;
   border-radius: 6px;
   font-weight: 600;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border: none;
+}
+
+.booking-actions .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .booking-actions .btn-primary {
-  background: linear-gradient(45deg, #ff8c42, #ffd23f) !important;
-  border: 1px solid #ff8c42 !important;
+  background: linear-gradient(135deg, #ff8c42, #ffd23f) !important;
+  border: none !important;
   color: white !important;
+}
+
+.booking-actions .btn-primary:hover {
+  background: linear-gradient(135deg, #ffd23f, #ff8c42) !important;
 }
 
 .booking-actions .btn-success {
-  background: linear-gradient(45deg, #28a745, #20c997) !important;
-  border: 1px solid #28a745 !important;
+  background: linear-gradient(135deg, #28a745, #20c997) !important;
+  border: none !important;
   color: white !important;
 }
 
+.booking-actions .btn-success:hover {
+  background: linear-gradient(135deg, #20c997, #28a745) !important;
+}
+
+.booking-actions .btn-danger {
+  background: linear-gradient(135deg, #dc3545, #c82333) !important;
+  border: none !important;
+  color: white !important;
+}
+
+.booking-actions .btn-danger:hover {
+  background: linear-gradient(135deg, #c82333, #bd2130) !important;
+}
+
+.booking-actions .btn-outline-primary,
 .booking-actions .btn-outline-secondary {
-  background: transparent !important;
-  border: 1px solid #6c757d !important;
-  color: #6c757d !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
 }
 
+.booking-actions .btn-outline-primary:hover,
 .booking-actions .btn-outline-secondary:hover {
-  background: #6c757d !important;
-  color: white !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: #ff8c42 !important;
+  color: #ff8c42 !important;
 }
 
 /* Message bubble adjustments for booking messages */
-.message-bubble.booking-message {
+.message-bubble:has(.booking-message) {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+}
+
+.message-bubble .booking-message {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   transform: translateY(0);
   transition: all 0.3s ease;
 }
 
-.message-bubble.booking-message:hover {
+.message-bubble .booking-message:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }

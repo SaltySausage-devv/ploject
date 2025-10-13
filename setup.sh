@@ -106,7 +106,7 @@ print_success "Root dependencies installed"
 # Frontend dependencies
 print_step "Installing frontend dependencies"
 cd frontend
-npm install
+npm install --loglevel=error
 cd ..
 print_success "Frontend dependencies installed"
 
@@ -216,19 +216,38 @@ check_modules() {
     fi
 }
 
+check_critical_package() {
+    if [ ! -d "$1/node_modules/$2" ]; then
+        print_warning "$2 missing in $1, reinstalling..."
+        cd "$1"
+        npm install --loglevel=error
+        cd - > /dev/null
+        if [ ! -d "$1/node_modules/$2" ]; then
+            print_error "$2 still missing after reinstall in $1"
+            MISSING_MODULES=$((MISSING_MODULES + 1))
+        fi
+    fi
+}
+
 check_modules "."
 check_modules "frontend"
+check_critical_package "frontend" "@vueuse/motion"
+check_critical_package "frontend" "vue"
 check_modules "services/auth"
 check_modules "services/users"
 check_modules "services/profiles"
 check_modules "services/bookings"
 check_modules "services/messaging"
+check_critical_package "services/messaging" "isomorphic-dompurify"
+check_critical_package "services/messaging" "socket.io"
 check_modules "services/reviews"
 check_modules "services/notifications"
 check_modules "services/analytics"
 check_modules "services/gamification"
 check_modules "services/earnings"
 check_modules "services/calendar"
+check_critical_package "services/calendar" "axios"
+check_critical_package "services/calendar" "googleapis"
 check_modules "services/maps"
 
 # =============================================================================

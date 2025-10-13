@@ -32,7 +32,7 @@ if %errorlevel% neq 0 goto :error
 
 echo [2/15] Installing frontend dependencies...
 cd frontend
-call npm install
+call npm install --loglevel=error
 if %errorlevel% neq 0 goto :error
 cd ..
 
@@ -126,7 +126,19 @@ if not exist "frontend\node_modules" (
     echo [ERROR] Frontend node_modules missing
     set MISSING=1
 ) else (
-    echo [OK] Frontend dependencies installed
+    REM Check for critical frontend packages
+    if not exist "frontend\node_modules\@vueuse\motion" (
+        echo [WARNING] @vueuse/motion missing, reinstalling frontend...
+        cd frontend
+        call npm install --loglevel=error
+        cd ..
+    )
+    if not exist "frontend\node_modules\vue" (
+        echo [ERROR] Vue.js not installed in frontend
+        set MISSING=1
+    ) else (
+        echo [OK] Frontend dependencies installed
+    )
 )
 
 if not exist "services\auth\node_modules" (
@@ -161,6 +173,13 @@ if not exist "services\messaging\node_modules" (
     echo [ERROR] Messaging service node_modules missing
     set MISSING=1
 ) else (
+    REM Check for critical messaging packages
+    if not exist "services\messaging\node_modules\isomorphic-dompurify" (
+        echo [WARNING] isomorphic-dompurify missing, reinstalling messaging...
+        cd services\messaging
+        call npm install --loglevel=error
+        cd ..\..
+    )
     echo [OK] Messaging service dependencies installed
 )
 
@@ -203,6 +222,13 @@ if not exist "services\calendar\node_modules" (
     echo [ERROR] Calendar service node_modules missing
     set MISSING=1
 ) else (
+    REM Check for critical calendar packages
+    if not exist "services\calendar\node_modules\axios" (
+        echo [WARNING] axios missing, reinstalling calendar...
+        cd services\calendar
+        call npm install --loglevel=error
+        cd ..\..
+    )
     echo [OK] Calendar service dependencies installed
 )
 
