@@ -180,45 +180,24 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const logout = async () => {
+        console.log('🚪 Logging out user...')
+
+        // Set logout flag to prevent auth listener from interfering
+        isLoggingOut.value = true
+
+        // Clear local state immediately
+        user.value = null
+        session.value = null
+
         try {
-            console.log('🚪 Logging out user...')
-
-            // Set logout flag to prevent auth listener from interfering
-            isLoggingOut.value = true
-
-            // Clear local state first (optimistic update)
-            user.value = null
-            session.value = null
-
-            // Sign out from Supabase
-            const { error } = await supabase.auth.signOut({ scope: 'local' })
-
-            if (error) {
-                console.error('❌ Supabase signOut error:', error)
-                // Force clear even if error occurs
-                await supabase.auth.signOut({ scope: 'global' })
-            } else {
-                console.log('✅ Supabase signOut successful')
-            }
-
-            console.log('✅ Local state cleared')
-            console.log('🔍 Auth state after logout:', {
-                isAuthenticated: isAuthenticated.value,
-                hasUser: !!user.value,
-                hasSession: !!session.value
-            })
-
+            // Sign out from Supabase and wait for it
+            await supabase.auth.signOut()
+            console.log('✅ Supabase signOut successful')
         } catch (error) {
-            console.error('❌ Logout error:', error)
-            // Even if there's an error, clear local state
-            user.value = null
-            session.value = null
-        } finally {
-            // Keep logout flag set briefly to ensure no race conditions
-            setTimeout(() => {
-                isLoggingOut.value = false
-            }, 500)
+            console.error('❌ Supabase signOut error:', error)
         }
+
+        console.log('✅ Logout complete')
     }
 
     const initializeAuth = async () => {

@@ -884,43 +884,11 @@ export default {
     }
 
     onMounted(() => {
-      initRegisterAnimations()
-      
-      // Add keyboard event listener for speed control
-      document.addEventListener('keydown', handleKeyPress)
-      
-      // Add mouse event listeners for interactive animations
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseleave', handleMouseLeave)
-      
-      // Add speed control instructions
-      console.log('Animation Speed Controls:')
-      console.log('Press 1 for slow (0.5x)')
-      console.log('Press 2 for normal (1.0x)')
-      console.log('Press 3 for fast (2.0x)')
-      console.log('Press P to pause/resume')
-      console.log('Move your mouse to see interactive animations!')
+      // All animations disabled
     })
 
     onUnmounted(() => {
-      // Clean up event listeners
-      document.removeEventListener('keydown', handleKeyPress)
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseleave', handleMouseLeave)
-      
-      // Clean up floating elements
-      const floatingElements = document.querySelectorAll('.floating-icon')
-      floatingElements.forEach(element => {
-        if (element.parentNode) {
-          element.parentNode.removeChild(element)
-        }
-      })
-      
-      // Clean up background elements
-      const backgroundElements = document.querySelector('.register-background-elements')
-      if (backgroundElements && backgroundElements.parentNode) {
-        backgroundElements.parentNode.removeChild(backgroundElements)
-      }
+      // All animations disabled
     })
 
     return {

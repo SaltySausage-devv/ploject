@@ -1052,15 +1052,7 @@ export default {
     }, { deep: true })
 
     onMounted(() => {
-      initSearchAnimations()
-
-      // Add keyboard event listener for speed control
-      document.addEventListener('keydown', handleKeyPress)
-
-      // Add mouse event listeners for interactive animations
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseleave', handleMouseLeave)
-
+      // All animations disabled
       searchTutors()
     })
 

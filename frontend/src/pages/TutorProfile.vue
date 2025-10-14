@@ -888,10 +888,7 @@ export default {
         loadTutorData(tutorId)
       }
 
-      // Initialize animations
-      setTimeout(() => {
-        initProfileAnimations()
-      }, 100)
+      // All animations disabled
     })
 
     // Watch for route changes to load different tutors
@@ -899,10 +896,7 @@ export default {
       if (newTutorId) {
         loadTutorData(newTutorId)
 
-        // Re-initialize animations for new tutor
-        setTimeout(() => {
-          initProfileAnimations()
-        }, 100)
+        // All animations disabled
       }
     })
 
