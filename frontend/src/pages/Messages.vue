@@ -1,9 +1,9 @@
 <template>
   <div class="messages-page">
-    <div class="container py-5">
-      <div class="row g-4" style="min-height: 80vh">
+    <div class="container-fluid py-4 px-3 px-lg-5">
+      <div class="row g-3 g-lg-4 messages-row">
         <!-- Conversations Sidebar -->
-        <div class="col-lg-4 d-flex">
+        <div class="col-12 col-lg-4 conversations-col" :class="{ 'hide-on-mobile': showMobileChat }">
           <div class="card border-0 shadow-sm w-100 d-flex flex-column">
             <div class="card-header bg-white border-bottom">
               <div class="d-flex align-items-center justify-content-between">
@@ -135,13 +135,12 @@
         </div>
 
         <!-- Chat Area -->
-        <div class="col-lg-8 d-flex">
+        <div class="col-12 col-lg-8 chat-col" :class="{ 'show-on-mobile': showMobileChat }">
           <div
             :initial="{ opacity: 0, x: 30 }"
             :animate="{ opacity: 1, x: 0 }"
             :transition="{ duration: 0.6, delay: 0.1 }"
-            class="card border-0 shadow-sm w-100 d-flex flex-column"
-            style="height: 800px; max-height: 800px"
+            class="card border-0 shadow-sm w-100 d-flex flex-column chat-card"
           >
             <!-- Chat Header -->
             <div
@@ -150,6 +149,13 @@
             >
               <div class="d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center">
+                  <!-- Back button for mobile -->
+                  <button
+                    class="btn btn-link text-decoration-none me-2 back-btn-mobile"
+                    @click="backToConversations"
+                  >
+                    <i class="fas fa-arrow-left text-primary"></i>
+                  </button>
                   <div
                     class="chat-avatar bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3"
                     style="width: 40px; height: 40px"
@@ -1213,6 +1219,7 @@ export default {
     const messages = ref([]);
     const newMessage = ref("");
     const isLoading = ref(false);
+    const showMobileChat = ref(false); // Toggle for mobile view
 
     // Delete modal variables
     const showDeleteModal = ref(false);
@@ -1476,7 +1483,13 @@ export default {
 
     const selectConversation = async (conversation) => {
       selectedConversation.value = conversation;
+      showMobileChat.value = true; // Show chat on mobile
       await loadMessages(conversation.id);
+    };
+
+    const backToConversations = () => {
+      showMobileChat.value = false;
+      // Don't clear selectedConversation to maintain state
     };
 
     const loadMessages = async (conversationId) => {
@@ -2843,6 +2856,8 @@ export default {
       messages,
       newMessage,
       isLoading,
+      showMobileChat,
+      backToConversations,
       filteredConversations,
       formatTime,
       scrollToBottom,
@@ -2955,10 +2970,20 @@ h6 {
   color: var(--cyber-text, #ffffff) !important;
 }
 
+/* Layout improvements */
+.messages-row {
+  min-height: calc(100vh - 200px);
+}
+
+.conversations-col,
+.chat-col {
+  display: flex;
+  flex-direction: column;
+}
+
 /* Conversation Items */
 .conversations-list {
-  height: 650px;
-  max-height: 650px;
+  flex: 1;
   overflow-y: auto;
   margin: 0 !important;
   padding: 0 !important;
@@ -3323,25 +3348,158 @@ i.text-primary {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .messages-container {
-    height: 250px !important;
-    max-height: 250px !important;
+/* Back button - only show on mobile */
+.back-btn-mobile {
+  display: none;
+  padding: 0.25rem 0.5rem;
+  font-size: 1.25rem;
+}
+
+/* Desktop view - side by side */
+@media (min-width: 992px) {
+  .conversations-col,
+  .chat-col {
+    display: flex !important;
+  }
+
+  .back-btn-mobile {
+    display: none !important;
+  }
+
+  .conversations-col .card {
+    height: 750px !important;
+    max-height: 750px !important;
+  }
+
+  .chat-card {
+    height: 750px !important;
+    max-height: 750px !important;
+    min-height: 600px;
   }
 
   .conversations-list {
-    height: 400px !important;
-    max-height: 400px !important;
+    max-height: calc(750px - 180px) !important;
+    overflow-y: auto;
   }
 
-  .card.d-flex.flex-column {
-    height: 600px !important;
-    max-height: 600px !important;
+  .messages-container {
+    max-height: calc(750px - 150px);
+    overflow-y: auto;
+  }
+}
+
+/* Responsive - Telegram-style Mobile View */
+@media (max-width: 991.98px) {
+  .messages-row {
+    min-height: calc(100vh - 150px);
+    position: relative;
   }
 
+  /* Show back button on mobile */
+  .back-btn-mobile {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .back-btn-mobile:hover {
+    background: rgba(255, 140, 66, 0.1);
+    border-radius: 8px;
+  }
+
+  /* Hide conversations when chat is active on mobile */
+  .conversations-col.hide-on-mobile {
+    display: none !important;
+  }
+
+  /* Show chat when active on mobile */
+  .chat-col {
+    display: none;
+  }
+
+  .chat-col.show-on-mobile {
+    display: flex !important;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    padding: 1rem;
+    background: #1a1a1a;
+    margin: 0 !important;
+  }
+
+  .chat-col.show-on-mobile .chat-card {
+    height: 100%;
+    max-height: 100vh;
+    margin: 0;
+  }
+
+  /* Conversations take full width when visible */
+  .conversations-col {
+    flex: 0 0 100%;
+    max-width: 100%;
+    height: calc(100vh - 150px);
+  }
+
+  .conversations-col .card {
+    height: 100%;
+  }
+
+  .conversations-list {
+    flex: 1;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  .messages-container {
+    flex: 1;
+    min-height: 0;
+    max-height: none !important;
+    height: auto !important;
+  }
+}
+
+@media (max-width: 768px) {
   .message-bubble {
-    max-width: 85%;
+    max-width: 90%;
+  }
+
+  /* Reduce header sizes for mobile */
+  .card-header h5 {
+    font-size: 1rem;
+  }
+
+  .card-header h6 {
+    font-size: 0.9rem;
+  }
+
+  .chat-col.show-on-mobile {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .message-bubble {
+    max-width: 95%;
+  }
+
+  /* Smaller padding on very small screens */
+  .messages-container {
+    padding: 10px 10px 70px 10px !important;
+  }
+
+  .message-input {
+    padding: 8px 10px !important;
+  }
+
+  .chat-col.show-on-mobile {
+    padding: 0.25rem;
+  }
+
+  .back-btn-mobile {
+    font-size: 1.1rem;
   }
 }
 
