@@ -3355,11 +3355,33 @@ i.text-primary {
   font-size: 1.25rem;
 }
 
-/* Desktop view - side by side */
+/* Desktop view - side by side ALWAYS */
 @media (min-width: 992px) {
+  /* Force both columns to always display on desktop */
   .conversations-col,
   .chat-col {
     display: flex !important;
+    position: relative !important;
+    flex-direction: column !important;
+  }
+
+  /* Override mobile toggle classes on desktop */
+  .conversations-col.hide-on-mobile {
+    display: flex !important;
+  }
+
+  .chat-col.show-on-mobile,
+  .chat-col {
+    display: flex !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    z-index: auto !important;
   }
 
   .back-btn-mobile {
@@ -3383,7 +3405,7 @@ i.text-primary {
   }
 
   .messages-container {
-    max-height: calc(750px - 150px);
+    max-height: calc(750px - 150px) !important;
     overflow-y: auto;
   }
 }
