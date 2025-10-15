@@ -15,7 +15,7 @@
                   <i class="fas fa-graduation-cap"></i>
                 </div>
                 <h2 ref="welcomeText" class="cyberpunk-welcome-text">Welcome Back</h2>
-                <p ref="subtitleText" class="cyberpunk-subtitle">Sign in to your OnlyTutor account</p>
+                <p ref="subtitleText" class="cyberpunk-subtitle">Sign in to your TutorConnect account</p>
               </div>
 
               <form @submit.prevent="handleLogin">

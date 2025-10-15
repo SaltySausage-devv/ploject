@@ -1,13 +1,13 @@
 @echo off
 REM =============================================================================
-REM OnlyTutor Setup Script (Windows)
+REM TutorConnect Setup Script (Windows)
 REM =============================================================================
 REM This script installs all dependencies for the entire project
 REM =============================================================================
 
 echo.
 echo ============================================================================
-echo OnlyTutor Setup - Installing Dependencies
+echo TutorConnect Setup - Installing Dependencies
 echo ============================================================================
 echo.
 

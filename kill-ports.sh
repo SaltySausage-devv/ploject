@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # =============================================================================
-# OnlyTutor Port Cleanup Script (macOS/Linux)
+# TutorConnect Port Cleanup Script (macOS/Linux)
 # =============================================================================
 # This script kills processes running on development ports
 # =============================================================================
@@ -60,7 +60,7 @@ kill_port() {
 # Main Script
 # =============================================================================
 
-print_header "OnlyTutor - Cleaning Up Development Ports"
+print_header "TutorConnect - Cleaning Up Development Ports"
 
 echo "Checking for processes on development ports..."
 echo ""

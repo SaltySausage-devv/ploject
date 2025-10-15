@@ -31,7 +31,7 @@
                   ref="welcomeText"
                   class="cyberpunk-welcome-text"
                 >
-                  Join OnlyTutor
+                  Join TutorConnect
                 </h2>
                 <p 
                   ref="subtitleText"

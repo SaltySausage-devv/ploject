@@ -1,13 +1,13 @@
 @echo off
 REM =============================================================================
-REM OnlyTutor Port Cleanup Script (Windows)
+REM TutorConnect Port Cleanup Script (Windows)
 REM =============================================================================
 REM This script kills processes running on development ports
 REM =============================================================================
 
 echo.
 echo ============================================================================
-echo OnlyTutor - Cleaning Up Development Ports
+echo TutorConnect - Cleaning Up Development Ports
 echo ============================================================================
 echo.
 

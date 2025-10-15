@@ -40,7 +40,7 @@
     <section class="py-5">
       <div class="container">
         <div class="text-center mb-5" data-animation="fadeInUp">
-          <h2 class="display-5 fw-bold mb-3">Why Choose OnlyTutor?</h2>
+          <h2 class="display-5 fw-bold mb-3">Why Choose TutorConnect?</h2>
           <p class="lead text-muted">Everything you need for successful tutoring</p>
         </div>
 
@@ -105,7 +105,7 @@
             <div class="card-body p-5">
               <h2 class="display-5 fw-bold mb-3 cyberpunk-glow">Ready to Get Started?</h2>
               <p class="lead text-muted mb-4">
-                Join thousands of students and tutors who trust OnlyTutor
+                Join thousands of students and tutors who trust TutorConnect
               </p>
               <div class="d-flex gap-3 justify-content-center flex-wrap">
                 <a href="http://localhost:3000/register" class="btn btn-lg">

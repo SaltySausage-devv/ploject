@@ -8,7 +8,7 @@
           class="fas fa-graduation-cap me-2"
           style="color: var(--cyber-orange)"
         ></i>
-        <span class="fw-bold">OnlyTutor</span>
+        <span class="fw-bold">TutorConnect</span>
       </router-link>
 
       <button
@@ -210,7 +210,7 @@ export default {
     const currentUserId = computed(() => authStore.user?.id);
 
     // Notification state
-    const NOTIFICATIONS_STORAGE_KEY = "onlytutor_notifications";
+    const NOTIFICATIONS_STORAGE_KEY = "tutorconnect_notifications";
     const notifications = ref([]);
     const showAllNotifications = ref(false);
     let messageHandler = null;

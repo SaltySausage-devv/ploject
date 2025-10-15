@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-OnlyTutor is a tutoring marketplace platform for Singapore built with a microservices architecture. The frontend is Vue.js 3 with Composition API, and the backend consists of 12 independent Node.js microservices. Authentication is handled via Supabase Auth with a custom auth service for JWT token management.
+TutorConnect is a tutoring marketplace platform for Singapore built with a microservices architecture. The frontend is Vue.js 3 with Composition API, and the backend consists of 12 independent Node.js microservices. Authentication is handled via Supabase Auth with a custom auth service for JWT token management.
 
 ## Development Commands
 
