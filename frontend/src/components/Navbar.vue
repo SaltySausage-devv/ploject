@@ -52,6 +52,11 @@
         </ul>
 
         <ul class="navbar-nav">
+          <!-- Credits Icon for Students -->
+          <li class="nav-item" v-if="isAuthenticated && userType === 'student'">
+            <CreditsIcon />
+          </li>
+
           <li class="nav-item" v-if="!isAuthenticated">
             <router-link to="/login" class="nav-link">
               <i class="fas fa-sign-in-alt me-1"></i>
@@ -196,9 +201,13 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { animate, stagger, spring } from "animejs";
 import messagingService from "../services/messaging.js";
+import CreditsIcon from "./CreditsIcon.vue";
 
 export default {
   name: "Navbar",
+  components: {
+    CreditsIcon,
+  },
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();

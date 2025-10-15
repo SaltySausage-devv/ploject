@@ -8,6 +8,7 @@ export const useAuthStore = defineStore('auth', () => {
     const isLoading = ref(false)
     const isLoggingOut = ref(false) // Flag to prevent auth listener interference during logout
     let authSubscription = null // Store subscription to prevent duplicates
+    let userSubscription = null // Store user data subscription for real-time updates
 
     const isAuthenticated = computed(() => {
         // Consider authenticated if we have a valid session
@@ -82,6 +83,8 @@ export const useAuthStore = defineStore('auth', () => {
                 } else {
                     user.value = profile
                     console.log('✅ User profile loaded:', profile)
+                    // Set up real-time subscription for user data updates
+                    setupUserSubscription(data.user.id)
                 }
             }
 
@@ -156,6 +159,8 @@ export const useAuthStore = defineStore('auth', () => {
 
                 session.value = authData.session
                 user.value = profile
+                // Set up real-time subscription for user data updates
+                setupUserSubscription(authData.user.id)
             }
 
             console.log('✅ Registration complete!')
@@ -179,6 +184,46 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    const setupUserSubscription = (userId) => {
+        // Remove existing user subscription if it exists
+        if (userSubscription) {
+            console.log('🔧 Removing existing user subscription')
+            userSubscription.unsubscribe()
+            userSubscription = null
+        }
+
+        if (!userId) {
+            console.log('ℹ️ No user ID provided for subscription')
+            return
+        }
+
+        console.log('🔔 Setting up user data subscription for:', userId)
+
+        // Subscribe to changes in the user's data
+        userSubscription = supabase
+            .channel('user-updates')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'users',
+                    filter: `id=eq.${userId}`
+                },
+                (payload) => {
+                    console.log('🔄 User data updated:', payload)
+                    if (payload.new && user.value) {
+                        // Update the user data with the new values
+                        user.value = { ...user.value, ...payload.new }
+                        console.log('✅ User data updated in store:', user.value)
+                    }
+                }
+            )
+            .subscribe()
+
+        console.log('✅ User subscription established')
+    }
+
     const logout = async () => {
         console.log('🚪 Logging out user...')
 
@@ -188,6 +233,13 @@ export const useAuthStore = defineStore('auth', () => {
         // Clear local state immediately
         user.value = null
         session.value = null
+
+        // Remove user subscription
+        if (userSubscription) {
+            console.log('🔧 Removing user subscription on logout')
+            userSubscription.unsubscribe()
+            userSubscription = null
+        }
 
         try {
             // Sign out from Supabase and wait for it
@@ -228,6 +280,8 @@ export const useAuthStore = defineStore('auth', () => {
                 if (profile) {
                     user.value = profile
                     console.log('✅ User profile loaded')
+                    // Set up real-time subscription for user data updates
+                    setupUserSubscription(currentSession.user.id)
                 }
             } else {
                 console.log('ℹ️ No existing session found')
@@ -259,9 +313,16 @@ export const useAuthStore = defineStore('auth', () => {
 
                     if (profile) {
                         user.value = profile
+                        // Set up real-time subscription for user data updates
+                        setupUserSubscription(newSession.user.id)
                     }
                 } else {
                     user.value = null
+                    // Remove user subscription when no user
+                    if (userSubscription) {
+                        userSubscription.unsubscribe()
+                        userSubscription = null
+                    }
                 }
             })
 
@@ -393,6 +454,19 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
 
+    const cleanup = () => {
+        // Clean up subscriptions
+        if (authSubscription) {
+            authSubscription.subscription.unsubscribe()
+            authSubscription = null
+        }
+        if (userSubscription) {
+            userSubscription.unsubscribe()
+            userSubscription = null
+        }
+        console.log('🧹 Auth store cleaned up')
+    }
+
     return {
         user: userWithCamelCase, // Export the camelCase version for backwards compatibility
         rawUser: user, // Export raw user for direct access if needed
@@ -407,6 +481,7 @@ export const useAuthStore = defineStore('auth', () => {
         initializeAuth,
         updateProfile,
         forgotPassword,
-        resetPassword
+        resetPassword,
+        cleanup
     }
 })

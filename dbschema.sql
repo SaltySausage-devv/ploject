@@ -434,6 +434,7 @@ CREATE TABLE public.users (
   date_of_birth date,
   address text,
   bio text,
+  credits integer DEFAULT 0 CHECK (credits >= 0),
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
   reset_token text,
@@ -454,3 +455,14 @@ CREATE TABLE public.verification_documents (
   CONSTRAINT verification_documents_pkey PRIMARY KEY (id),
   CONSTRAINT verification_documents_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.users(id)
 );
+
+-- Enable Row Level Security for real-time subscriptions
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+
+-- Policy to allow users to read their own data
+CREATE POLICY "Users can read own data" ON public.users
+  FOR SELECT USING (auth.uid() = id);
+
+-- Policy to allow users to update their own data
+CREATE POLICY "Users can update own data" ON public.users
+  FOR UPDATE USING (auth.uid() = id);
