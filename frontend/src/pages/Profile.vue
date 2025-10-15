@@ -21,7 +21,7 @@
                 <div class="profile-avatar cyberpunk-avatar spring-bounce">
                   <img
                     v-if="user?.userType === 'tutor'"
-                    :src="`https://i.pravatar.cc/200?img=${Math.abs(user?.id?.split('-')[0].charCodeAt(0) || 0) % 70}`"
+                    src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjcwIiByPSIyNyIgZmlsbD0iIzlDQTNBRiIvPgo8cGF0aCBkPSJNNzAgMTIwQzcwIDEwOC45NTUgNzguOTU0NSAxMDAgOTEgMTAwSDEwOUMxMjEuMDQ2IDEwMCAxMzAgMTA4Ljk1NSAxMzAgMTIwVjE2MEg3MFYxMjBaIiBmaWxsPSIjOUNBM0FGIi8+Cjwvc3ZnPgo="
                     :alt="`${user?.firstName} ${user?.lastName}`"
                     class="avatar-image"
                   />
