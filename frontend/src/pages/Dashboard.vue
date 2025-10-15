@@ -180,7 +180,8 @@ export default {
 
     const user = computed(() => authStore.user);
     const userType = computed(() => authStore.userType);
-
+    const averageRating = ref(null);
+    const earnings = ref(null);
     const stats = ref([]);
     const recentActivity = ref([]);
 
@@ -196,11 +197,44 @@ export default {
           { icon: "fas fa-dollar-sign", label: "Total Spent", value: "$1,440" },
         ];
       } else if (userType.value === "tutor") {
+        // will need to include code when detecting tutor, query api into rating, total.
+        //query for ratings
+        try{
+          const response = await fetch(`http://localhost:3006/reviews/tutor/${user.value.id}`)
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch reviews')
+          }
+
+          const data = await response.json()
+          console.log('API Response:', data)
+
+          // Transform API data to frontend format
+          averageRating.value = data.stats.averageRating
+        } catch (error) {
+          console.error("Failed!", error)
+        }
+        // query for Earnings
+                try{
+          const response = await fetch(`http://localhost:3008/analytics/tutor/${user.value.id}`)
+
+          if (!response.ok) {
+            throw new Error('Failed to fetch earnings')
+          }
+
+          const data = await response.json()
+          console.log('API Response:', data)
+
+          // Transform API data to frontend format
+          earnings.value = data.earnings
+        } catch (error) {
+          console.error("Failed!", error)
+        }
         stats.value = [
           { icon: "fas fa-users", label: "Total Students", value: "25" },
-          { icon: "fas fa-star", label: "Average Rating", value: "4.8" },
+          { icon: "fas fa-star", label: "Average Rating", value: averageRating.value },
           { icon: "fas fa-clock", label: "Hours This Month", value: "48" },
-          { icon: "fas fa-dollar-sign", label: "Earnings", value: "$2,880" },
+          { icon: "fas fa-dollar-sign", label: "Earnings", value: earnings.value },
         ];
       } else if (userType.value === "centre") {
         stats.value = [
@@ -252,9 +286,10 @@ export default {
       { immediate: true }
     );
     const charts = ref([])
+    const dates = ref([])
     const labels = ref([])
     const datasets = ref([])
-
+      // function to update chart whenever.
     async function setDataType(label){
       dataType.value = label
       console.log(dataType.value)
@@ -272,8 +307,13 @@ export default {
           charts.value = data.reviews.map(reviews => ({
             rating: reviews.rating
           }))
+          dates.value = data.reviews.map(reviews => ({
+            date: reviews.created_at
+          }))
           console.error("no")
-          labels.value = [11,12]
+          labels.value = dates.value.map((item) =>{
+            return item.date
+          })
           datasets.value = [{
             label: label,
             backgroundColor: "#f87979",
@@ -303,7 +343,10 @@ export default {
       setDataType,
       datasets,
       dataType,
-      labels
+      labels,
+      dates,
+      averageRating,
+      earnings
     };
   },
 };
