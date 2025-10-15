@@ -107,7 +107,6 @@ const tutorProfileSchema = Joi.object({
   experienceYears: Joi.number().min(0).allow(null).optional(),
   previousExperience: Joi.string().allow('').optional(),
   hourlyRate: Joi.number().min(0).allow(null).optional(),
-  groupRate: Joi.number().min(0).allow(null).optional(),
   monthlyPackage: Joi.string().allow('').optional(),
   weeklyPackage: Joi.string().allow('').optional(),
   bulkPackage: Joi.string().allow('').optional(),
@@ -124,7 +123,6 @@ const tutorProfileSchema = Joi.object({
   videoIntroductionUrl: Joi.string().uri().optional(),
   specialties: Joi.array().items(Joi.string()).optional(),
   preferredStudentLevels: Joi.array().items(Joi.string()).optional(),
-  preferredGroupSize: Joi.number().min(1).optional(),
   achievements: Joi.array().optional(),
   searchTags: Joi.array().items(Joi.string()).optional()
 });
@@ -281,7 +279,6 @@ app.post('/profiles/tutor', verifyToken, async (req, res) => {
       experience_years: value.experienceYears,
       previous_experience: value.previousExperience,
       hourly_rate: value.hourlyRate,
-      group_rate: value.groupRate,
       monthly_package: value.monthlyPackage,
       weekly_package: value.weeklyPackage,
       bulk_package: value.bulkPackage,
@@ -293,7 +290,6 @@ app.post('/profiles/tutor', verifyToken, async (req, res) => {
       video_introduction_url: value.videoIntroductionUrl,
       specialties: value.specialties,
       preferred_student_levels: value.preferredStudentLevels,
-      preferred_group_size: value.preferredGroupSize,
       achievements: value.achievements,
       search_tags: value.searchTags,
       updated_at: new Date().toISOString()

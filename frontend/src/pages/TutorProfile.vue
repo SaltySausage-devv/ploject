@@ -137,20 +137,10 @@
                 </h4>
               </div>
               <div class="cyberpunk-card-body">
-                <div class="row">
-                  <div class="col-md-4">
-                    <div class="cyberpunk-pricing-item">
-                      <h5 class="cyberpunk-price cyberpunk-price-primary">${{ tutor.hourlyRate }}/hour</h5>
-                      <small class="cyberpunk-price-label">Individual Session</small>
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <div class="cyberpunk-pricing-item">
-                      <h5 class="cyberpunk-price cyberpunk-price-success">${{ tutor.groupRate }}/hour</h5>
-                      <small class="cyberpunk-price-label">Group Session</small>
-                    </div>
-                  </div>
-                                  </div>
+                <div class="cyberpunk-pricing-item">
+                  <h5 class="cyberpunk-price cyberpunk-price-primary">${{ tutor.hourlyRate }}/hour</h5>
+                  <small class="cyberpunk-price-label">Individual Session</small>
+                </div>
               </div>
             </div>
 
@@ -230,7 +220,7 @@ export default {
       name: 'Loading...',
       subject: 'Loading...',
       level: 'Loading...',
-      avatar: 'https://i.pravatar.cc/400?img=1',
+      avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==',
       rating: 0,
       bio: 'Loading tutor information...',
       education: 'Loading...',
@@ -239,8 +229,7 @@ export default {
       subjects: [],
       levels: [],
       hourlyRate: 0,
-      groupRate: 0,
-            location: 'Loading...',
+      location: 'Loading...',
       teachingMode: 'both',
       availability: [],
       reviews: 0
@@ -436,7 +425,7 @@ export default {
           name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Unknown Tutor',
           subject: profile.subjects?.[0] || 'N/A',
           level: profile.levels?.[0] || 'N/A',
-          avatar: profile.profile_image_url || `https://i.pravatar.cc/400?img=${Math.abs(profile.user_id.split('-')[0].charCodeAt(0)) % 70}`,
+          avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==',
           rating: profile.average_rating || 5,
           bio: profile.bio || profile.headline || profile.teaching_philosophy || 'No bio available',
           education: formatQualifications(profile.qualifications),
@@ -445,8 +434,7 @@ export default {
           subjects: profile.subjects || [],
           levels: profile.levels || [],
           hourlyRate: profile.hourly_rate || 0,
-          groupRate: profile.group_rate || (profile.hourly_rate ? profile.hourly_rate * 0.8 : 0),
-                    location: profile.location?.address || profile.preferred_locations?.[0] || 'Singapore',
+          location: profile.location?.address || profile.preferred_locations?.[0] || 'Singapore',
           teachingMode: profile.teaching_mode?.[0] || 'both',
           availability: ['now'], // TODO: Get from availability system
           reviews: profile.total_reviews || 0
@@ -466,7 +454,7 @@ export default {
           name: 'Tutor Not Found',
           subject: 'N/A',
           level: 'N/A',
-          avatar: 'https://i.pravatar.cc/400?img=0',
+          avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==',
           rating: 0,
           bio: 'Unable to load tutor information. The tutor profile may not exist or there may be a network error.',
           education: 'Not specified',
@@ -475,8 +463,7 @@ export default {
           subjects: [],
           levels: [],
           hourlyRate: 0,
-          groupRate: 0,
-                    location: 'N/A',
+          location: 'N/A',
           teachingMode: 'both',
           availability: [],
           reviews: 0
