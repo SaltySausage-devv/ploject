@@ -37,127 +37,7 @@
       </div>
     </section>
 
-    <!-- Booking Modal -->
-    <div v-if="showBookingModal" class="cyberpunk-modal-overlay" @click="closeBookingModal">
-      <div class="cyberpunk-modal" @click.stop>
-        <div class="cyberpunk-modal-header">
-          <h3 class="cyberpunk-modal-title">
-            <i class="fas fa-calendar-plus me-2"></i>Book Session with {{ tutor.name }}
-          </h3>
-          <button class="cyberpunk-modal-close" @click="closeBookingModal">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-        
-        <div class="cyberpunk-modal-body">
-          <!-- Step 1: Select Date -->
-          <div v-if="bookingStep === 1" class="cyberpunk-booking-step">
-            <h5 class="cyberpunk-step-title">Select Date</h5>
-            <div class="cyberpunk-calendar">
-              <div class="cyberpunk-calendar-header">
-                <button @click="previousMonth" class="cyberpunk-calendar-nav">
-                  <i class="fas fa-chevron-left"></i>
-                </button>
-                <h6 class="cyberpunk-calendar-month">{{ currentMonthYear }}</h6>
-                <button @click="nextMonth" class="cyberpunk-calendar-nav">
-                  <i class="fas fa-chevron-right"></i>
-                </button>
-              </div>
-              <div class="cyberpunk-calendar-grid">
-                <div class="cyberpunk-calendar-day-header" v-for="day in dayHeaders" :key="day">
-                  {{ day }}
-                </div>
-                <div 
-                  v-for="day in calendarDays" 
-                  :key="day.date"
-                  class="cyberpunk-calendar-day"
-                  :class="{ 
-                    'cyberpunk-calendar-day-selected': selectedDate === day.date,
-                    'cyberpunk-calendar-day-available': day.available,
-                    'cyberpunk-calendar-day-other-month': !day.currentMonth
-                  }"
-                  @click="selectDate(day.date, day.available)"
-                >
-                  {{ day.day }}
-                </div>
-              </div>
-            </div>
-            <div class="cyberpunk-booking-actions">
-              <button class="cyberpunk-btn cyberpunk-btn-outline" @click="closeBookingModal">
-                Cancel
-              </button>
-              <button 
-                class="cyberpunk-btn cyberpunk-btn-primary" 
-                @click="nextStep"
-                :disabled="!selectedDate"
-              >
-                Next: Select Time
-              </button>
-            </div>
-          </div>
-
-          <!-- Step 2: Select Time -->
-          <div v-if="bookingStep === 2" class="cyberpunk-booking-step">
-            <h5 class="cyberpunk-step-title">Select Time</h5>
-            <p class="cyberpunk-selected-date">
-              <i class="fas fa-calendar me-2"></i>{{ formatSelectedDate(selectedDate) }}
-            </p>
-            <div class="cyberpunk-time-slots">
-              <div 
-                v-for="timeSlot in availableTimeSlots" 
-                :key="timeSlot"
-                class="cyberpunk-time-slot"
-                :class="{ 'cyberpunk-time-slot-selected': selectedTime === timeSlot }"
-                @click="selectTime(timeSlot)"
-              >
-                {{ timeSlot }}
-              </div>
-            </div>
-            <div class="cyberpunk-booking-actions">
-              <button class="cyberpunk-btn cyberpunk-btn-outline" @click="previousStep">
-                Back to Date
-              </button>
-              <button 
-                class="cyberpunk-btn cyberpunk-btn-primary" 
-                @click="nextStep"
-                :disabled="!selectedTime"
-              >
-                Next: Confirm Booking
-              </button>
-            </div>
-          </div>
-
-          <!-- Step 3: Confirm Booking -->
-          <div v-if="bookingStep === 3" class="cyberpunk-booking-step">
-            <h5 class="cyberpunk-step-title">Confirm Booking</h5>
-            <div class="cyberpunk-booking-summary">
-              <div class="cyberpunk-booking-details">
-                <h6 class="cyberpunk-booking-tutor">{{ tutor.name }}</h6>
-                <p class="cyberpunk-booking-subject">{{ tutor.subject }} • {{ tutor.level }}</p>
-                <div class="cyberpunk-booking-datetime">
-                  <i class="fas fa-calendar me-2"></i>{{ formatSelectedDate(selectedDate) }}
-                </div>
-                <div class="cyberpunk-booking-datetime">
-                  <i class="fas fa-clock me-2"></i>{{ selectedTime }}
-                </div>
-                <div class="cyberpunk-booking-price">
-                  <i class="fas fa-dollar-sign me-2"></i>${{ tutor.hourlyRate }}/hour
-                </div>
-              </div>
-            </div>
-            <div class="cyberpunk-booking-actions">
-              <button class="cyberpunk-btn cyberpunk-btn-outline" @click="previousStep">
-                Back to Time
-              </button>
-              <button class="cyberpunk-btn cyberpunk-btn-primary" @click="confirmBooking">
-                <i class="fas fa-check me-2"></i>Confirm Booking
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+  
     <!-- Tutor Profile Content -->
     <section class="cyberpunk-content-section">
       <div class="container">
@@ -180,10 +60,7 @@
                   <span class="cyberpunk-rating-text">({{ tutor.reviews }})</span>
                 </div>
                 <div class="cyberpunk-button-group">
-                  <button class="cyberpunk-btn cyberpunk-btn-primary" ref="bookButton" @click="bookSession">
-                    <i class="fas fa-calendar-plus me-2"></i>Book Session
-                  </button>
-                  <button class="cyberpunk-btn cyberpunk-btn-outline" ref="messageButton" @click="sendMessage">
+                  <button class="cyberpunk-btn cyberpunk-btn-primary" ref="messageButton" @click="sendMessage">
                     <i class="fas fa-comment me-2"></i>Send Message
                   </button>
                 </div>
@@ -260,20 +137,10 @@
                 </h4>
               </div>
               <div class="cyberpunk-card-body">
-                <div class="row">
-                  <div class="col-md-4">
-                    <div class="cyberpunk-pricing-item">
-                      <h5 class="cyberpunk-price cyberpunk-price-primary">${{ tutor.hourlyRate }}/hour</h5>
-                      <small class="cyberpunk-price-label">Individual Session</small>
-                    </div>
-                  </div>
-                  <div class="col-md-4">
-                    <div class="cyberpunk-pricing-item">
-                      <h5 class="cyberpunk-price cyberpunk-price-success">${{ tutor.groupRate }}/hour</h5>
-                      <small class="cyberpunk-price-label">Group Session</small>
-                    </div>
-                  </div>
-                                  </div>
+                <div class="cyberpunk-pricing-item">
+                  <h5 class="cyberpunk-price cyberpunk-price-primary">${{ tutor.hourlyRate }}/hour</h5>
+                  <small class="cyberpunk-price-label">Individual Session</small>
+                </div>
               </div>
             </div>
 
@@ -336,7 +203,6 @@ export default {
     const heroIcon = ref(null)
     const tutorCard = ref(null)
     const tutorAvatar = ref(null)
-    const bookButton = ref(null)
     const messageButton = ref(null)
     const aboutCard = ref(null)
     const subjectsCard = ref(null)
@@ -354,7 +220,7 @@ export default {
       name: 'Loading...',
       subject: 'Loading...',
       level: 'Loading...',
-      avatar: 'https://i.pravatar.cc/400?img=1',
+      avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==',
       rating: 0,
       bio: 'Loading tutor information...',
       education: 'Loading...',
@@ -363,8 +229,7 @@ export default {
       subjects: [],
       levels: [],
       hourlyRate: 0,
-      groupRate: 0,
-            location: 'Loading...',
+      location: 'Loading...',
       teachingMode: 'both',
       availability: [],
       reviews: 0
@@ -382,270 +247,7 @@ export default {
       return new Date(dateString).toLocaleDateString()
     }
 
-    // Booking modal state
-    const showBookingModal = ref(false)
-    const bookingStep = ref(1) // 1: Date, 2: Time, 3: Confirm
-    const selectedDate = ref(null)
-    const selectedTime = ref(null)
-    const currentMonth = ref(new Date().getMonth())
-    const currentYear = ref(new Date().getFullYear())
-
-    // Calendar data
-    const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-    
-    const currentMonthYear = computed(() => {
-      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December']
-      return `${monthNames[currentMonth.value]} ${currentYear.value}`
-    })
-
-    const calendarDays = computed(() => {
-      const days = []
-      const firstDay = new Date(currentYear.value, currentMonth.value, 1)
-      const lastDay = new Date(currentYear.value, currentMonth.value + 1, 0)
-      const startDate = new Date(firstDay)
-      startDate.setDate(startDate.getDate() - firstDay.getDay())
-      
-      for (let i = 0; i < 42; i++) {
-        const date = new Date(startDate)
-        date.setDate(startDate.getDate() + i)
-        
-        const isCurrentMonth = date.getMonth() === currentMonth.value
-        const isToday = date.toDateString() === new Date().toDateString()
-        const isPast = date < new Date().setHours(0, 0, 0, 0)
-        
-        days.push({
-          day: date.getDate(),
-          date: date.toISOString().split('T')[0],
-          currentMonth: isCurrentMonth,
-          available: isCurrentMonth && !isPast,
-          isToday: isToday
-        })
-      }
-      return days
-    })
-
-    const availableTimeSlots = computed(() => {
-      // Generate time slots from 9 AM to 6 PM
-      const slots = []
-      for (let hour = 9; hour <= 18; hour++) {
-        slots.push(`${hour.toString().padStart(2, '0')}:00`)
-        if (hour < 18) {
-          slots.push(`${hour.toString().padStart(2, '0')}:30`)
-        }
-      }
-      return slots
-    })
-
-    const bookSession = () => {
-      showBookingModal.value = true
-      bookingStep.value = 1
-      selectedDate.value = null
-      selectedTime.value = null
-      
-      // Animate modal entrance with anime.js
-      setTimeout(() => {
-        initBookingModalAnimations()
-      }, 50)
-    }
-
-    const closeBookingModal = () => {
-      showBookingModal.value = false
-      bookingStep.value = 1
-      selectedDate.value = null
-      selectedTime.value = null
-    }
-
-    const selectDate = (date, available) => {
-      if (available) {
-        selectedDate.value = date
-        
-        // Animate date selection
-        const selectedDay = document.querySelector('.cyberpunk-calendar-day-selected')
-        if (selectedDay) {
-          animate(selectedDay, {
-            scale: [1, 1.1, 1],
-            duration: 200,
-            ease: 'easeOutBack'
-          })
-        }
-      }
-    }
-
-    const selectTime = (time) => {
-      selectedTime.value = time
-      
-      // Animate time selection
-      const selectedSlot = document.querySelector('.cyberpunk-time-slot-selected')
-      if (selectedSlot) {
-        animate(selectedSlot, {
-          scale: [1, 1.1, 1],
-          duration: 200,
-          ease: 'easeOutBack'
-        })
-      }
-    }
-
-    const nextStep = () => {
-      if (bookingStep.value < 3) {
-        animateStepTransition('next')
-        setTimeout(() => {
-          bookingStep.value++
-        }, 150)
-      }
-    }
-
-    const previousStep = () => {
-      if (bookingStep.value > 1) {
-        animateStepTransition('previous')
-        setTimeout(() => {
-          bookingStep.value--
-        }, 150)
-      }
-    }
-
-    const previousMonth = () => {
-      if (currentMonth.value === 0) {
-        currentMonth.value = 11
-        currentYear.value--
-      } else {
-        currentMonth.value--
-      }
-    }
-
-    const nextMonth = () => {
-      if (currentMonth.value === 11) {
-        currentMonth.value = 0
-        currentYear.value++
-      } else {
-        currentMonth.value++
-      }
-    }
-
-    const formatSelectedDate = (dateString) => {
-      if (!dateString) return ''
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      })
-    }
-
-    const confirmBooking = () => {
-      // Animate booking confirmation
-      const modal = document.querySelector('.cyberpunk-modal')
-      if (modal) {
-        animate(modal, {
-          scale: [1, 1.05, 1],
-          duration: 300,
-          ease: 'easeInOutQuad',
-          complete: () => {
-            // In a real app, this would send booking data to backend
-            alert(`Booking confirmed!\n\nTutor: ${tutor.value.name}\nDate: ${formatSelectedDate(selectedDate.value)}\nTime: ${selectedTime.value}\nRate: $${tutor.value.hourlyRate}/hour\n\nThis would normally send the booking to the backend.`)
-            console.log('Booking confirmed:', {
-              tutor: tutor.value.name,
-              date: selectedDate.value,
-              time: selectedTime.value,
-              rate: tutor.value.hourlyRate
-            })
-            closeBookingModal()
-          }
-        })
-      }
-    }
-
-    const initBookingModalAnimations = () => {
-      // Modal entrance animation
-      const modal = document.querySelector('.cyberpunk-modal')
-      const modalHeader = document.querySelector('.cyberpunk-modal-header')
-      const bookingStep = document.querySelector('.cyberpunk-booking-step')
-      const calendarDays = document.querySelectorAll('.cyberpunk-calendar-day')
-      const timeSlots = document.querySelectorAll('.cyberpunk-time-slot')
-
-      if (modal) {
-        animate(modal, {
-          scale: [0.8, 1],
-          opacity: [0, 1],
-          translateY: [-50, 0],
-          duration: 400,
-          ease: 'easeOutExpo'
-        })
-      }
-
-      if (modalHeader) {
-        animate(modalHeader, {
-          translateX: [-30, 0],
-          opacity: [0, 1],
-          duration: 300,
-          ease: 'easeOutExpo',
-          delay: 200
-        })
-      }
-
-      if (bookingStep) {
-        animate(bookingStep, {
-          translateX: [30, 0],
-          opacity: [0, 1],
-          duration: 300,
-          ease: 'easeOutExpo',
-          delay: 200
-        })
-      }
-
-      // Animate calendar days with stagger
-      calendarDays.forEach((day, index) => {
-        animate(day, {
-          scale: [0, 1],
-          opacity: [0, 1],
-          duration: 200,
-          delay: index * 20,
-          ease: 'easeOutBack'
-        })
-      })
-
-      // Animate time slots with stagger
-      timeSlots.forEach((slot, index) => {
-        animate(slot, {
-          scale: [0, 1],
-          opacity: [0, 1],
-          duration: 200,
-          delay: index * 30,
-          ease: 'easeOutBack'
-        })
-      })
-    }
-
-    const animateStepTransition = (direction = 'next') => {
-      const currentStep = document.querySelector('.cyberpunk-booking-step')
-      if (!currentStep) return
-
-      // Exit animation
-      animate(currentStep, {
-        translateX: direction === 'next' ? -50 : 50,
-        opacity: [1, 0],
-        scale: [1, 0.9],
-        duration: 150,
-        ease: 'easeInOutQuad',
-        complete: () => {
-          // After exit animation, animate the new step
-          setTimeout(() => {
-            const newStep = document.querySelector('.cyberpunk-booking-step')
-            if (newStep) {
-              animate(newStep, {
-                translateX: direction === 'next' ? [50, 0] : [-50, 0],
-                opacity: [0, 1],
-                scale: [0.9, 1],
-                duration: 150,
-                ease: 'easeInOutQuad'
-              })
-            }
-          }, 50)
-        }
-      })
-    }
-
+  
     const sendMessage = () => {
       // Navigate to chat page with tutor ID
       router.push(`/chat/${tutor.value.id}`)
@@ -702,19 +304,13 @@ export default {
           ease: 'out(4)'
         })
 
-      // Button animations
+      // Button animation
       profileTimeline
-        .add(bookButton.value, {
-          opacity: [0, 1],
-          translateY: [30, 0],
-          duration: 800,
-          delay: 1200
-        })
         .add(messageButton.value, {
           opacity: [0, 1],
           translateY: [30, 0],
           duration: 800,
-          delay: 1300
+          delay: 1200
         })
 
       // Detail cards animation
@@ -829,7 +425,7 @@ export default {
           name: `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || 'Unknown Tutor',
           subject: profile.subjects?.[0] || 'N/A',
           level: profile.levels?.[0] || 'N/A',
-          avatar: profile.profile_image_url || `https://i.pravatar.cc/400?img=${Math.abs(profile.user_id.split('-')[0].charCodeAt(0)) % 70}`,
+          avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==',
           rating: profile.average_rating || 5,
           bio: profile.bio || profile.headline || profile.teaching_philosophy || 'No bio available',
           education: formatQualifications(profile.qualifications),
@@ -838,8 +434,7 @@ export default {
           subjects: profile.subjects || [],
           levels: profile.levels || [],
           hourlyRate: profile.hourly_rate || 0,
-          groupRate: profile.group_rate || (profile.hourly_rate ? profile.hourly_rate * 0.8 : 0),
-                    location: profile.location?.address || profile.preferred_locations?.[0] || 'Singapore',
+          location: profile.location?.address || profile.preferred_locations?.[0] || 'Singapore',
           teachingMode: profile.teaching_mode?.[0] || 'both',
           availability: ['now'], // TODO: Get from availability system
           reviews: profile.total_reviews || 0
@@ -859,7 +454,7 @@ export default {
           name: 'Tutor Not Found',
           subject: 'N/A',
           level: 'N/A',
-          avatar: 'https://i.pravatar.cc/400?img=0',
+          avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==',
           rating: 0,
           bio: 'Unable to load tutor information. The tutor profile may not exist or there may be a network error.',
           education: 'Not specified',
@@ -868,8 +463,7 @@ export default {
           subjects: [],
           levels: [],
           hourlyRate: 0,
-          groupRate: 0,
-                    location: 'N/A',
+          location: 'N/A',
           teachingMode: 'both',
           availability: [],
           reviews: 0
@@ -888,10 +482,7 @@ export default {
         loadTutorData(tutorId)
       }
 
-      // Initialize animations
-      setTimeout(() => {
-        initProfileAnimations()
-      }, 100)
+      // All animations disabled
     })
 
     // Watch for route changes to load different tutors
@@ -899,10 +490,7 @@ export default {
       if (newTutorId) {
         loadTutorData(newTutorId)
 
-        // Re-initialize animations for new tutor
-        setTimeout(() => {
-          initProfileAnimations()
-        }, 100)
+        // All animations disabled
       }
     })
 
@@ -912,33 +500,12 @@ export default {
       showAllReviews,
       displayedReviews,
       formatDate,
-      bookSession,
       sendMessage,
-      showBookingModal,
-      bookingStep,
-      selectedDate,
-      selectedTime,
-      currentMonthYear,
-      calendarDays,
-      dayHeaders,
-      availableTimeSlots,
-      selectDate,
-      selectTime,
-      nextStep,
-      previousStep,
-      previousMonth,
-      nextMonth,
-      formatSelectedDate,
-      confirmBooking,
-      closeBookingModal,
-      initBookingModalAnimations,
-      animateStepTransition,
       heroTitle,
       heroSubtitle,
       heroIcon,
       tutorCard,
       tutorAvatar,
-      bookButton,
       messageButton,
       aboutCard,
       subjectsCard,
@@ -1337,302 +904,4 @@ export default {
   }
 }
 
-/* Booking Modal Styles */
-.cyberpunk-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(10px);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-}
-
-.cyberpunk-modal {
-  background: rgba(26, 26, 26, 0.95);
-  border: 2px solid var(--cyber-orange);
-  border-radius: 12px;
-  box-shadow: 0 0 30px rgba(255, 165, 0, 0.3);
-  max-width: 500px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: modalSlideIn 0.3s ease-out;
-}
-
-@keyframes modalSlideIn {
-  from {
-    opacity: 0;
-    transform: scale(0.9) translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.cyberpunk-modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--cyber-orange);
-  background: rgba(255, 165, 0, 0.1);
-}
-
-.cyberpunk-modal-title {
-  color: var(--cyber-orange);
-  font-size: 1.3rem;
-  font-weight: 600;
-  margin: 0;
-  text-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
-}
-
-.cyberpunk-modal-close {
-  background: none;
-  border: 1px solid var(--cyber-orange);
-  color: var(--cyber-orange);
-  width: 35px;
-  height: 35px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.cyberpunk-modal-close:hover {
-  background: var(--cyber-orange);
-  color: var(--cyber-dark);
-  box-shadow: 0 0 15px rgba(255, 165, 0, 0.5);
-}
-
-.cyberpunk-modal-body {
-  padding: 1.5rem;
-}
-
-.cyberpunk-booking-step {
-  animation: fadeIn 0.3s ease-in;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateX(20px); }
-  to { opacity: 1; transform: translateX(0); }
-}
-
-.cyberpunk-step-title {
-  color: var(--cyber-orange);
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.cyberpunk-calendar {
-  margin-bottom: 2rem;
-}
-
-.cyberpunk-calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.cyberpunk-calendar-nav {
-  background: rgba(255, 165, 0, 0.1);
-  border: 1px solid var(--cyber-orange);
-  color: var(--cyber-orange);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.cyberpunk-calendar-nav:hover {
-  background: var(--cyber-orange);
-  color: var(--cyber-dark);
-  box-shadow: 0 0 15px rgba(255, 165, 0, 0.3);
-}
-
-.cyberpunk-calendar-month {
-  color: var(--cyber-text);
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin: 0;
-}
-
-.cyberpunk-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
-}
-
-.cyberpunk-calendar-day-header {
-  text-align: center;
-  padding: 0.5rem;
-  color: var(--cyber-orange);
-  font-weight: 600;
-  font-size: 0.9rem;
-}
-
-.cyberpunk-calendar-day {
-  aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid rgba(255, 165, 0, 0.2);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: var(--cyber-text-muted);
-  font-weight: 500;
-}
-
-.cyberpunk-calendar-day:hover {
-  background: rgba(255, 165, 0, 0.1);
-  border-color: var(--cyber-orange);
-  color: var(--cyber-orange);
-}
-
-.cyberpunk-calendar-day-available {
-  color: var(--cyber-text);
-  border-color: rgba(255, 165, 0, 0.3);
-}
-
-.cyberpunk-calendar-day-available:hover {
-  background: rgba(255, 165, 0, 0.2);
-  border-color: var(--cyber-orange);
-  color: var(--cyber-orange);
-  box-shadow: 0 0 10px rgba(255, 165, 0, 0.2);
-}
-
-.cyberpunk-calendar-day-selected {
-  background: var(--cyber-orange);
-  color: var(--cyber-dark);
-  border-color: var(--cyber-orange);
-  box-shadow: 0 0 15px rgba(255, 165, 0, 0.4);
-  font-weight: 600;
-}
-
-.cyberpunk-calendar-day-other-month {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.cyberpunk-selected-date {
-  color: var(--cyber-orange);
-  font-size: 1.1rem;
-  font-weight: 500;
-  text-align: center;
-  margin-bottom: 1.5rem;
-  padding: 1rem;
-  background: rgba(255, 165, 0, 0.1);
-  border-radius: 8px;
-  border: 1px solid rgba(255, 165, 0, 0.3);
-}
-
-.cyberpunk-time-slots {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-}
-
-.cyberpunk-time-slot {
-  padding: 0.75rem;
-  text-align: center;
-  border: 1px solid rgba(255, 165, 0, 0.3);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  color: var(--cyber-text);
-  font-weight: 500;
-}
-
-.cyberpunk-time-slot:hover {
-  background: rgba(255, 165, 0, 0.1);
-  border-color: var(--cyber-orange);
-  color: var(--cyber-orange);
-  box-shadow: 0 0 10px rgba(255, 165, 0, 0.2);
-}
-
-.cyberpunk-time-slot-selected {
-  background: var(--cyber-orange);
-  color: var(--cyber-dark);
-  border-color: var(--cyber-orange);
-  box-shadow: 0 0 15px rgba(255, 165, 0, 0.4);
-  font-weight: 600;
-}
-
-.cyberpunk-booking-summary {
-  background: rgba(255, 165, 0, 0.05);
-  border: 1px solid rgba(255, 165, 0, 0.3);
-  border-radius: 8px;
-  padding: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.cyberpunk-booking-details h6 {
-  color: var(--cyber-orange);
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-}
-
-.cyberpunk-booking-subject {
-  color: var(--cyber-text-muted);
-  margin-bottom: 1rem;
-}
-
-.cyberpunk-booking-datetime {
-  color: var(--cyber-text);
-  margin-bottom: 0.5rem;
-  display: flex;
-  align-items: center;
-}
-
-.cyberpunk-booking-price {
-  color: var(--cyber-orange);
-  font-weight: 600;
-  font-size: 1.1rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid rgba(255, 165, 0, 0.3);
-}
-
-.cyberpunk-booking-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: space-between;
-}
-
-.cyberpunk-booking-actions .cyberpunk-btn {
-  flex: 1;
-}
-
-@media (max-width: 768px) {
-  .cyberpunk-modal {
-    margin: 0.5rem;
-    max-height: 95vh;
-  }
-
-  .cyberpunk-time-slots {
-    grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
-  }
-
-  .cyberpunk-booking-actions {
-    flex-direction: column;
-  }
-}
 </style>

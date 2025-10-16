@@ -1,10 +1,10 @@
-# OnlyTutor - Singapore's Premier Tutoring Marketplace
+# TutorConnect - Singapore's Premier Tutoring Marketplace
 
 A comprehensive marketplace platform connecting students with verified tutors and tuition centres in Singapore, built with a modern microservices architecture and featuring advanced animations.
 
 ## 🎯 Project Overview
 
-OnlyTutor is a full-stack web application that revolutionizes the tutoring industry in Singapore by providing:
+TutorConnect is a full-stack web application that revolutionizes the tutoring industry in Singapore by providing:
 - **Transparent pricing** comparison across tutors and centres
 - **Real-time availability** and instant booking
 - **Verified tutor profiles** with comprehensive reviews
@@ -50,7 +50,7 @@ OnlyTutor is a full-stack web application that revolutionizes the tutoring indus
 ## 📁 Complete Codebase Structure
 
 ```
-OnlyTutor/
+TutorConnect/
 ├── 📁 database/
 │   └── schema.sql                    # PostgreSQL database schema
 ├── 📁 frontend/                      # Vue.js frontend application
@@ -124,7 +124,7 @@ OnlyTutor/
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd OnlyTutor
+cd TutorConnect
 
 # Run setup script (installs everything automatically)
 setup.bat
@@ -134,7 +134,7 @@ setup.bat
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd OnlyTutor
+cd TutorConnect
 
 # Make scripts executable
 chmod +x setup.sh kill-ports.sh
@@ -170,7 +170,7 @@ JWT_SECRET=your_jwt_secret_key_here
 
 # Email Service (SendGrid)
 SENDGRID_API_KEY=your_sendgrid_api_key
-FROM_EMAIL=noreply@onlytutor.sg
+FROM_EMAIL=noreply@tutorconnect.sg
 
 # SMS Service (Twilio)
 TWILIO_ACCOUNT_SID=your_twilio_account_sid
@@ -379,4 +379,4 @@ For support and questions:
 
 ---
 
-**OnlyTutor** - Revolutionizing education in Singapore, one connection at a time. 🎓✨
+**TutorConnect** - Revolutionizing education in Singapore, one connection at a time. 🎓✨

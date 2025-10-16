@@ -28,6 +28,8 @@ CREATE TABLE public.booking_offers (
   status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'proposed'::text, 'confirmed'::text, 'cancelled'::text])),
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),
+  proposed_end_time timestamp with time zone,
+  duration integer DEFAULT 60,
   CONSTRAINT booking_offers_pkey PRIMARY KEY (id),
   CONSTRAINT booking_offers_conversation_id_fkey FOREIGN KEY (conversation_id) REFERENCES public.conversations(id),
   CONSTRAINT booking_offers_tutee_id_fkey FOREIGN KEY (tutee_id) REFERENCES public.users(id),
@@ -58,20 +60,21 @@ CREATE TABLE public.bookings (
   google_calendar_event_id text,
   google_meet_link text,
   zoom_meeting_link text,
+  updated_at timestamp with time zone DEFAULT now(),
   pending_reschedule_start_time timestamp with time zone,
   pending_reschedule_end_time timestamp with time zone,
   reschedule_requested_by uuid,
   reschedule_requester_type text CHECK (reschedule_requester_type = ANY (ARRAY['tutor'::text, 'student'::text])),
   reschedule_reason text,
-  reschedule_status text CHECK (reschedule_status = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text])),
+  reschedule_status text CHECK (reschedule_status = ANY (ARRAY['pending'::text, 'accepted'::text, 'rejected'::text, NULL::text])),
   reschedule_requested_at timestamp with time zone,
   reschedule_responded_at timestamp with time zone,
   reschedule_response_message text,
   CONSTRAINT bookings_pkey PRIMARY KEY (id),
+  CONSTRAINT bookings_reschedule_requested_by_fkey FOREIGN KEY (reschedule_requested_by) REFERENCES public.users(id),
   CONSTRAINT bookings_tutor_id_fkey FOREIGN KEY (tutor_id) REFERENCES public.users(id),
   CONSTRAINT bookings_centre_id_fkey FOREIGN KEY (centre_id) REFERENCES public.users(id),
-  CONSTRAINT bookings_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.users(id),
-  CONSTRAINT bookings_reschedule_requested_by_fkey FOREIGN KEY (reschedule_requested_by) REFERENCES public.users(id)
+  CONSTRAINT bookings_student_id_fkey FOREIGN KEY (student_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.calendar_events (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -243,6 +246,19 @@ CREATE TABLE public.package_rates (
   CONSTRAINT package_rates_pkey PRIMARY KEY (id),
   CONSTRAINT package_rates_tutor_profile_id_fkey FOREIGN KEY (tutor_profile_id) REFERENCES public.tutor_profiles(id)
 );
+CREATE TABLE public.phone_verification_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  phone character varying NOT NULL,
+  verification_code character varying NOT NULL,
+  status character varying NOT NULL,
+  ip_address character varying,
+  user_agent text,
+  created_at timestamp with time zone DEFAULT now(),
+  verified_at timestamp with time zone,
+  CONSTRAINT phone_verification_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT phone_verification_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.profile_views (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   tutor_id uuid,
@@ -369,7 +385,6 @@ CREATE TABLE public.tutor_profiles (
   certifications jsonb DEFAULT '[]'::jsonb,
   previous_experience text,
   experience_years integer DEFAULT 0,
-  group_rate numeric,
   preferred_locations ARRAY,
   timezone character varying DEFAULT 'Asia/Singapore'::character varying,
   profile_image_url text,
@@ -377,7 +392,6 @@ CREATE TABLE public.tutor_profiles (
   specialties ARRAY,
   languages ARRAY DEFAULT ARRAY['English'::text],
   preferred_student_levels ARRAY,
-  preferred_group_size integer DEFAULT 1,
   achievements jsonb DEFAULT '[]'::jsonb,
   total_students_taught integer DEFAULT 0,
   verification_status character varying DEFAULT 'pending'::character varying,
@@ -439,6 +453,11 @@ CREATE TABLE public.users (
   updated_at timestamp with time zone DEFAULT now(),
   reset_token text,
   reset_token_expires timestamp with time zone,
+  credits double precision,
+  phone_verified boolean DEFAULT false,
+  phone_verification_code character varying,
+  phone_verification_expires timestamp with time zone,
+  phone_verification_attempts integer DEFAULT 0,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );

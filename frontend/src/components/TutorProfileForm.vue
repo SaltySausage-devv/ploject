@@ -300,22 +300,6 @@
               />
             </div>
           </div>
-
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Group Rate (Per Hour)</label>
-            <div class="input-group">
-              <span class="input-group-text">$</span>
-              <input
-                type="number"
-                v-model.number="tutorProfile.groupRate"
-                class="form-control"
-                :disabled="!editMode"
-                min="0"
-                step="0.01"
-                placeholder="0.00"
-              />
-            </div>
-          </div>
         </div>
 
         </div>
@@ -461,7 +445,6 @@ export default {
       previousExperience: '',
       specialties: [],
       hourlyRate: null,
-      groupRate: null,
       locationAddress: '',
       preferredLocations: []
     })
@@ -490,8 +473,6 @@ export default {
 
       // Rates (12 points)
       if (tutorProfile.hourlyRate) completeness += 10
-      if (tutorProfile.groupRate) completeness += 2
-
       // Location (10 points)
       if (tutorProfile.locationAddress) completeness += 10
 
@@ -565,7 +546,6 @@ export default {
             previousExperience: profile.previous_experience || '',
             specialties: profile.specialties || [],
             hourlyRate: profile.hourly_rate || null,
-            groupRate: profile.group_rate || null,
             locationAddress: profile.location?.address || '',
             preferredLocations: profile.preferred_locations || []
           })
@@ -605,7 +585,6 @@ export default {
           previousExperience: tutorProfile.previousExperience,
           specialties: tutorProfile.specialties,
           hourlyRate: tutorProfile.hourlyRate,
-          groupRate: tutorProfile.groupRate,
           location: {
             address: tutorProfile.locationAddress
           },

@@ -7,7 +7,18 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const Joi = require('joi');
 const https = require('https');
+const crypto = require('crypto');
 require('dotenv').config({ path: '../../.env' });
+
+// Initialize Twilio client (optional - only if credentials provided)
+let twilioClient = null;
+if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+  const twilio = require('twilio');
+  twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  console.log('✅ Twilio client initialized successfully');
+} else {
+  console.warn('⚠️  Twilio credentials not found - OTP will be logged to console (development mode)');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -47,7 +58,32 @@ const registerSchema = Joi.object({
   firstName: Joi.string().required(),
   lastName: Joi.string().required(),
   userType: Joi.string().valid('student', 'tutor', 'centre').required(),
-  phone: Joi.string().optional()
+  phone: Joi.string().pattern(/^[89]\d{7}$/).required().messages({
+    'string.pattern.base': 'Phone number must be a valid Singapore number (8 digits starting with 8 or 9)',
+    'any.required': 'Phone number is required'
+  }),
+  phoneVerificationCode: Joi.string().length(6).required().messages({
+    'string.length': 'Verification code must be 6 digits',
+    'any.required': 'Phone verification code is required'
+  })
+});
+
+const sendOtpSchema = Joi.object({
+  phone: Joi.string().pattern(/^[89]\d{7}$/).required().messages({
+    'string.pattern.base': 'Phone number must be a valid Singapore number (8 digits starting with 8 or 9)',
+    'any.required': 'Phone number is required'
+  })
+});
+
+const verifyOtpSchema = Joi.object({
+  phone: Joi.string().pattern(/^[89]\d{7}$/).required().messages({
+    'string.pattern.base': 'Phone number must be a valid Singapore number (8 digits starting with 8 or 9)',
+    'any.required': 'Phone number is required'
+  }),
+  code: Joi.string().length(6).required().messages({
+    'string.length': 'Verification code must be 6 digits',
+    'any.required': 'Verification code is required'
+  })
 });
 
 const loginSchema = Joi.object({
@@ -71,6 +107,40 @@ const generateToken = (userId, userType) => {
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
+};
+
+// Phone verification utilities
+const generateOTP = () => {
+  return crypto.randomInt(100000, 999999).toString();
+};
+
+const sendOTPViaSMS = async (phone, code) => {
+  const fullPhone = `+65${phone}`; // Singapore country code
+
+  if (twilioClient) {
+    try {
+      const message = await twilioClient.messages.create({
+        body: `Your OnlyTutor verification code is: ${code}. Valid for 10 minutes.`,
+        from: process.env.TWILIO_PHONE_NUMBER,
+        to: fullPhone
+      });
+      console.log(`✅ SMS sent successfully to ${fullPhone}: ${message.sid}`);
+      return { success: true, messageId: message.sid };
+    } catch (error) {
+      console.error('❌ Twilio SMS error:', error);
+      return { success: false, error: error.message };
+    }
+  } else {
+    // Development mode - log to console
+    console.log('\n' + '='.repeat(60));
+    console.log('📱 DEVELOPMENT MODE - OTP CODE');
+    console.log('='.repeat(60));
+    console.log(`Phone: ${fullPhone}`);
+    console.log(`Code: ${code}`);
+    console.log(`Expires: ${new Date(Date.now() + 10 * 60 * 1000).toLocaleString()}`);
+    console.log('='.repeat(60) + '\n');
+    return { success: true, messageId: 'dev-mode' };
+  }
 };
 
 // Email sending utility with fallback
@@ -124,6 +194,133 @@ const verifyToken = (req, res, next) => {
 };
 
 // Routes
+
+// Send OTP to phone number
+app.post('/auth/send-otp', async (req, res) => {
+  try {
+    const { error, value } = sendOtpSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const { phone } = value;
+
+    // Check if phone is already registered and verified
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('id, phone_verified')
+      .eq('phone', phone)
+      .single();
+
+    if (existingUser && existingUser.phone_verified) {
+      return res.status(400).json({ error: 'This phone number is already registered' });
+    }
+
+    // Generate OTP
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Store OTP in database temporarily (or use Redis in production)
+    // For now, we'll use a simple in-memory approach or database
+    const { error: insertError } = await supabase
+      .from('phone_verification_logs')
+      .insert({
+        phone,
+        verification_code: otp,
+        status: 'sent',
+        ip_address: req.ip,
+        user_agent: req.headers['user-agent'],
+        created_at: new Date().toISOString()
+      });
+
+    if (insertError) {
+      console.error('Error storing OTP:', insertError);
+    }
+
+    // Send OTP via SMS
+    const smsResult = await sendOTPViaSMS(phone, otp);
+
+    if (!smsResult.success) {
+      return res.status(500).json({
+        error: 'Failed to send OTP. Please try again.',
+        details: process.env.NODE_ENV === 'development' ? smsResult.error : undefined
+      });
+    }
+
+    // In production, don't send OTP in response
+    // In development, include it for testing
+    res.json({
+      message: 'OTP sent successfully',
+      expiresAt: expiresAt.toISOString(),
+      ...(process.env.NODE_ENV === 'development' && { otp }) // Only in dev mode
+    });
+
+  } catch (error) {
+    console.error('Send OTP error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Verify OTP
+app.post('/auth/verify-otp', async (req, res) => {
+  try {
+    const { error, value } = verifyOtpSchema.validate(req.body);
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    const { phone, code } = value;
+
+    // Get the most recent OTP for this phone (allow 'sent' status for retries)
+    const { data: otpRecord, error: fetchError } = await supabase
+      .from('phone_verification_logs')
+      .select('*')
+      .eq('phone', phone)
+      .eq('status', 'sent')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchError || !otpRecord) {
+      return res.status(400).json({ error: 'No pending verification found. Please request a new OTP.' });
+    }
+
+    // Check if OTP is expired (10 minutes)
+    const otpAge = Date.now() - new Date(otpRecord.created_at).getTime();
+    if (otpAge > 10 * 60 * 1000) {
+      await supabase
+        .from('phone_verification_logs')
+        .update({ status: 'expired' })
+        .eq('id', otpRecord.id);
+
+      return res.status(400).json({ error: 'OTP has expired. Please request a new one.' });
+    }
+
+    // Verify OTP - don't update status on wrong code, allow retries
+    if (otpRecord.verification_code !== code) {
+      return res.status(400).json({ error: 'Invalid verification code. Please try again.' });
+    }
+
+    // Mark as verified
+    await supabase
+      .from('phone_verification_logs')
+      .update({
+        status: 'verified',
+        verified_at: new Date().toISOString()
+      })
+      .eq('id', otpRecord.id);
+
+    res.json({
+      message: 'Phone number verified successfully',
+      verified: true
+    });
+
+  } catch (error) {
+    console.error('Verify OTP error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.post('/auth/register', async (req, res) => {
   try {
     const { error, value } = registerSchema.validate(req.body);
@@ -131,7 +328,32 @@ app.post('/auth/register', async (req, res) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { email, password, firstName, lastName, userType, phone } = value;
+    const { email, password, firstName, lastName, userType, phone, phoneVerificationCode } = value;
+
+    // Verify phone OTP first
+    const { data: otpRecord } = await supabase
+      .from('phone_verification_logs')
+      .select('*')
+      .eq('phone', phone)
+      .eq('verification_code', phoneVerificationCode)
+      .eq('status', 'verified')
+      .order('verified_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (!otpRecord) {
+      return res.status(400).json({
+        error: 'Phone number not verified. Please verify your phone number first.'
+      });
+    }
+
+    // Check if verification is recent (within last 30 minutes)
+    const verificationAge = Date.now() - new Date(otpRecord.verified_at).getTime();
+    if (verificationAge > 30 * 60 * 1000) {
+      return res.status(400).json({
+        error: 'Phone verification expired. Please verify your phone number again.'
+      });
+    }
 
     // Check if user already exists
     const { data: existingUser } = await supabase
@@ -142,6 +364,17 @@ app.post('/auth/register', async (req, res) => {
 
     if (existingUser) {
       return res.status(400).json({ error: 'User already exists' });
+    }
+
+    // Check if phone is already registered
+    const { data: existingPhone } = await supabase
+      .from('users')
+      .select('id')
+      .eq('phone', phone)
+      .single();
+
+    if (existingPhone) {
+      return res.status(400).json({ error: 'Phone number already registered' });
     }
 
     // Hash password
@@ -157,6 +390,7 @@ app.post('/auth/register', async (req, res) => {
         last_name: lastName,
         user_type: userType,
         phone,
+        phone_verified: true,
         created_at: new Date().toISOString()
       })
       .select()
@@ -165,6 +399,12 @@ app.post('/auth/register', async (req, res) => {
     if (insertError) {
       throw insertError;
     }
+
+    // Update verification log with user_id
+    await supabase
+      .from('phone_verification_logs')
+      .update({ user_id: user.id })
+      .eq('id', otpRecord.id);
 
     // Generate token
     const token = generateToken(user.id, userType);
@@ -177,7 +417,9 @@ app.post('/auth/register', async (req, res) => {
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        userType: user.user_type
+        userType: user.user_type,
+        phone: user.phone,
+        phoneVerified: user.phone_verified
       }
     });
   } catch (error) {

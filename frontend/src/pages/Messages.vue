@@ -1,9 +1,9 @@
 <template>
   <div class="messages-page">
-    <div class="container py-5">
-      <div class="row g-4" style="min-height: 80vh">
+    <div class="container-fluid py-4 px-3 px-lg-5">
+      <div class="row g-3 g-lg-4 messages-row">
         <!-- Conversations Sidebar -->
-        <div class="col-lg-4 d-flex">
+        <div class="col-12 col-lg-4 conversations-col" :class="{ 'hide-on-mobile': showMobileChat }">
           <div class="card border-0 shadow-sm w-100 d-flex flex-column">
             <div class="card-header bg-white border-bottom">
               <div class="d-flex align-items-center justify-content-between">
@@ -135,13 +135,12 @@
         </div>
 
         <!-- Chat Area -->
-        <div class="col-lg-8 d-flex">
+        <div class="col-12 col-lg-8 chat-col" :class="{ 'show-on-mobile': showMobileChat }">
           <div
             :initial="{ opacity: 0, x: 30 }"
             :animate="{ opacity: 1, x: 0 }"
             :transition="{ duration: 0.6, delay: 0.1 }"
-            class="card border-0 shadow-sm w-100 d-flex flex-column"
-            style="height: 800px; max-height: 800px"
+            class="card border-0 shadow-sm w-100 d-flex flex-column chat-card"
           >
             <!-- Chat Header -->
             <div
@@ -150,6 +149,13 @@
             >
               <div class="d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center">
+                  <!-- Back button for mobile -->
+                  <button
+                    class="btn btn-link text-decoration-none me-2 back-btn-mobile"
+                    @click="backToConversations"
+                  >
+                    <i class="fas fa-arrow-left text-primary"></i>
+                  </button>
                   <div
                     class="chat-avatar bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3"
                     style="width: 40px; height: 40px"
@@ -275,7 +281,8 @@
                               <button
                                 v-if="
                                   message.senderId !== currentUserId &&
-                                  authStore.user?.user_type === 'tutor'
+                                  authStore.user?.user_type === 'tutor' &&
+                                  getBookingStatusValue(message) === 'awaiting_response'
                                 "
                                 class="btn btn-primary btn-sm me-2"
                                 @click="handleBookingOffer(message)"
@@ -283,9 +290,13 @@
                                 <i class="fas fa-calendar-check me-1"></i>
                                 View & Respond
                               </button>
-                              <span class="booking-status text-warning">
-                                <i class="fas fa-clock me-1"></i>
-                                Awaiting response
+                              <span
+                                :class="['booking-status', getBookingStatusClass(message)]"
+                              >
+                                <i
+                                  :class="['fas', getBookingStatusIcon(message), 'me-1']"
+                                ></i>
+                                {{ getBookingStatusText(message) }}
                               </span>
                             </div>
                           </div>
@@ -323,7 +334,8 @@
                                 v-if="
                                   message.senderId !== currentUserId &&
                                   (authStore.user?.user_type === 'student' ||
-                                    authStore.user?.user_type === 'parent')
+                                    authStore.user?.user_type === 'parent') &&
+                                  getBookingStatusValue(message) === 'pending_acceptance'
                                 "
                                 class="btn btn-success btn-sm me-2"
                                 @click="confirmBooking(message)"
@@ -331,22 +343,14 @@
                                 <i class="fas fa-check me-1"></i>
                                 Accept & Book
                               </button>
-                              <button
-                                v-if="
-                                  message.senderId !== currentUserId &&
-                                  (authStore.user?.user_type === 'student' ||
-                                    authStore.user?.user_type === 'parent')
-                                "
-                                class="btn btn-danger btn-sm"
-                                @click="
-                                  sendMessage(
-                                    'I would like to discuss alternative times'
-                                  )
-                                "
+                              <span
+                                :class="['booking-status', getBookingStatusClass(message)]"
                               >
-                                <i class="fas fa-times me-1"></i>
-                                Reject
-                              </button>
+                                <i
+                                  :class="['fas', getBookingStatusIcon(message), 'me-1']"
+                                ></i>
+                                {{ getBookingStatusText(message) }}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -384,6 +388,51 @@
                               <p class="mb-0 text-success">
                                 <i class="fas fa-check-circle me-1"></i>
                                 Session has been booked and added to calendar
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Booking Rejection Message -->
+                        <div
+                          v-else-if="
+                            message.messageType === 'booking_rejection'
+                          "
+                          class="message-content booking-message booking-rejection"
+                        >
+                          <div class="booking-header">
+                            <i class="fas fa-times-circle me-2"></i>
+                            <span class="booking-title"
+                              >Booking Proposal Rejected</span
+                            >
+                          </div>
+                          <div class="booking-details">
+                            <div v-if="getBookingData(message)">
+                              <p class="mb-2 text-danger">
+                                <i class="fas fa-times-circle me-1"></i>
+                                Booking proposal has been rejected
+                              </p>
+                              <p class="mb-2">
+                                <strong>Proposed Time:</strong>
+                                {{
+                                  formatDateTime(
+                                    getBookingData(message).proposedTime
+                                  )
+                                }}
+                              </p>
+                              <p
+                                v-if="getBookingData(message).finalLocation"
+                                class="mb-2"
+                              >
+                                <strong>Location:</strong>
+                                {{ getBookingData(message).finalLocation }}
+                              </p>
+                              <p
+                                v-if="getBookingData(message).rejectionReason"
+                                class="mb-0"
+                              >
+                                <strong>Reason:</strong>
+                                {{ getBookingData(message).rejectionReason }}
                               </p>
                             </div>
                           </div>
@@ -629,31 +678,6 @@
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-
-              <!-- Booking Action Buttons (only for tutees) -->
-              <div
-                v-if="selectedConversation && canBookSession"
-                class="booking-actions p-3 border-bottom bg-light"
-              >
-                <div class="d-flex gap-2">
-                  <button
-                    class="btn btn-primary flex-fill"
-                    @click="showBookingOfferModal = true"
-                    :disabled="isLoading"
-                  >
-                    <i class="fas fa-calendar-plus me-2"></i>
-                    Book Session
-                  </button>
-                  <button
-                    class="btn btn-outline-secondary flex-fill"
-                    @click="showCalendarModal = true"
-                    :disabled="isLoading"
-                  >
-                    <i class="fas fa-calendar me-2"></i>
-                    View Calendar
-                  </button>
                 </div>
               </div>
 
@@ -1112,6 +1136,74 @@
               </div>
             </div>
 
+            <!-- Duration Selection -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Session Duration</label>
+              <div class="duration-buttons mb-2">
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.duration === 30 }"
+                  @click="bookingProposal.duration = 30; bookingProposal.customDuration = ''"
+                >
+                  30 min
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.duration === 60 }"
+                  @click="bookingProposal.duration = 60; bookingProposal.customDuration = ''"
+                >
+                  60 min
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.duration === 90 }"
+                  @click="bookingProposal.duration = 90; bookingProposal.customDuration = ''"
+                >
+                  90 min
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.duration === 120 }"
+                  @click="bookingProposal.duration = 120; bookingProposal.customDuration = ''"
+                >
+                  120 min
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.customDuration !== '' }"
+                  @click="bookingProposal.duration = 0; bookingProposal.customDuration = '60'"
+                >
+                  Custom
+                </button>
+              </div>
+              <div v-if="bookingProposal.customDuration !== ''" class="mt-2">
+                <div class="input-group">
+                  <input
+                    type="number"
+                    class="form-control"
+                    v-model.number="bookingProposal.customDuration"
+                    placeholder="Enter duration"
+                    min="15"
+                    max="480"
+                    step="15"
+                  />
+                  <span class="input-group-text">minutes</span>
+                </div>
+                <small class="text-muted">Min: 15 minutes, Max: 480 minutes (8 hours)</small>
+              </div>
+              <div v-if="bookingProposal.proposedDate && bookingProposal.proposedTime" class="mt-2">
+                <small class="text-muted">
+                  <i class="fas fa-clock me-1"></i>
+                  End time: {{ calculateEndTime() }}
+                </small>
+              </div>
+            </div>
+
             <!-- Location Choice -->
             <div v-if="!selectedBookingOffer.isOnline" class="mb-3">
               <label class="form-label fw-bold">Session Location</label>
@@ -1213,6 +1305,7 @@ export default {
     const messages = ref([]);
     const newMessage = ref("");
     const isLoading = ref(false);
+    const showMobileChat = ref(false); // Toggle for mobile view
 
     // Delete modal variables
     const showDeleteModal = ref(false);
@@ -1227,6 +1320,8 @@ export default {
     const isCreatingProposal = ref(false);
     const isSendingProposal = ref(false);
     const selectedBookingOffer = ref(null);
+    const confirmedBookings = ref(new Set()); // Track confirmed booking IDs
+    const bookingOfferStatuses = ref(new Map()); // Track booking proposal statuses
 
     // Booking offer form data
     const bookingOffer = ref({
@@ -1239,6 +1334,8 @@ export default {
     const bookingProposal = ref({
       proposedDate: "",
       proposedTime: "",
+      duration: 60, // Default to 60 minutes
+      customDuration: "",
       locationChoice: "tutee",
       tutorLocation: "",
       notes: "",
@@ -1476,7 +1573,13 @@ export default {
 
     const selectConversation = async (conversation) => {
       selectedConversation.value = conversation;
+      showMobileChat.value = true; // Show chat on mobile
       await loadMessages(conversation.id);
+    };
+
+    const backToConversations = () => {
+      showMobileChat.value = false;
+      // Don't clear selectedConversation to maintain state
     };
 
     const loadMessages = async (conversationId) => {
@@ -1499,6 +1602,14 @@ export default {
             : null,
         }));
 
+        resetBookingStatusState();
+        messages.value.forEach((msg) => {
+          inferBookingStatusFromMessage(msg);
+        });
+
+        await nextTick();
+        scrollToBottom();
+
         // Mark messages as read and update status
         await messagingService.markAsRead(conversationId);
 
@@ -1519,6 +1630,7 @@ export default {
       } catch (error) {
         console.error("Error loading messages:", error);
         messages.value = [];
+        resetBookingStatusState();
         alert("Failed to load messages. Please try again.");
       } finally {
         isLoading.value = false;
@@ -1556,6 +1668,8 @@ export default {
         };
 
         messages.value.push(tempMessage);
+        await nextTick();
+        scrollToBottom();
 
         // Update conversation in the list immediately
         const conversationIndex = conversations.value.findIndex(
@@ -2237,6 +2351,16 @@ export default {
         return;
       }
 
+      // Validate duration
+      const effectiveDuration = bookingProposal.value.customDuration !== ''
+        ? bookingProposal.value.customDuration
+        : bookingProposal.value.duration;
+
+      if (!effectiveDuration || effectiveDuration < 15) {
+        alert("Please select a valid duration (minimum 15 minutes)");
+        return;
+      }
+
       isCreatingProposal.value = true;
       try {
         const proposedDateTime = new Date(
@@ -2247,6 +2371,9 @@ export default {
         if (isNaN(proposedDateTime.getTime())) {
           throw new Error("Invalid date or time selected");
         }
+
+        // Calculate end time
+        const endDateTime = new Date(proposedDateTime.getTime() + effectiveDuration * 60000);
 
         let finalLocation = "";
         if (selectedBookingOffer.value.isOnline) {
@@ -2271,6 +2398,8 @@ export default {
           body: JSON.stringify({
             bookingOfferId: selectedBookingOffer.value.id,
             proposedTime: proposedDateTime.toISOString(),
+            proposedEndTime: endDateTime.toISOString(),
+            duration: effectiveDuration,
             tutorLocation: bookingProposal.value.tutorLocation,
             finalLocation: finalLocation,
           }),
@@ -2291,6 +2420,8 @@ export default {
         bookingProposal.value = {
           proposedDate: "",
           proposedTime: "",
+          duration: 60,
+          customDuration: "",
           locationChoice: "tutee",
           tutorLocation: "",
           notes: "",
@@ -2384,6 +2515,91 @@ export default {
       }
     };
 
+    const resetBookingStatusState = () => {
+      bookingOfferStatuses.value = new Map();
+      confirmedBookings.value = new Set();
+    };
+
+    const updateBookingStatus = (bookingOfferId, status) => {
+      if (!bookingOfferId) return;
+      const updatedStatuses = new Map(bookingOfferStatuses.value);
+      updatedStatuses.set(bookingOfferId, status);
+      bookingOfferStatuses.value = updatedStatuses;
+    };
+
+    const setConfirmedBooking = (bookingOfferId) => {
+      if (!bookingOfferId) return;
+      const updatedConfirmed = new Set(confirmedBookings.value);
+      updatedConfirmed.add(bookingOfferId);
+      confirmedBookings.value = updatedConfirmed;
+    };
+
+    const isBookingConfirmed = (bookingOfferId) => {
+      if (!bookingOfferId) return false;
+      return confirmedBookings.value.has(bookingOfferId);
+    };
+
+    const inferBookingStatusFromMessage = (message) => {
+      const bookingData = getBookingData(message);
+      if (!bookingData?.bookingOfferId) return;
+
+      switch (message.messageType) {
+        case "booking_offer":
+          if (!bookingOfferStatuses.value.has(bookingData.bookingOfferId)) {
+            updateBookingStatus(
+              bookingData.bookingOfferId,
+              "awaiting_response"
+            );
+          }
+          break;
+        case "booking_proposal":
+          updateBookingStatus(bookingData.bookingOfferId, "pending_acceptance");
+          break;
+        case "booking_confirmation":
+          updateBookingStatus(bookingData.bookingOfferId, "accepted");
+          setConfirmedBooking(bookingData.bookingOfferId);
+          break;
+        case "booking_rejection":
+          updateBookingStatus(bookingData.bookingOfferId, "rejected");
+          break;
+        default:
+          break;
+      }
+    };
+
+    const getBookingStatusValue = (message) => {
+      const bookingData = getBookingData(message);
+      if (!bookingData?.bookingOfferId) {
+        return "awaiting_response";
+      }
+      return (
+        bookingOfferStatuses.value.get(bookingData.bookingOfferId) ||
+        "awaiting_response"
+      );
+    };
+
+    const getBookingStatusText = (message) => {
+      const status = getBookingStatusValue(message);
+      if (status === "accepted") return "Accepted";
+      if (status === "rejected") return "Rejected";
+      if (status === "pending_acceptance") return "Pending acceptance";
+      return "Awaiting response";
+    };
+
+    const getBookingStatusClass = (message) => {
+      const status = getBookingStatusValue(message);
+      if (status === "accepted") return "text-success";
+      if (status === "rejected") return "text-danger";
+      return "text-warning";
+    };
+
+    const getBookingStatusIcon = (message) => {
+      const status = getBookingStatusValue(message);
+      if (status === "accepted") return "fa-check-circle";
+      if (status === "rejected") return "fa-times-circle";
+      return "fa-clock";
+    };
+
     const formatDateTime = (dateTimeString) => {
       if (!dateTimeString) return "";
       const date = new Date(dateTimeString);
@@ -2433,6 +2649,12 @@ export default {
         const data = await response.json();
         console.log("Booking confirmed:", data);
 
+        // Add to confirmed bookings set and update status
+        if (bookingData.bookingOfferId) {
+          setConfirmedBooking(bookingData.bookingOfferId);
+          updateBookingStatus(bookingData.bookingOfferId, "accepted");
+        }
+
         // Show success message
         alert(
           "Booking confirmed successfully! The session has been added to your calendar."
@@ -2443,6 +2665,7 @@ export default {
       }
     };
 
+  
     // Make functions globally available for context menu
     window.deleteMessage = deleteMessage;
     window.copyMessage = copyMessage;
@@ -2569,6 +2792,10 @@ export default {
               // Add new message
               messages.value.push(newMessage);
             }
+
+            inferBookingStatusFromMessage(newMessage);
+            await nextTick();
+            scrollToBottom();
 
             // Auto-mark messages as read when user is actively viewing the conversation
             if (message.sender_id !== currentUserId.value) {
@@ -2779,6 +3006,7 @@ export default {
     // Update selectConversation to join room
     const selectConversationWithRoom = async (conversation) => {
       selectedConversation.value = conversation;
+      showMobileChat.value = true; // Show chat on mobile
 
       if (conversation?.id) {
         joinConversationRoom(conversation.id);
@@ -2834,6 +3062,36 @@ export default {
       // This allows notifications to continue working on other pages
     });
 
+    // Calculate end time based on start time and duration
+    const calculateEndTime = () => {
+      if (!bookingProposal.value.proposedDate || !bookingProposal.value.proposedTime) {
+        return "N/A";
+      }
+
+      try {
+        const startDateTime = new Date(
+          `${bookingProposal.value.proposedDate}T${bookingProposal.value.proposedTime}`
+        );
+
+        // Get the effective duration (either from quick buttons or custom input)
+        const effectiveDuration = bookingProposal.value.customDuration !== ''
+          ? bookingProposal.value.customDuration
+          : bookingProposal.value.duration;
+
+        // Add duration in minutes
+        const endDateTime = new Date(startDateTime.getTime() + effectiveDuration * 60000);
+
+        // Format as HH:MM
+        const hours = String(endDateTime.getHours()).padStart(2, '0');
+        const minutes = String(endDateTime.getMinutes()).padStart(2, '0');
+
+        return `${hours}:${minutes}`;
+      } catch (error) {
+        console.error("Error calculating end time:", error);
+        return "N/A";
+      }
+    };
+
     return {
       authStore,
       currentUserId,
@@ -2843,6 +3101,8 @@ export default {
       messages,
       newMessage,
       isLoading,
+      showMobileChat,
+      backToConversations,
       filteredConversations,
       formatTime,
       scrollToBottom,
@@ -2879,10 +3139,12 @@ export default {
       isCreatingProposal,
       isSendingProposal,
       selectedBookingOffer,
+      confirmedBookings,
       bookingOffer,
       bookingProposal,
       createBookingOffer,
       createBookingProposal,
+      calculateEndTime,
       // Calendar related
       currentMonthYear,
       calendarDays,
@@ -2897,6 +3159,11 @@ export default {
       sendBookingProposal,
       // Booking message helpers
       getBookingData,
+      getBookingStatusValue,
+      isBookingConfirmed,
+      getBookingStatusText,
+      getBookingStatusClass,
+      getBookingStatusIcon,
       formatDateTime,
       handleBookingOffer,
       confirmBooking,
@@ -2955,10 +3222,20 @@ h6 {
   color: var(--cyber-text, #ffffff) !important;
 }
 
+/* Layout improvements */
+.messages-row {
+  min-height: calc(100vh - 200px);
+}
+
+.conversations-col,
+.chat-col {
+  display: flex;
+  flex-direction: column;
+}
+
 /* Conversation Items */
 .conversations-list {
-  height: 650px;
-  max-height: 650px;
+  flex: 1;
   overflow-y: auto;
   margin: 0 !important;
   padding: 0 !important;
@@ -3323,25 +3600,254 @@ i.text-primary {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .messages-container {
-    height: 250px !important;
-    max-height: 250px !important;
+/* Back button - only show on mobile */
+.back-btn-mobile {
+  display: none;
+  padding: 0.25rem 0.5rem;
+  font-size: 1.25rem;
+}
+
+/* Desktop view - side by side ALWAYS */
+@media (min-width: 992px) {
+  /* Force both columns to always display on desktop */
+  .conversations-col,
+  .chat-col {
+    display: flex !important;
+    position: relative !important;
+    flex-direction: column !important;
+  }
+
+  /* Override mobile toggle classes on desktop */
+  .conversations-col.hide-on-mobile {
+    display: flex !important;
+  }
+
+  .chat-col.show-on-mobile,
+  .chat-col {
+    display: flex !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    z-index: auto !important;
+  }
+
+  .back-btn-mobile {
+    display: none !important;
+  }
+
+  .conversations-col .card {
+    height: 750px !important;
+    max-height: 750px !important;
+  }
+
+  .chat-card {
+    height: 750px !important;
+    max-height: 750px !important;
+    min-height: 600px;
   }
 
   .conversations-list {
-    height: 400px !important;
-    max-height: 400px !important;
+    max-height: calc(750px - 180px) !important;
+    overflow-y: auto;
   }
 
-  .card.d-flex.flex-column {
-    height: 600px !important;
-    max-height: 600px !important;
+  .messages-container {
+    max-height: calc(750px - 150px) !important;
+    overflow-y: auto;
   }
 
+  /* Ensure booking actions don't appear when no conversation selected */
+  .booking-actions {
+    display: flex;
+  }
+}
+
+/* Responsive - Telegram-style Mobile View */
+@media (max-width: 991px) {
+  .messages-row {
+    min-height: calc(100vh - 150px);
+    position: relative;
+  }
+
+  /* Show back button on mobile */
+  .back-btn-mobile {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .back-btn-mobile:hover {
+    background: rgba(255, 140, 66, 0.1);
+    border-radius: 8px;
+  }
+
+  /* FORCE TOGGLE BEHAVIOR - Only one visible at a time */
+  .row.messages-row .conversations-col,
+  .row.messages-row .chat-col {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* DEFAULT: Show conversations, hide chat */
+  .row.messages-row .conversations-col {
+    display: flex !important;
+    z-index: 1 !important;
+    position: relative !important;
+    height: calc(100vh - 150px);
+  }
+
+  .row.messages-row .conversations-col .card {
+    height: 100%;
+  }
+
+  .row.messages-row .chat-col {
+    display: none !important;
+    z-index: 0 !important;
+  }
+
+  /* WHEN CHAT IS ACTIVE: Hide conversations, show chat full screen */
+  .row.messages-row .conversations-col.hide-on-mobile {
+    display: none !important;
+    z-index: 0 !important;
+  }
+
+  .row.messages-row .chat-col.show-on-mobile {
+    display: flex !important;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 10000 !important;
+    padding: 1rem !important;
+    background: #1a1a1a !important;
+    margin: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
+  .row.messages-row .chat-col.show-on-mobile .chat-card {
+    height: 100% !important;
+    max-height: 100vh !important;
+    margin: 0 !important;
+  }
+
+  .conversations-list {
+    flex: 1;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  .messages-container {
+    flex: 1;
+    min-height: 400px !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Make empty states more visible on mobile */
+  .text-center {
+    color: #ffffff !important;
+  }
+
+  .text-center .text-muted {
+    color: #ffffff !important;
+    opacity: 0.9;
+  }
+
+  .text-center i {
+    color: #ff8c42 !important;
+  }
+}
+
+@media (max-width: 768px) {
   .message-bubble {
-    max-width: 85%;
+    max-width: 90%;
+  }
+
+  /* Reduce header sizes for mobile */
+  .card-header h5 {
+    font-size: 1rem;
+  }
+
+  .card-header h6 {
+    font-size: 0.9rem;
+  }
+
+  .chat-col.show-on-mobile {
+    padding: 0.5rem;
+  }
+}
+
+@media (max-width: 576px) {
+  .message-bubble {
+    max-width: 95%;
+  }
+
+  /* Smaller padding on very small screens */
+  .messages-container {
+    padding: 10px 10px 70px 10px !important;
+  }
+
+  .message-input {
+    padding: 8px 10px !important;
+  }
+
+  .chat-col.show-on-mobile {
+    padding: 0.25rem;
+  }
+
+  .back-btn-mobile {
+    font-size: 1.1rem;
+  }
+}
+
+/* Mobile Modal Improvements */
+@media (max-width: 991px) {
+  .modal-overlay {
+    z-index: 99999 !important;
+    padding: 10px;
+  }
+
+  .modal-content {
+    width: 95% !important;
+    max-width: none !important;
+    max-height: 90vh !important;
+    margin: 0 !important;
+  }
+
+  .modal-header {
+    padding: 15px !important;
+  }
+
+  .modal-header h3 {
+    font-size: 18px !important;
+  }
+
+  .modal-body {
+    padding: 15px !important;
+  }
+
+  .modal-footer {
+    padding: 15px !important;
+  }
+
+  /* Ensure modal is above all mobile elements */
+  .modal-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
   }
 }
 
@@ -3356,7 +3862,7 @@ i.text-primary {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 99999;
 }
 
 .modal-content {
@@ -3382,8 +3888,14 @@ i.text-primary {
 .modal-header h3 {
   margin: 0;
   color: #ffffff;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.modal-header h3 .text-primary {
+  color: #ff8c42 !important;
 }
 
 .close-btn {
@@ -3598,7 +4110,7 @@ i.text-primary {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 99999;
   backdrop-filter: blur(5px);
 }
 
@@ -3629,8 +4141,14 @@ i.text-primary {
 .modal-header h3 {
   margin: 0;
   color: #ffffff;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: 0.5px;
+}
+
+.modal-header h3 .text-primary {
+  color: #ff8c42 !important;
 }
 
 .close-btn {
@@ -3815,6 +4333,35 @@ i.text-primary {
   color: white !important;
 }
 
+/* Duration Selection Buttons */
+.duration-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.duration-btn {
+  background: rgba(255, 140, 66, 0.1) !important;
+  border: 2px solid rgba(255, 140, 66, 0.3) !important;
+  color: #ff8c42 !important;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  min-width: 80px;
+}
+
+.duration-btn:hover {
+  background: rgba(255, 140, 66, 0.2) !important;
+  border-color: #ff8c42 !important;
+  transform: translateY(-2px);
+}
+
+.duration-btn.active {
+  background: linear-gradient(45deg, #ff8c42, #ffd23f) !important;
+  border-color: #ff8c42 !important;
+  color: white !important;
+  box-shadow: 0 0 15px rgba(255, 140, 66, 0.4);
+}
+
 /* Booking Request Summary - Compact Design */
 .booking-request-summary {
   background: rgba(255, 140, 66, 0.08);
@@ -3876,6 +4423,9 @@ i.text-primary {
 .form-label {
   color: #ffffff;
   font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: 0.3px;
+  font-size: 14px;
 }
 
 .form-control,
@@ -3916,6 +4466,36 @@ i.text-primary {
   background: linear-gradient(45deg, #ff8c42, #ffd23f) !important;
   border-color: #ff8c42 !important;
   color: white !important;
+}
+
+/* Session Type Buttons */
+.btn-outline-primary {
+  background: transparent;
+  border: 2px solid #424242 !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  letter-spacing: 0.3px;
+  transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+  background: rgba(255, 140, 66, 0.1);
+  border-color: #ff8c42 !important;
+  color: #ff8c42 !important;
+}
+
+.btn-outline-primary:focus {
+  box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.2);
+  border-color: #ff8c42 !important;
+}
+
+/* Remove Bootstrap blue outline */
+.btn-check:focus + .btn-outline-primary,
+.btn-outline-primary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 140, 66, 0.2) !important;
+  border-color: #ff8c42 !important;
 }
 
 /* Booking Message Styles */
@@ -3996,6 +4576,15 @@ i.text-primary {
   color: #28a745;
 }
 
+.booking-rejection .booking-header {
+  background: rgba(220, 53, 69, 0.12);
+  border-bottom: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+.booking-rejection .booking-header i {
+  color: #dc3545;
+}
+
 .reschedule-rejected .booking-header {
   background: rgba(220, 53, 69, 0.12);
   border-bottom: 1px solid rgba(220, 53, 69, 0.3);
@@ -4067,6 +4656,12 @@ i.text-primary {
   color: #28a745 !important;
   background: rgba(40, 167, 69, 0.1);
   border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.booking-status.text-danger {
+  color: #dc3545 !important;
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
 }
 
 .booking-actions .btn {

@@ -1,13 +1,13 @@
 @echo off
 REM =============================================================================
-REM OnlyTutor Development Startup Script (Windows)
+REM TutorConnect Development Startup Script (Windows)
 REM =============================================================================
 REM This script starts all services using npm run dev
 REM =============================================================================
 
 echo.
 echo ============================================================================
-echo OnlyTutor - Starting Development Environment
+echo TutorConnect - Starting Development Environment
 echo ============================================================================
 echo.
 

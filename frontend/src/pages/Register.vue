@@ -31,7 +31,7 @@
                   ref="welcomeText"
                   class="cyberpunk-welcome-text"
                 >
-                  Join OnlyTutor
+                  Join TutorConnect
                 </h2>
                 <p 
                   ref="subtitleText"
@@ -134,21 +134,47 @@
                 </div>
 
                 <div class="mb-3">
-                  <label for="phone" class="cyberpunk-label">Phone Number (Optional)</label>
+                  <label for="phone" class="cyberpunk-label">Singapore Phone Number *</label>
                   <div class="cyberpunk-input-group">
                     <div class="cyberpunk-input-icon">
                       <i class="fas fa-phone"></i>
                     </div>
+                    <div class="cyberpunk-phone-prefix">+65</div>
                     <input
                       ref="phoneField"
                       type="tel"
                       id="phone"
                       v-model="form.phone"
                       class="cyberpunk-input"
-                      placeholder="Enter your phone number"
+                      :class="{ 'is-invalid': errors.phone }"
+                      maxlength="8"
+                      :disabled="phoneVerified"
+                      required
+                      @input="validatePhone"
                     />
+                    <button
+                      v-if="!phoneVerified && !otpSent"
+                      type="button"
+                      class="cyberpunk-otp-btn"
+                      @click="sendOTP"
+                      :disabled="!isPhoneValid || sendingOTP"
+                    >
+                      <span v-if="sendingOTP" class="cyberpunk-spinner me-1"></span>
+                      <i v-else class="fas fa-paper-plane me-1"></i>
+                      {{ sendingOTP ? 'Sending...' : 'Send OTP' }}
+                    </button>
+                    <div v-if="phoneVerified" class="cyberpunk-verified-badge">
+                      <i class="fas fa-check-circle"></i> Verified
+                    </div>
+                  </div>
+                  <div v-if="errors.phone" class="cyberpunk-error-message">
+                    {{ errors.phone }}
+                  </div>
+                  <div v-if="phoneHelper" class="cyberpunk-helper-text">
+                    {{ phoneHelper }}
                   </div>
                 </div>
+
 
                 <div class="mb-3">
                   <label for="password" class="cyberpunk-label">Password</label>
@@ -252,6 +278,76 @@
         </div>
       </div>
     </div>
+
+    <!-- OTP Modal -->
+    <div v-if="otpSent && !phoneVerified" class="otp-modal-overlay" @click.self="closeOTPModal">
+      <div class="otp-modal">
+        <div class="otp-modal-header">
+          <h3>
+            <i class="fas fa-mobile-alt me-2"></i>
+            Verify Your Phone
+          </h3>
+          <button class="otp-modal-close" @click="closeOTPModal">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="otp-modal-body">
+          <p class="otp-modal-subtitle">
+            We've sent a 6-digit code to<br>
+            <strong>+65 {{ form.phone }}</strong>
+          </p>
+
+          <div class="otp-input-container">
+            <input
+              v-for="(digit, index) in 6"
+              :key="index"
+              :ref="el => otpInputs[index] = el"
+              type="text"
+              class="otp-digit-input"
+              maxlength="1"
+              @input="handleOTPInput(index, $event)"
+              @keydown="handleOTPKeydown(index, $event)"
+              @paste="handleOTPPaste"
+            />
+          </div>
+
+          <div v-if="errors.otp" class="cyberpunk-error-message text-center mt-3">
+            {{ errors.otp }}
+          </div>
+
+          <div class="otp-timer-section">
+            <div class="otp-timer-text">
+              <i class="fas fa-clock me-1"></i>
+              Code expires in {{ formatTime(otpTimeLeft) }}
+            </div>
+            <button
+              v-if="otpTimeLeft <= 570"
+              type="button"
+              class="otp-resend-btn"
+              @click="resendOTP"
+              :disabled="otpTimeLeft > 570"
+            >
+              <i class="fas fa-redo me-1"></i>
+              Resend Code
+            </button>
+          </div>
+        </div>
+
+        <div class="otp-modal-footer">
+          <button
+            type="button"
+            class="otp-verify-btn"
+            @click="verifyOTPFromModal"
+            :disabled="verifyingOTP || otpCode.length !== 6"
+          >
+            <span v-if="verifyingOTP" class="cyberpunk-spinner me-2"></span>
+            <i v-else class="fas fa-check-circle me-2"></i>
+            {{ verifyingOTP ? 'Verifying...' : 'Verify Code' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -260,6 +356,8 @@ import { ref, reactive, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { createTimeline, animate, createAnimatable, utils } from 'animejs'
+import { usePhoneVerification } from '../composables/usePhoneVerification'
+import axios from 'axios'
 
 export default {
   name: 'Register',
@@ -277,6 +375,7 @@ export default {
     const emailField = ref(null)
     const userTypeField = ref(null)
     const phoneField = ref(null)
+    const otpField = ref(null)
     const passwordField = ref(null)
     const confirmPasswordField = ref(null)
     const passwordToggle = ref(null)
@@ -291,6 +390,7 @@ export default {
       email: '',
       userType: '',
       phone: '',
+      otp: '',
       password: '',
       confirmPassword: '',
       terms: false
@@ -300,6 +400,23 @@ export default {
     const error = ref('')
     const isLoading = ref(false)
     const showPassword = ref(false)
+
+    // Phone verification composable
+    const {
+      otpSent,
+      phoneVerified,
+      sendingOTP,
+      verifyingOTP,
+      isPhoneValid,
+      phoneHelper,
+      otpTimeLeft,
+      validatePhone: validatePhoneNumber,
+      sendOTP: sendOTPToPhone,
+      verifyOTP: verifyOTPCode,
+      formatTime,
+      resendOTP: resendOTPCode,
+      stopOTPTimer
+    } = usePhoneVerification()
 
     // Advanced Anime.js v4 Register Page Animations
     const initRegisterAnimations = async () => {
@@ -622,9 +739,100 @@ export default {
       }
     }
 
+    // Phone validation and OTP methods
+    const validatePhone = () => {
+      form.phone = form.phone.replace(/\D/g, '')
+      validatePhoneNumber(form.phone)
+    }
+
+    const sendOTP = async () => {
+      const result = await sendOTPToPhone(form.phone)
+      if (!result.success) {
+        error.value = result.error
+        animateError()
+      }
+    }
+
+    const verifyOTP = async () => {
+      const result = await verifyOTPCode(form.phone, form.otp)
+      if (result.success) {
+        phoneHelper.value = '✓ Phone verified successfully!'
+      } else {
+        errors.value.otp = result.error
+      }
+    }
+
+    const resendOTP = async () => {
+      otpCode.value = ''
+      otpInputs.value.forEach(input => {
+        if (input) input.value = ''
+      })
+      const result = await resendOTPCode(form.phone)
+      if (!result.success) {
+        error.value = result.error
+        animateError()
+      }
+    }
+
+    // OTP Modal logic
+    const otpInputs = ref([])
+    const otpCode = ref('')
+
+    const handleOTPInput = (index, event) => {
+      const value = event.target.value.replace(/\D/g, '')
+      event.target.value = value
+
+      // Build OTP code
+      const digits = otpInputs.value.map(input => input?.value || '').join('')
+      otpCode.value = digits
+      form.otp = digits
+
+      // Auto-focus next input
+      if (value && index < 5) {
+        otpInputs.value[index + 1]?.focus()
+      }
+    }
+
+    const handleOTPKeydown = (index, event) => {
+      if (event.key === 'Backspace' && !event.target.value && index > 0) {
+        otpInputs.value[index - 1]?.focus()
+      }
+    }
+
+    const handleOTPPaste = (event) => {
+      event.preventDefault()
+      const pastedData = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+      pastedData.split('').forEach((digit, index) => {
+        if (otpInputs.value[index]) {
+          otpInputs.value[index].value = digit
+        }
+      })
+      otpCode.value = pastedData
+      form.otp = pastedData
+      if (pastedData.length === 6) {
+        otpInputs.value[5]?.focus()
+      }
+    }
+
+    const verifyOTPFromModal = async () => {
+      const result = await verifyOTPCode(form.phone, otpCode.value)
+      if (result.success) {
+        phoneHelper.value = '✓ Phone verified successfully!'
+      } else {
+        errors.value.otp = result.error
+      }
+    }
+
+    const closeOTPModal = () => {
+      // Allow closing only if not in the middle of verification
+      if (!verifyingOTP.value) {
+        errors.value.otp = 'Please verify your phone number to continue'
+      }
+    }
+
     const validateForm = () => {
       errors.value = {}
-      
+
       if (!form.firstName.trim()) {
         errors.value.firstName = 'First name is required'
       }
@@ -641,6 +849,19 @@ export default {
 
       if (!form.userType) {
         errors.value.userType = 'Please select your role'
+      }
+
+      // Phone validation
+      if (!form.phone) {
+        errors.value.phone = 'Phone number is required'
+      } else if (!validatePhoneNumber(form.phone)) {
+        errors.value.phone = 'Please enter a valid Singapore phone number'
+      }
+
+      // OTP verification check
+      if (!phoneVerified.value) {
+        errors.value.phone = 'Please verify your phone number'
+        return false
       }
 
       if (!form.password) {
@@ -706,6 +927,7 @@ export default {
           email: form.email,
           userType: form.userType,
           phone: form.phone,
+          phoneVerificationCode: form.otp,
           password: form.password
         })
         console.log('📦 Registration result:', result)
@@ -884,43 +1106,12 @@ export default {
     }
 
     onMounted(() => {
-      initRegisterAnimations()
-      
-      // Add keyboard event listener for speed control
-      document.addEventListener('keydown', handleKeyPress)
-      
-      // Add mouse event listeners for interactive animations
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseleave', handleMouseLeave)
-      
-      // Add speed control instructions
-      console.log('Animation Speed Controls:')
-      console.log('Press 1 for slow (0.5x)')
-      console.log('Press 2 for normal (1.0x)')
-      console.log('Press 3 for fast (2.0x)')
-      console.log('Press P to pause/resume')
-      console.log('Move your mouse to see interactive animations!')
+      // All animations disabled
     })
 
     onUnmounted(() => {
-      // Clean up event listeners
-      document.removeEventListener('keydown', handleKeyPress)
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseleave', handleMouseLeave)
-      
-      // Clean up floating elements
-      const floatingElements = document.querySelectorAll('.floating-icon')
-      floatingElements.forEach(element => {
-        if (element.parentNode) {
-          element.parentNode.removeChild(element)
-        }
-      })
-      
-      // Clean up background elements
-      const backgroundElements = document.querySelector('.register-background-elements')
-      if (backgroundElements && backgroundElements.parentNode) {
-        backgroundElements.parentNode.removeChild(backgroundElements)
-      }
+      // All animations disabled
+      stopOTPTimer() // Clean up OTP timer
     })
 
     return {
@@ -934,6 +1125,7 @@ export default {
       emailField,
       userTypeField,
       phoneField,
+      otpField,
       passwordField,
       confirmPasswordField,
       passwordToggle,
@@ -947,7 +1139,28 @@ export default {
       error,
       isLoading,
       showPassword,
-      handleRegister
+      handleRegister,
+      // Phone verification
+      otpSent,
+      phoneVerified,
+      sendingOTP,
+      verifyingOTP,
+      isPhoneValid,
+      phoneHelper,
+      otpTimeLeft,
+      validatePhone,
+      sendOTP,
+      verifyOTP,
+      resendOTP,
+      formatTime,
+      // OTP Modal
+      otpInputs,
+      otpCode,
+      handleOTPInput,
+      handleOTPKeydown,
+      handleOTPPaste,
+      verifyOTPFromModal,
+      closeOTPModal
     }
   }
 }
@@ -1327,25 +1540,260 @@ select.cyberpunk-input option:checked {
   100% { transform: rotate(360deg); }
 }
 
+/* Phone OTP Styles */
+.cyberpunk-phone-prefix {
+  padding: 0.6rem 0.5rem;
+  color: var(--cyber-text);
+  background: rgba(255, 140, 66, 0.05);
+  border-right: 1px solid var(--cyber-grey-light);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.cyberpunk-otp-btn {
+  padding: 0.6rem 1rem;
+  background: linear-gradient(45deg, var(--cyber-orange), var(--cyber-yellow));
+  border: none;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-left: 1px solid var(--cyber-grey-light);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cyberpunk-otp-btn:hover:not(:disabled) {
+  background: linear-gradient(45deg, var(--cyber-yellow), var(--cyber-orange));
+  box-shadow: 0 0 10px rgba(255, 140, 66, 0.5);
+}
+
+.cyberpunk-otp-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cyberpunk-verified-badge {
+  padding: 0.6rem 1rem;
+  background: rgba(34, 197, 94, 0.1);
+  color: #22c55e;
+  border-left: 1px solid rgba(34, 197, 94, 0.3);
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cyberpunk-helper-text {
+  color: var(--cyber-text-muted);
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.cyberpunk-otp-timer {
+  color: var(--cyber-text-muted);
+  font-size: 0.75rem;
+  margin-top: 0.5rem;
+  display: flex;
+  align-items: center;
+}
+
+/* OTP Modal */
+.otp-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(10px);
+}
+
+.otp-modal {
+  background: #1a1a1a;
+  border: 2px solid var(--cyber-orange);
+  border-radius: 20px;
+  box-shadow: 0 0 50px rgba(255, 140, 66, 0.5);
+  max-width: 450px;
+  width: 90%;
+  overflow: hidden;
+}
+
+.otp-modal-header {
+  background: linear-gradient(45deg, rgba(255, 140, 66, 0.1), rgba(255, 210, 63, 0.1));
+  padding: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--cyber-grey-light);
+}
+
+.otp-modal-header h3 {
+  color: var(--cyber-text);
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 0 10px rgba(255, 140, 66, 0.5);
+}
+
+.otp-modal-close {
+  background: none;
+  border: none;
+  color: var(--cyber-text-muted);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  padding: 0.25rem 0.5rem;
+}
+
+.otp-modal-close:hover {
+  color: var(--cyber-orange);
+  transform: rotate(90deg);
+}
+
+.otp-modal-body {
+  padding: 2rem;
+}
+
+.otp-modal-subtitle {
+  text-align: center;
+  color: var(--cyber-text-muted);
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.otp-modal-subtitle strong {
+  color: var(--cyber-orange);
+  font-weight: 600;
+}
+
+.otp-input-container {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.otp-digit-input {
+  width: 50px;
+  height: 60px;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--cyber-text);
+  background: rgba(42, 42, 42, 0.8);
+  border: 2px solid var(--cyber-grey-light);
+  border-radius: 10px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.otp-digit-input:focus {
+  border-color: var(--cyber-orange);
+  box-shadow: 0 0 15px rgba(255, 140, 66, 0.4);
+  transform: scale(1.05);
+}
+
+.otp-timer-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.otp-timer-text {
+  color: var(--cyber-text-muted);
+  font-size: 0.85rem;
+}
+
+.otp-resend-btn {
+  background: transparent;
+  border: 1px solid var(--cyber-orange);
+  color: var(--cyber-orange);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.otp-resend-btn:hover:not(:disabled) {
+  background: rgba(255, 140, 66, 0.1);
+  box-shadow: 0 0 10px rgba(255, 140, 66, 0.3);
+}
+
+.otp-resend-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.otp-modal-footer {
+  padding: 1.5rem;
+  border-top: 1px solid var(--cyber-grey-light);
+}
+
+.otp-verify-btn {
+  width: 100%;
+  padding: 0.85rem;
+  background: linear-gradient(45deg, var(--cyber-orange), var(--cyber-yellow));
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(255, 140, 66, 0.3);
+}
+
+.otp-verify-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 0 30px rgba(255, 140, 66, 0.5);
+}
+
+.otp-verify-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .cyberpunk-register-card {
     margin: 1rem;
     border-radius: 15px;
   }
-  
+
   .cyberpunk-welcome-text {
     font-size: 2rem;
   }
-  
+
   .cyberpunk-logo-icon {
     width: 60px;
     height: 60px;
     font-size: 1.5rem;
   }
-  
+
   .floating-icon {
     font-size: 1.5rem;
+  }
+
+  .otp-digit-input {
+    width: 40px;
+    height: 50px;
+    font-size: 1.25rem;
+  }
+
+  .otp-input-container {
+    gap: 0.5rem;
   }
 }
 </style>

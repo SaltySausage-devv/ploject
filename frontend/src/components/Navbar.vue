@@ -8,7 +8,7 @@
           class="fas fa-graduation-cap me-2"
           style="color: var(--cyber-orange)"
         ></i>
-        <span class="fw-bold">OnlyTutor</span>
+        <span class="fw-bold">TutorConnect</span>
       </router-link>
 
       <button
@@ -52,6 +52,11 @@
         </ul>
 
         <ul class="navbar-nav">
+          <!-- Credits Icon for Students -->
+          <li class="nav-item" v-if="isAuthenticated && userType === 'student'">
+            <CreditsIcon />
+          </li>
+
           <li class="nav-item" v-if="!isAuthenticated">
             <router-link to="/login" class="nav-link">
               <i class="fas fa-sign-in-alt me-1"></i>
@@ -196,9 +201,13 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { animate, stagger, spring } from "animejs";
 import messagingService from "../services/messaging.js";
+import CreditsIcon from "./CreditsIcon.vue";
 
 export default {
   name: "Navbar",
+  components: {
+    CreditsIcon,
+  },
   setup() {
     const authStore = useAuthStore();
     const router = useRouter();
@@ -210,7 +219,7 @@ export default {
     const currentUserId = computed(() => authStore.user?.id);
 
     // Notification state
-    const NOTIFICATIONS_STORAGE_KEY = "onlytutor_notifications";
+    const NOTIFICATIONS_STORAGE_KEY = "tutorconnect_notifications";
     const notifications = ref([]);
     const showAllNotifications = ref(false);
     let messageHandler = null;
@@ -437,22 +446,15 @@ export default {
     };
 
     const logout = async () => {
-      try {
-        console.log("🚪 Navbar: Starting logout process...");
-        await authStore.logout();
-        console.log("🚪 Navbar: Logout completed, redirecting to home...");
+      console.log("🚪 Navbar: Starting logout process...");
 
-        // Use replace instead of push to avoid history issues
-        await router.replace("/");
+      // Clear auth state and wait for Supabase to sign out
+      await authStore.logout();
 
-        // Force page reload to ensure clean state
-        window.location.reload();
-      } catch (error) {
-        console.error("❌ Navbar: Logout error:", error);
-        // Still redirect even if there's an error
-        await router.replace("/");
-        window.location.reload();
-      }
+      console.log("🚪 Navbar: Logout completed, redirecting...");
+
+      // Force hard navigation to home page (clears all state)
+      window.location.href = "/";
     };
 
     // Custom toggle function as fallback
@@ -472,41 +474,7 @@ export default {
       // Load notifications from localStorage first
       loadNotificationsFromStorage();
 
-      // Advanced navbar brand animation with keyframes
-      animate(".navbar-brand", {
-        keyframes: [
-          {
-            scale: 0.5,
-            opacity: 0,
-            rotate: -180,
-            ease: "outExpo",
-            duration: 0,
-          },
-          {
-            scale: 1.1,
-            opacity: 1,
-            rotate: 10,
-            ease: "outBack",
-            duration: 400,
-          },
-          { scale: 1, rotate: 0, ease: spring({ bounce: 0.4 }), duration: 300 },
-        ],
-        duration: 700,
-      });
-
-      // Advanced nav links with complex staggered animation
-      animate(".nav-link", {
-        keyframes: [
-          { y: -30, opacity: 0, scale: 0.8, ease: "outExpo", duration: 0 },
-          { y: 0, opacity: 1, scale: 1.05, ease: "outBack", duration: 400 },
-          { scale: 1, ease: "outElastic", duration: 200 },
-        ],
-        delay: stagger(150, { start: 200 }),
-        duration: 600,
-      });
-
-      // Setup interactive navbar animations
-      setupNavbarInteractions();
+      // Animations disabled
 
       // Wait for auth and messaging to be ready
       await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -575,66 +543,7 @@ export default {
     });
 
     const setupNavbarInteractions = () => {
-      // Nav link hover effects
-      const navLinks = document.querySelectorAll(".nav-link");
-      navLinks.forEach((link) => {
-        link.addEventListener("mouseenter", () => {
-          animate(link, {
-            scale: 1.1,
-            y: -3,
-            rotate: 2,
-            duration: 200,
-            ease: "outBack",
-          });
-        });
-
-        link.addEventListener("mouseleave", () => {
-          animate(link, {
-            scale: 1,
-            y: 0,
-            rotate: 0,
-            duration: 200,
-            ease: "outBack",
-          });
-        });
-      });
-
-      // Button advanced hover effects
-      const buttons = document.querySelectorAll(".btn");
-      buttons.forEach((button) => {
-        button.addEventListener("mouseenter", () => {
-          animate(button, {
-            keyframes: [
-              { scale: 1.05, y: -2, ease: "outBack", duration: 150 },
-              { scale: 1.1, y: -5, ease: "outElastic", duration: 100 },
-            ],
-            duration: 250,
-          });
-        });
-
-        button.addEventListener("mouseleave", () => {
-          animate(button, {
-            scale: 1,
-            y: 0,
-            duration: 200,
-            ease: "outBack",
-          });
-        });
-      });
-
-      // Brand logo continuous subtle animation
-      const brand = document.querySelector(".navbar-brand");
-      if (brand) {
-        animate(brand, {
-          keyframes: [
-            { rotate: 0, scale: 1, ease: "inOutSine", duration: 2000 },
-            { rotate: 2, scale: 1.02, ease: "inOutSine", duration: 2000 },
-            { rotate: 0, scale: 1, ease: "inOutSine", duration: 2000 },
-          ],
-          loop: true,
-          duration: 6000,
-        });
-      }
+      // All animations disabled
     };
 
     return {
