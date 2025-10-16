@@ -923,9 +923,11 @@
               <input
                 type="text"
                 class="form-control"
+                ref="tuteeLocationInput"
                 v-model="bookingOffer.tuteeLocation"
-                placeholder="Enter your preferred location for the session"
+                placeholder="Start typing an address in Singapore..."
                 required
+                @focus="setupAutocomplete('tutee')"
               />
             </div>
 
@@ -1241,8 +1243,10 @@
                 <input
                   type="text"
                   class="form-control"
+                  ref="tutorLocationInput"
                   v-model="bookingProposal.tutorLocation"
-                  placeholder="Enter your location"
+                  placeholder="Start typing an address in Singapore..."
+                  @focus="setupAutocomplete('tutor')"
                 />
               </div>
             </div>
@@ -1286,7 +1290,7 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useAuthStore } from "../stores/auth";
 import messagingService from "../services/messaging.js";
 import { useNotifications } from "../composables/useNotifications";
@@ -1346,6 +1350,299 @@ export default {
     const currentYear = ref(new Date().getFullYear());
     const selectedDate = ref(null);
     const selectedTimeSlot = ref(null);
+
+    const tuteeLocationInput = ref(null);
+    const tutorLocationInput = ref(null);
+
+    const googleMaps = ref(null);
+    const googleMapsReady = ref(false);
+    const googleMapsError = ref(null);
+
+    const autocompleteInstances = {
+      tutee: null,
+      tutor: null,
+    };
+
+    watch(
+      () => showBookingOfferModal.value,
+      async (modalOpen) => {
+        if (!modalOpen) {
+          // Remove all pac-containers when modal closes
+          document.querySelectorAll('.pac-container').forEach(container => {
+            container.remove();
+          });
+          // Clear the autocomplete instance so it can be recreated
+          if (autocompleteInstances.tutee) {
+            window.google?.maps?.event?.clearInstanceListeners(autocompleteInstances.tutee);
+            autocompleteInstances.tutee = null;
+          }
+        }
+      }
+    );
+
+    watch(
+      () => bookingOffer.value.isOnline,
+      async (isOnline) => {
+        if (showBookingOfferModal.value && !isOnline) {
+          await setupAutocomplete("tutee");
+        }
+      }
+    );
+
+    watch(
+      () => showBookingProposalModal.value,
+      async (modalOpen) => {
+        if (!modalOpen) {
+          // Remove all pac-containers when modal closes
+          document.querySelectorAll('.pac-container').forEach(container => {
+            container.remove();
+          });
+          // Clear the autocomplete instance so it can be recreated
+          if (autocompleteInstances.tutor) {
+            window.google?.maps?.event?.clearInstanceListeners(autocompleteInstances.tutor);
+            autocompleteInstances.tutor = null;
+          }
+        }
+      }
+    );
+
+    watch(
+      () => [bookingProposal.value.locationChoice, selectedBookingOffer.value?.isOnline],
+      async ([locationChoice, isOnline]) => {
+        if (showBookingProposalModal.value && locationChoice === "tutor" && isOnline === false) {
+          await setupAutocomplete("tutor");
+        }
+      }
+    );
+
+
+    const ensureGoogleMapsLoaded = async () => {
+      if (googleMapsReady.value) {
+        return googleMaps.value;
+      }
+
+      if (googleMapsError.value) {
+        return null;
+      }
+
+      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!apiKey) {
+        console.warn(
+          "VITE_GOOGLE_MAPS_API_KEY is not set. Location autocomplete will fall back to manual input."
+        );
+        googleMapsError.value = new Error("Missing Google Maps API key");
+        return null;
+      }
+
+      try {
+        // Set the API key globally for the loader
+        if (!window.google || !window.google.maps || !window.google.maps.places) {
+          // Remove any existing script tags to avoid conflicts
+          const existingScript = document.querySelector('script[src*="maps.googleapis.com"]');
+          if (existingScript) {
+            existingScript.remove();
+          }
+
+          // Create callback function that will be called when Google Maps loads
+          window.initGoogleMaps = () => {
+            console.log('Google Maps loaded successfully');
+          };
+
+          // Load Google Maps with Places library
+          const script = document.createElement('script');
+          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
+          script.async = true;
+          script.defer = true;
+
+          await new Promise((resolve, reject) => {
+            script.onload = () => {
+              // Wait a bit for the libraries to fully initialize
+              setTimeout(() => {
+                if (window.google && window.google.maps && window.google.maps.places) {
+                  resolve();
+                } else {
+                  reject(new Error('Google Maps Places library failed to load'));
+                }
+              }, 100);
+            };
+            script.onerror = reject;
+            document.head.appendChild(script);
+          });
+        }
+
+        googleMaps.value = window.google;
+        googleMapsReady.value = true;
+        return googleMaps.value;
+      } catch (error) {
+        googleMapsError.value = error;
+        console.error("Failed to load Google Maps:", error);
+        return null;
+      }
+    };
+
+    const setupAutocomplete = async (type) => {
+      // If already set up, don't create a new instance
+      if (autocompleteInstances[type]) {
+        console.log(`✅ Autocomplete already exists for ${type}, skipping setup`);
+        return;
+      }
+
+      console.log(`🔧 Setting up autocomplete for ${type}...`);
+
+      const google = await ensureGoogleMapsLoaded();
+      if (!google) {
+        console.warn('⚠️ Google Maps not loaded, autocomplete disabled');
+        return;
+      }
+
+      console.log('✅ Google Maps loaded:', google);
+
+      // Verify Places library is available
+      if (!google.maps || !google.maps.places || !google.maps.places.Autocomplete) {
+        console.error('❌ Google Maps Places library not available');
+        googleMapsError.value = new Error('Places library not loaded');
+        return;
+      }
+
+      console.log('✅ Places library available');
+
+      await nextTick();
+
+      const inputEl =
+        type === "tutee" ? tuteeLocationInput.value : tutorLocationInput.value;
+
+      console.log(`📍 Input element for ${type}:`, inputEl);
+
+      if (!inputEl) {
+        console.warn(`⚠️ Input element for ${type} not found`);
+        return;
+      }
+
+      try {
+        // Using the stable Autocomplete API
+        // Note: Google recommends PlaceAutocompleteElement but Autocomplete will be supported for 12+ months
+        const options = {
+          fields: ["formatted_address", "name", "geometry", "address_components", "place_id"],
+          componentRestrictions: { country: "sg" }, // Restrict to Singapore
+        };
+
+        console.log('🔧 Creating autocomplete with options:', options);
+        console.log('🔧 Input element:', inputEl);
+        console.log('🔧 Input element visibility:', {
+          display: window.getComputedStyle(inputEl).display,
+          visibility: window.getComputedStyle(inputEl).visibility,
+          offsetParent: inputEl.offsetParent,
+        });
+
+        const autocomplete = new google.maps.places.Autocomplete(inputEl, options);
+
+        console.log('✅ Autocomplete instance created:', autocomplete);
+        console.log('✅ Autocomplete gm_accessors_:', autocomplete.gm_accessors_);
+
+        autocomplete.addListener("place_changed", () => {
+          const place = autocomplete.getPlace();
+          console.log('📍 Selected place FULL OBJECT:', place);
+          console.log('📍 place.name:', place.name);
+          console.log('📍 place.formatted_address:', place.formatted_address);
+          console.log('📍 place.address_components:', place.address_components);
+
+          // Build a clean address
+          let address = "";
+
+          // If there's a name (building/place name), use it with the formatted address
+          if (place.name && place.formatted_address) {
+            // Check if name is already in formatted_address
+            if (place.formatted_address.includes(place.name)) {
+              address = place.formatted_address;
+            } else {
+              // Combine: "Building Name, Street Address"
+              address = `${place.name}, ${place.formatted_address}`;
+            }
+          } else if (place.formatted_address) {
+            address = place.formatted_address;
+          } else if (place.name) {
+            address = place.name;
+          }
+
+          console.log('📍 Final address to populate:', address);
+
+          // Update the model which will update the input via v-model
+          if (type === "tutee") {
+            bookingOffer.value.tuteeLocation = address;
+          } else {
+            bookingProposal.value.tutorLocation = address;
+          }
+        });
+
+        autocompleteInstances[type] = autocomplete;
+        console.log(`✅ Autocomplete setup successfully for ${type}`);
+
+        // Force remove inline display:none on pac-containers
+        const forceShow = () => {
+          const pacContainers = document.querySelectorAll('.pac-container');
+          pacContainers.forEach(container => {
+            if (container.style.display === 'none') {
+              console.log('🔧 Removing display:none from pac-container');
+              container.style.display = '';
+            }
+          });
+        };
+
+        // Monitor for changes and force show
+        const observer = new MutationObserver(forceShow);
+
+        setTimeout(() => {
+          const pacContainers = document.querySelectorAll('.pac-container');
+          console.log(`🔍 Found ${pacContainers.length} pac-containers`);
+
+          pacContainers.forEach((container, i) => {
+            // Watch for style attribute changes
+            observer.observe(container, {
+              attributes: true,
+              attributeFilter: ['style']
+            });
+
+            // Force show initially
+            if (container.style.display === 'none') {
+              container.style.display = '';
+              console.log('🔧 Forced pac-container to show');
+            }
+
+            // Log detailed info
+            const rect = container.getBoundingClientRect();
+            const styles = window.getComputedStyle(container);
+            console.log(`📦 pac-container ${i} details:`, {
+              inlineDisplay: container.style.display,
+              computedDisplay: styles.display,
+              position: styles.position,
+              top: container.style.top,
+              left: container.style.left,
+              width: container.style.width,
+              zIndex: styles.zIndex,
+              rect: {
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height,
+                bottom: rect.bottom,
+                right: rect.right
+              },
+              isOffScreen: rect.top < 0 || rect.left < 0 || rect.top > window.innerHeight || rect.left > window.innerWidth,
+              hasSize: rect.width > 0 && rect.height > 0,
+              childCount: container.children.length,
+              textContent: container.textContent.substring(0, 100)
+            });
+          });
+        }, 100);
+
+        // Also force show on input events
+        inputEl.addEventListener('input', forceShow);
+        inputEl.addEventListener('keydown', forceShow);
+      } catch (error) {
+        console.error(`❌ Failed to setup autocomplete for ${type}:`, error);
+        googleMapsError.value = error;
+      }
+    };
 
     const filteredConversations = computed(() => {
       if (!searchQuery.value) return conversations.value;
@@ -3140,11 +3437,14 @@ export default {
       isSendingProposal,
       selectedBookingOffer,
       confirmedBookings,
+      tuteeLocationInput,
+      tutorLocationInput,
       bookingOffer,
       bookingProposal,
       createBookingOffer,
       createBookingProposal,
       calculateEndTime,
+      setupAutocomplete,
       // Calendar related
       currentMonthYear,
       calendarDays,
@@ -4757,5 +5057,89 @@ i.text-primary {
   .booking-actions .btn {
     width: 100%;
   }
+}
+</style>
+
+<style>
+/* Google Maps Autocomplete Dropdown - Global styles (not scoped) */
+div.pac-container {
+  background-color: #1a1a1a !important;
+  border: 1px solid #4a4a4a !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+  margin-top: 2px !important;
+  z-index: 9999999 !important;
+  font-family: inherit !important;
+  position: absolute !important;
+}
+
+/* Force display with higher specificity */
+div.pac-container:not([style*="display: none"]) {
+  display: block !important;
+}
+
+div.pac-container[style*="display: none"] {
+  display: block !important;
+}
+
+/* Remove blue outline from autocomplete input */
+.pac-target-input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: #4a4a4a !important;
+}
+
+/* Hide Google logo */
+.pac-logo,
+.pac-container::after {
+  display: none !important;
+}
+
+.pac-item {
+  background-color: #1a1a1a !important;
+  border-top: 1px solid #4a4a4a !important;
+  color: #ffffff !important;
+  padding: 10px 12px !important;
+  cursor: pointer !important;
+  transition: background-color 0.15s ease !important;
+  font-size: 14px !important;
+  line-height: 1.4 !important;
+}
+
+.pac-item:first-child {
+  border-top: none !important;
+}
+
+.pac-item:hover,
+.pac-item-selected {
+  background-color: #2a2a2a !important;
+}
+
+/* All text standardized to 14px */
+.pac-item-query,
+.pac-item span {
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 400 !important;
+}
+
+/* Matched text highlighting */
+.pac-matched {
+  color: #ff8c42 !important;
+  font-weight: 600 !important;
+}
+
+/* Location icon */
+.pac-icon {
+  background-image: none !important;
+  width: 20px !important;
+  height: 20px !important;
+  margin-right: 10px !important;
+  margin-top: 2px !important;
+}
+
+.pac-icon::before {
+  content: "📍";
+  font-size: 16px;
 }
 </style>
