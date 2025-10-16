@@ -281,7 +281,8 @@
                               <button
                                 v-if="
                                   message.senderId !== currentUserId &&
-                                  authStore.user?.user_type === 'tutor'
+                                  authStore.user?.user_type === 'tutor' &&
+                                  getBookingStatusValue(message) === 'awaiting_response'
                                 "
                                 class="btn btn-primary btn-sm me-2"
                                 @click="handleBookingOffer(message)"
@@ -289,9 +290,13 @@
                                 <i class="fas fa-calendar-check me-1"></i>
                                 View & Respond
                               </button>
-                              <span class="booking-status text-warning">
-                                <i class="fas fa-clock me-1"></i>
-                                Awaiting response
+                              <span
+                                :class="['booking-status', getBookingStatusClass(message)]"
+                              >
+                                <i
+                                  :class="['fas', getBookingStatusIcon(message), 'me-1']"
+                                ></i>
+                                {{ getBookingStatusText(message) }}
                               </span>
                             </div>
                           </div>
@@ -329,17 +334,23 @@
                                 v-if="
                                   message.senderId !== currentUserId &&
                                   (authStore.user?.user_type === 'student' ||
-                                    authStore.user?.user_type === 'parent')
+                                    authStore.user?.user_type === 'parent') &&
+                                  getBookingStatusValue(message) === 'pending_acceptance'
                                 "
-                                :disabled="getBookingData(message) && confirmedBookings.has(getBookingData(message).bookingOfferId)"
-                                :class="getBookingData(message) && confirmedBookings.has(getBookingData(message).bookingOfferId) ? 'btn btn-secondary btn-sm me-2' : 'btn btn-success btn-sm me-2'"
+                                class="btn btn-success btn-sm me-2"
                                 @click="confirmBooking(message)"
                               >
-                                <i
-                                  :class="getBookingData(message) && confirmedBookings.has(getBookingData(message).bookingOfferId) ? 'fas fa-check-circle me-1' : 'fas fa-check me-1'"
-                                ></i>
-                                {{ getBookingData(message) && confirmedBookings.has(getBookingData(message).bookingOfferId) ? 'Accepted' : 'Accept & Book' }}
+                                <i class="fas fa-check me-1"></i>
+                                Accept & Book
                               </button>
+                              <span
+                                :class="['booking-status', getBookingStatusClass(message)]"
+                              >
+                                <i
+                                  :class="['fas', getBookingStatusIcon(message), 'me-1']"
+                                ></i>
+                                {{ getBookingStatusText(message) }}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -1125,6 +1136,74 @@
               </div>
             </div>
 
+            <!-- Duration Selection -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Session Duration</label>
+              <div class="duration-buttons mb-2">
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.duration === 30 }"
+                  @click="bookingProposal.duration = 30; bookingProposal.customDuration = ''"
+                >
+                  30 min
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.duration === 60 }"
+                  @click="bookingProposal.duration = 60; bookingProposal.customDuration = ''"
+                >
+                  60 min
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.duration === 90 }"
+                  @click="bookingProposal.duration = 90; bookingProposal.customDuration = ''"
+                >
+                  90 min
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.duration === 120 }"
+                  @click="bookingProposal.duration = 120; bookingProposal.customDuration = ''"
+                >
+                  120 min
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-sm duration-btn"
+                  :class="{ active: bookingProposal.customDuration !== '' }"
+                  @click="bookingProposal.duration = 0; bookingProposal.customDuration = '60'"
+                >
+                  Custom
+                </button>
+              </div>
+              <div v-if="bookingProposal.customDuration !== ''" class="mt-2">
+                <div class="input-group">
+                  <input
+                    type="number"
+                    class="form-control"
+                    v-model.number="bookingProposal.customDuration"
+                    placeholder="Enter duration"
+                    min="15"
+                    max="480"
+                    step="15"
+                  />
+                  <span class="input-group-text">minutes</span>
+                </div>
+                <small class="text-muted">Min: 15 minutes, Max: 480 minutes (8 hours)</small>
+              </div>
+              <div v-if="bookingProposal.proposedDate && bookingProposal.proposedTime" class="mt-2">
+                <small class="text-muted">
+                  <i class="fas fa-clock me-1"></i>
+                  End time: {{ calculateEndTime() }}
+                </small>
+              </div>
+            </div>
+
             <!-- Location Choice -->
             <div v-if="!selectedBookingOffer.isOnline" class="mb-3">
               <label class="form-label fw-bold">Session Location</label>
@@ -1242,6 +1321,7 @@ export default {
     const isSendingProposal = ref(false);
     const selectedBookingOffer = ref(null);
     const confirmedBookings = ref(new Set()); // Track confirmed booking IDs
+    const bookingOfferStatuses = ref(new Map()); // Track booking proposal statuses
 
     // Booking offer form data
     const bookingOffer = ref({
@@ -1254,6 +1334,8 @@ export default {
     const bookingProposal = ref({
       proposedDate: "",
       proposedTime: "",
+      duration: 60, // Default to 60 minutes
+      customDuration: "",
       locationChoice: "tutee",
       tutorLocation: "",
       notes: "",
@@ -1520,6 +1602,14 @@ export default {
             : null,
         }));
 
+        resetBookingStatusState();
+        messages.value.forEach((msg) => {
+          inferBookingStatusFromMessage(msg);
+        });
+
+        await nextTick();
+        scrollToBottom();
+
         // Mark messages as read and update status
         await messagingService.markAsRead(conversationId);
 
@@ -1540,6 +1630,7 @@ export default {
       } catch (error) {
         console.error("Error loading messages:", error);
         messages.value = [];
+        resetBookingStatusState();
         alert("Failed to load messages. Please try again.");
       } finally {
         isLoading.value = false;
@@ -1577,6 +1668,8 @@ export default {
         };
 
         messages.value.push(tempMessage);
+        await nextTick();
+        scrollToBottom();
 
         // Update conversation in the list immediately
         const conversationIndex = conversations.value.findIndex(
@@ -2258,6 +2351,16 @@ export default {
         return;
       }
 
+      // Validate duration
+      const effectiveDuration = bookingProposal.value.customDuration !== ''
+        ? bookingProposal.value.customDuration
+        : bookingProposal.value.duration;
+
+      if (!effectiveDuration || effectiveDuration < 15) {
+        alert("Please select a valid duration (minimum 15 minutes)");
+        return;
+      }
+
       isCreatingProposal.value = true;
       try {
         const proposedDateTime = new Date(
@@ -2268,6 +2371,9 @@ export default {
         if (isNaN(proposedDateTime.getTime())) {
           throw new Error("Invalid date or time selected");
         }
+
+        // Calculate end time
+        const endDateTime = new Date(proposedDateTime.getTime() + effectiveDuration * 60000);
 
         let finalLocation = "";
         if (selectedBookingOffer.value.isOnline) {
@@ -2292,6 +2398,8 @@ export default {
           body: JSON.stringify({
             bookingOfferId: selectedBookingOffer.value.id,
             proposedTime: proposedDateTime.toISOString(),
+            proposedEndTime: endDateTime.toISOString(),
+            duration: effectiveDuration,
             tutorLocation: bookingProposal.value.tutorLocation,
             finalLocation: finalLocation,
           }),
@@ -2312,6 +2420,8 @@ export default {
         bookingProposal.value = {
           proposedDate: "",
           proposedTime: "",
+          duration: 60,
+          customDuration: "",
           locationChoice: "tutee",
           tutorLocation: "",
           notes: "",
@@ -2405,6 +2515,91 @@ export default {
       }
     };
 
+    const resetBookingStatusState = () => {
+      bookingOfferStatuses.value = new Map();
+      confirmedBookings.value = new Set();
+    };
+
+    const updateBookingStatus = (bookingOfferId, status) => {
+      if (!bookingOfferId) return;
+      const updatedStatuses = new Map(bookingOfferStatuses.value);
+      updatedStatuses.set(bookingOfferId, status);
+      bookingOfferStatuses.value = updatedStatuses;
+    };
+
+    const setConfirmedBooking = (bookingOfferId) => {
+      if (!bookingOfferId) return;
+      const updatedConfirmed = new Set(confirmedBookings.value);
+      updatedConfirmed.add(bookingOfferId);
+      confirmedBookings.value = updatedConfirmed;
+    };
+
+    const isBookingConfirmed = (bookingOfferId) => {
+      if (!bookingOfferId) return false;
+      return confirmedBookings.value.has(bookingOfferId);
+    };
+
+    const inferBookingStatusFromMessage = (message) => {
+      const bookingData = getBookingData(message);
+      if (!bookingData?.bookingOfferId) return;
+
+      switch (message.messageType) {
+        case "booking_offer":
+          if (!bookingOfferStatuses.value.has(bookingData.bookingOfferId)) {
+            updateBookingStatus(
+              bookingData.bookingOfferId,
+              "awaiting_response"
+            );
+          }
+          break;
+        case "booking_proposal":
+          updateBookingStatus(bookingData.bookingOfferId, "pending_acceptance");
+          break;
+        case "booking_confirmation":
+          updateBookingStatus(bookingData.bookingOfferId, "accepted");
+          setConfirmedBooking(bookingData.bookingOfferId);
+          break;
+        case "booking_rejection":
+          updateBookingStatus(bookingData.bookingOfferId, "rejected");
+          break;
+        default:
+          break;
+      }
+    };
+
+    const getBookingStatusValue = (message) => {
+      const bookingData = getBookingData(message);
+      if (!bookingData?.bookingOfferId) {
+        return "awaiting_response";
+      }
+      return (
+        bookingOfferStatuses.value.get(bookingData.bookingOfferId) ||
+        "awaiting_response"
+      );
+    };
+
+    const getBookingStatusText = (message) => {
+      const status = getBookingStatusValue(message);
+      if (status === "accepted") return "Accepted";
+      if (status === "rejected") return "Rejected";
+      if (status === "pending_acceptance") return "Pending acceptance";
+      return "Awaiting response";
+    };
+
+    const getBookingStatusClass = (message) => {
+      const status = getBookingStatusValue(message);
+      if (status === "accepted") return "text-success";
+      if (status === "rejected") return "text-danger";
+      return "text-warning";
+    };
+
+    const getBookingStatusIcon = (message) => {
+      const status = getBookingStatusValue(message);
+      if (status === "accepted") return "fa-check-circle";
+      if (status === "rejected") return "fa-times-circle";
+      return "fa-clock";
+    };
+
     const formatDateTime = (dateTimeString) => {
       if (!dateTimeString) return "";
       const date = new Date(dateTimeString);
@@ -2454,9 +2649,10 @@ export default {
         const data = await response.json();
         console.log("Booking confirmed:", data);
 
-        // Add to confirmed bookings set to disable the button
+        // Add to confirmed bookings set and update status
         if (bookingData.bookingOfferId) {
-          confirmedBookings.value.add(bookingData.bookingOfferId);
+          setConfirmedBooking(bookingData.bookingOfferId);
+          updateBookingStatus(bookingData.bookingOfferId, "accepted");
         }
 
         // Show success message
@@ -2596,6 +2792,10 @@ export default {
               // Add new message
               messages.value.push(newMessage);
             }
+
+            inferBookingStatusFromMessage(newMessage);
+            await nextTick();
+            scrollToBottom();
 
             // Auto-mark messages as read when user is actively viewing the conversation
             if (message.sender_id !== currentUserId.value) {
@@ -2862,6 +3062,36 @@ export default {
       // This allows notifications to continue working on other pages
     });
 
+    // Calculate end time based on start time and duration
+    const calculateEndTime = () => {
+      if (!bookingProposal.value.proposedDate || !bookingProposal.value.proposedTime) {
+        return "N/A";
+      }
+
+      try {
+        const startDateTime = new Date(
+          `${bookingProposal.value.proposedDate}T${bookingProposal.value.proposedTime}`
+        );
+
+        // Get the effective duration (either from quick buttons or custom input)
+        const effectiveDuration = bookingProposal.value.customDuration !== ''
+          ? bookingProposal.value.customDuration
+          : bookingProposal.value.duration;
+
+        // Add duration in minutes
+        const endDateTime = new Date(startDateTime.getTime() + effectiveDuration * 60000);
+
+        // Format as HH:MM
+        const hours = String(endDateTime.getHours()).padStart(2, '0');
+        const minutes = String(endDateTime.getMinutes()).padStart(2, '0');
+
+        return `${hours}:${minutes}`;
+      } catch (error) {
+        console.error("Error calculating end time:", error);
+        return "N/A";
+      }
+    };
+
     return {
       authStore,
       currentUserId,
@@ -2914,6 +3144,7 @@ export default {
       bookingProposal,
       createBookingOffer,
       createBookingProposal,
+      calculateEndTime,
       // Calendar related
       currentMonthYear,
       calendarDays,
@@ -2928,6 +3159,11 @@ export default {
       sendBookingProposal,
       // Booking message helpers
       getBookingData,
+      getBookingStatusValue,
+      isBookingConfirmed,
+      getBookingStatusText,
+      getBookingStatusClass,
+      getBookingStatusIcon,
       formatDateTime,
       handleBookingOffer,
       confirmBooking,
@@ -4097,6 +4333,35 @@ i.text-primary {
   color: white !important;
 }
 
+/* Duration Selection Buttons */
+.duration-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.duration-btn {
+  background: rgba(255, 140, 66, 0.1) !important;
+  border: 2px solid rgba(255, 140, 66, 0.3) !important;
+  color: #ff8c42 !important;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  min-width: 80px;
+}
+
+.duration-btn:hover {
+  background: rgba(255, 140, 66, 0.2) !important;
+  border-color: #ff8c42 !important;
+  transform: translateY(-2px);
+}
+
+.duration-btn.active {
+  background: linear-gradient(45deg, #ff8c42, #ffd23f) !important;
+  border-color: #ff8c42 !important;
+  color: white !important;
+  box-shadow: 0 0 15px rgba(255, 140, 66, 0.4);
+}
+
 /* Booking Request Summary - Compact Design */
 .booking-request-summary {
   background: rgba(255, 140, 66, 0.08);
@@ -4391,6 +4656,12 @@ i.text-primary {
   color: #28a745 !important;
   background: rgba(40, 167, 69, 0.1);
   border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.booking-status.text-danger {
+  color: #dc3545 !important;
+  background: rgba(220, 53, 69, 0.1);
+  border: 1px solid rgba(220, 53, 69, 0.3);
 }
 
 .booking-actions .btn {

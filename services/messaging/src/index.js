@@ -292,6 +292,8 @@ const createBookingOfferSchema = Joi.object({
 const createBookingProposalSchema = Joi.object({
   bookingOfferId: Joi.string().uuid().required(),
   proposedTime: Joi.date().required(),
+  proposedEndTime: Joi.date().optional(),
+  duration: Joi.number().min(15).max(480).optional(),
   tutorLocation: Joi.string().allow(null, '').optional(),
   finalLocation: Joi.string().allow(null, '').optional()
 });
@@ -980,7 +982,7 @@ app.post('/messaging/booking-proposals', verifyToken, async (req, res) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { bookingOfferId, proposedTime, tutorLocation, finalLocation } = value;
+    const { bookingOfferId, proposedTime, proposedEndTime, duration, tutorLocation, finalLocation } = value;
 
     // Get booking offer and verify user is the tutor
     const { data: bookingOffer, error: fetchError } = await supabase
@@ -997,11 +999,16 @@ app.post('/messaging/booking-proposals', verifyToken, async (req, res) => {
       return res.status(403).json({ error: 'Only tutors can create proposals' });
     }
 
+    // Calculate end time if not provided (for backwards compatibility)
+    const calculatedEndTime = proposedEndTime || new Date(new Date(proposedTime).getTime() + (duration || 60) * 60000);
+
     // Update booking offer with proposal
     const { data: updatedOffer, error: updateError } = await supabase
       .from('booking_offers')
       .update({
         proposed_time: proposedTime,
+        proposed_end_time: calculatedEndTime,
+        duration: duration || 60,
         tutor_location: tutorLocation,
         final_location: finalLocation,
         status: 'proposed',
@@ -1096,43 +1103,38 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
     }
 
     // Check if booking offer is already confirmed
-    if (bookingOffer.status === 'confirmed') {
-      return res.status(400).json({
-        error: 'Booking already confirmed',
-        message: 'This booking has already been accepted and cannot be confirmed again.'
-      });
-    }
+    const alreadyConfirmed = bookingOffer.status === 'confirmed';
 
     // Check if a booking already exists for this offer
     const { data: existingBooking, error: bookingCheckError } = await supabase
       .from('bookings')
-      .select('id')
+      .select('*')
       .eq('tutor_id', bookingOffer.tutor_id)
       .eq('student_id', bookingOffer.tutee_id)
       .eq('start_time', bookingOffer.proposed_time)
-      .single();
+      .maybeSingle();
 
-    if (existingBooking) {
-      return res.status(400).json({
-        error: 'Booking already exists',
-        message: 'A booking for this time slot has already been created. Please check your calendar.',
-        bookingId: existingBooking.id
-      });
+    if (bookingCheckError) {
+      throw bookingCheckError;
     }
 
-    // Update booking offer to confirmed
-    const { data: confirmedOffer, error: updateError } = await supabase
-      .from('booking_offers')
-      .update({
-        status: 'confirmed',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', bookingOfferId)
-      .select()
-      .single();
+    let confirmedOffer = bookingOffer;
+    if (!alreadyConfirmed) {
+      const { data: updatedOffer, error: updateError } = await supabase
+        .from('booking_offers')
+        .update({
+          status: 'confirmed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingOfferId)
+        .select()
+        .single();
 
-    if (updateError) {
-      throw updateError;
+      if (updateError) {
+        throw updateError;
+      }
+
+      confirmedOffer = updatedOffer;
     }
 
     // Create booking record in bookings table
@@ -1145,7 +1147,7 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
         subject: 'Tutoring Session', // Default subject
         level: 'General', // Default level
         start_time: bookingOffer.proposed_time,
-        end_time: new Date(new Date(bookingOffer.proposed_time).getTime() + 60 * 60 * 1000), // 1 hour session
+        end_time: bookingOffer.proposed_end_time || new Date(new Date(bookingOffer.proposed_time).getTime() + (bookingOffer.duration || 60) * 60 * 1000), // Use proposed_end_time or calculate from duration
         location: bookingOffer.final_location,
         is_online: bookingOffer.is_online,
         notes: bookingOffer.notes,
