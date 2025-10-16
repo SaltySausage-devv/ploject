@@ -248,6 +248,12 @@ export const useAuthStore = defineStore('auth', () => {
             console.log('✅ Supabase signOut successful')
         } catch (error) {
             console.error('❌ Supabase signOut error:', error)
+        } finally {
+            // Reset logout flag after a short delay to allow cleanup
+            setTimeout(() => {
+                isLoggingOut.value = false
+                console.log('🔄 Logout flag reset')
+            }, 100)
         }
 
         console.log('✅ Logout complete')
