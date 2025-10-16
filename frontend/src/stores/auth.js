@@ -137,6 +137,7 @@ export const useAuthStore = defineStore('auth', () => {
                     last_name: userData.lastName,
                     user_type: userData.userType || 'student',
                     phone: userData.phone || null,
+                    phone_verified: true, // Phone is verified via OTP during registration
                     created_at: new Date().toISOString()
                 }
 

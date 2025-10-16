@@ -244,6 +244,19 @@ CREATE TABLE public.package_rates (
   CONSTRAINT package_rates_pkey PRIMARY KEY (id),
   CONSTRAINT package_rates_tutor_profile_id_fkey FOREIGN KEY (tutor_profile_id) REFERENCES public.tutor_profiles(id)
 );
+CREATE TABLE public.phone_verification_logs (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid,
+  phone character varying NOT NULL,
+  verification_code character varying NOT NULL,
+  status character varying NOT NULL,
+  ip_address character varying,
+  user_agent text,
+  created_at timestamp with time zone DEFAULT now(),
+  verified_at timestamp with time zone,
+  CONSTRAINT phone_verification_logs_pkey PRIMARY KEY (id),
+  CONSTRAINT phone_verification_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.profile_views (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   tutor_id uuid,
@@ -439,6 +452,11 @@ CREATE TABLE public.users (
   updated_at timestamp with time zone DEFAULT now(),
   reset_token text,
   reset_token_expires timestamp with time zone,
+  credits double precision,
+  phone_verified boolean DEFAULT false,
+  phone_verification_code character varying,
+  phone_verification_expires timestamp with time zone,
+  phone_verification_attempts integer DEFAULT 0,
   CONSTRAINT users_pkey PRIMARY KEY (id),
   CONSTRAINT users_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
