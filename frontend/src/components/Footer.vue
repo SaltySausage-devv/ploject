@@ -5,7 +5,7 @@
         <div class="col-lg-4 mb-4">
           <div class="d-flex align-items-center mb-3">
             <i class="fas fa-graduation-cap text-primary me-2 fs-4"></i>
-            <span class="fw-bold fs-4">TutorConnect</span>
+            <span class="fw-bold fs-4">OnlyTutor</span>
           </div>
           <p class="text-muted">
             Connecting students with the best tutors and tuition centres in Singapore. 
@@ -35,15 +35,6 @@
                 Find Tutors
               </router-link>
             </li>
-            <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Browse Subjects</a>
-            </li>
-            <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Pricing</a>
-            </li>
-            <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">How It Works</a>
-            </li>
           </ul>
         </div>
         
@@ -51,16 +42,11 @@
           <h5 class="fw-bold mb-3">For Tutors</h5>
           <ul class="list-unstyled">
             <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Become a Tutor</a>
-            </li>
-            <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Tutor Resources</a>
+              <router-link to="/register" class="text-muted text-decoration-none">Become a Tutor
+              </router-link>
             </li>
             <li class="mb-2">
               <a href="#" class="text-muted text-decoration-none">Success Stories</a>
-            </li>
-            <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Support</a>
             </li>
           </ul>
         </div>
@@ -69,13 +55,7 @@
           <h5 class="fw-bold mb-3">Company</h5>
           <ul class="list-unstyled">
             <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">About Us</a>
-            </li>
-            <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Careers</a>
-            </li>
-            <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Press</a>
+              <router-link to="/Home" class="text-muted text-decoration-none">About Us</router-link>
             </li>
             <li class="mb-2">
               <a href="#" class="text-muted text-decoration-none">Blog</a>
@@ -107,7 +87,7 @@
       <div class="row align-items-center">
         <div class="col-md-6">
           <p class="text-muted mb-0">
-            &copy; 2024 TutorConnect. All rights reserved.
+            &copy; 2024 OnlyTutor. All rights reserved.
           </p>
         </div>
         <div class="col-md-6 text-md-end">
