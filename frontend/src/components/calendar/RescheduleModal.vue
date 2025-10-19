@@ -261,6 +261,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useToast } from "../../composables/useToast";
 import { useAuthStore } from "../../stores/auth";
+import { useCreditService } from "../../services/creditService";
 
 export default {
   name: "RescheduleModal",
@@ -274,6 +275,7 @@ export default {
   setup(props, { emit }) {
     const { showToast } = useToast();
     const authStore = useAuthStore();
+    const creditService = useCreditService();
 
     // Reactive data
     const loading = ref(false);
@@ -740,6 +742,38 @@ export default {
         if (!isValidForm.value) {
           showToast("Please fill in all required fields", "error");
           return;
+        }
+
+        // Check if user is a student and validate credits
+        if (creditService.isStudent()) {
+          // Calculate duration in minutes
+          const newStartDateTime = new Date(
+            `${newDate.value}T${newStartTime.value}`
+          );
+          const newEndDateTime = new Date(
+            `${newDate.value}T${newEndTime.value}`
+          );
+          const durationMinutes =
+            (newEndDateTime - newStartDateTime) / (1000 * 60);
+
+          // Validate credits for rescheduling
+          const rescheduleData = {
+            tutorHourlyRate: tutorHourlyRate.value,
+            durationMinutes: durationMinutes,
+          };
+
+          // Pass current session credits for proper difference calculation
+          const currentSessionCredits = parseFloat(currentCredits.value);
+
+          if (
+            !creditService.validateRescheduleCredits(
+              rescheduleData,
+              currentSessionCredits
+            )
+          ) {
+            loading.value = false;
+            return; // Stop execution if insufficient credits
+          }
         }
 
         // Create new datetime strings

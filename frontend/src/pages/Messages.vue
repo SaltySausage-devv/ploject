@@ -436,6 +436,7 @@
                                 isAttendanceMarked(message)
                               "
                               class="booking-actions mt-3"
+                              :key="`attendance-${message.id}`"
                             >
                               <!-- Button when attendance can be marked -->
                               <button
@@ -473,6 +474,24 @@
                               >
                                 <i class="fas fa-clock me-1"></i>
                                 Session Not Started
+                              </button>
+                            </div>
+
+                            <!-- Session End Button for Students -->
+                            <div
+                              v-if="
+                                authStore.user &&
+                                authStore.user.user_type === 'student' &&
+                                canShowSessionEndModal(message)
+                              "
+                              class="booking-actions mt-3"
+                            >
+                              <button
+                                class="btn btn-info btn-sm"
+                                @click="showSessionEndModal(message)"
+                              >
+                                <i class="fas fa-star me-1"></i>
+                                Session Ended - Leave Review
                               </button>
                             </div>
                           </div>
@@ -1681,6 +1700,18 @@
       @close="markAttendanceModal = false"
       @attendance-marked="handleAttendanceMarked"
     />
+
+    <!-- Session End Modal -->
+    <SessionEndModal
+      v-if="sessionEndModal && selectedBookingForSessionEnd"
+      :booking="selectedBookingForSessionEnd"
+      @close="sessionEndModal = false"
+      @review-submitted="handleReviewSubmitted"
+      @absent-reported="handleAbsentReported"
+    />
+
+    <!-- Toast Notifications -->
+    <ToastNotifications />
   </div>
 </template>
 
@@ -1689,14 +1720,18 @@ import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
 import { useAuthStore } from "../stores/auth";
 import messagingService from "../services/messaging.js";
 import { useNotifications } from "../composables/useNotifications";
+import { useCreditService } from "../services/creditService";
 import axios from "axios";
 import MarkAttendanceModal from "../components/calendar/MarkAttendanceModal.vue";
+import SessionEndModal from "../components/calendar/SessionEndModal.vue";
+import ToastNotifications from "../components/ToastNotifications.vue";
 
 export default {
   name: "Messages",
   setup() {
     const authStore = useAuthStore();
-    const { showMessageNotification } = useNotifications();
+    const creditService = useCreditService();
+    const { showMessageNotification, showNotification } = useNotifications();
 
     const currentUserId = computed(() => authStore.user?.id);
 
@@ -1724,6 +1759,7 @@ export default {
     const newMessage = ref("");
     const isLoading = ref(false);
     const showMobileChat = ref(false); // Toggle for mobile view
+    const processedNotifications = ref(new Set()); // Track processed notifications to avoid duplicates
 
     // Delete modal variables
     const showDeleteModal = ref(false);
@@ -2676,7 +2712,6 @@ export default {
         align-items: center;
         justify-content: center;
         z-index: 10000;
-        backdrop-filter: blur(5px);
       `;
 
       const modalContent = document.createElement("div");
@@ -3050,6 +3085,15 @@ export default {
     const createBookingOffer = async () => {
       if (!selectedConversation.value) return;
 
+      // Check if user is a student and validate credits
+      if (creditService.isStudent()) {
+        // For booking offers, we need to check if student has any credits at all
+        // since we don't know the exact cost until the tutor proposes
+        if (!creditService.hasAnyCredits()) {
+          return; // Stop execution if no credits - toast notification is shown by creditService
+        }
+      }
+
       isCreatingBooking.value = true;
       try {
         const response = await fetch("/api/messaging/booking-offers", {
@@ -3113,6 +3157,15 @@ export default {
       if (!effectiveDuration || effectiveDuration < 15) {
         alert("Please select a valid duration (minimum 15 minutes)");
         return;
+      }
+
+      // Check if user is a student and validate credits
+      if (creditService.isStudent()) {
+        // For booking proposals, we need to check if student has any credits at all
+        // since we don't know the exact cost until the tutor proposes
+        if (!creditService.hasAnyCredits()) {
+          return; // Stop execution if no credits - toast notification is shown by creditService
+        }
       }
 
       isCreatingProposal.value = true;
@@ -3223,6 +3276,15 @@ export default {
 
     const sendBookingProposal = async () => {
       if (!selectedDate.value || !selectedTimeSlot.value) return;
+
+      // Check if user is a student and validate credits
+      if (creditService.isStudent()) {
+        // For booking proposals, we need to check if student has any credits at all
+        // since we don't know the exact cost until the tutor proposes
+        if (!creditService.hasAnyCredits()) {
+          return; // Stop execution if no credits - toast notification is shown by creditService
+        }
+      }
 
       isSendingProposal.value = true;
       try {
@@ -3446,20 +3508,66 @@ export default {
       const bookingData = getBookingData(message);
       if (!bookingData) return;
 
+      // Check if user is a student and validate credits before confirming
+      if (creditService.isStudent()) {
+        const creditsNeeded = bookingData.creditsAmount || 0;
+
+        if (!creditService.hasSufficientCredits(creditsNeeded, "booking")) {
+          return; // Stop execution if insufficient credits
+        }
+      }
+
       try {
+        const requestPayload = {
+          bookingOfferId: bookingData.bookingOfferId,
+        };
+
+        console.log("🔄 Confirming booking with payload:", requestPayload);
+        console.log("🔄 Booking data:", bookingData);
+
         const response = await fetch("/api/messaging/booking-confirmations", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${authStore.token}`,
           },
-          body: JSON.stringify({
-            bookingOfferId: bookingData.bookingOfferId,
-          }),
+          body: JSON.stringify(requestPayload),
         });
 
         if (!response.ok) {
-          throw new Error("Failed to confirm booking");
+          const errorData = await response.json();
+          console.error("❌ Booking confirmation error:", {
+            status: response.status,
+            statusText: response.statusText,
+            errorData: errorData,
+          });
+
+          // Handle insufficient credits error from backend
+          if (
+            response.status === 400 &&
+            errorData.error === "Insufficient credits"
+          ) {
+            const { requiredCredits, currentCredits, shortfall } =
+              errorData.details;
+            creditService.showInsufficientCreditsNotification(
+              requiredCredits,
+              currentCredits,
+              "booking"
+            );
+            return;
+          }
+
+          // Handle 500 errors with more details
+          if (response.status === 500) {
+            console.error("❌ Server error details:", errorData);
+            throw new Error(
+              `Server error: ${errorData.error || "Internal server error"}`
+            );
+          }
+
+          throw new Error(
+            `Failed to confirm booking: ${errorData.error || "Unknown error"}`
+          );
         }
 
         const data = await response.json();
@@ -3470,6 +3578,9 @@ export default {
           setConfirmedBooking(bookingData.bookingOfferId);
           updateBookingStatus(bookingData.bookingOfferId, "accepted");
         }
+
+        // Refresh credit balance after successful booking confirmation
+        await creditService.refreshCredits();
 
         // Show success message
         alert(
@@ -3506,7 +3617,16 @@ export default {
         // Connect to messaging service only if not already connected
         if (!messagingService.isConnected) {
           console.log("🔌 RECEIVER: Connecting to messaging service...");
-          messagingService.connect(authStore.session.access_token);
+          console.log("🔌 RECEIVER: Auth store session:", authStore.session);
+          console.log(
+            "🔌 RECEIVER: Access token:",
+            authStore.session?.access_token
+          );
+          console.log(
+            "🔌 RECEIVER: Token exists:",
+            !!authStore.session?.access_token
+          );
+          messagingService.connect(authStore.session?.access_token);
         } else {
           console.log("🔌 RECEIVER: Already connected to messaging service");
         }
@@ -3517,6 +3637,8 @@ export default {
             "🔔 RECEIVER: Received new message via Socket.io:",
             message
           );
+          console.log("🔔 RECEIVER: Current user ID:", currentUserId.value);
+          console.log("🔔 RECEIVER: Message sender ID:", message.sender_id);
           console.log("🔔 RECEIVER: Message content:", message.content);
           console.log("🔔 RECEIVER: Message type:", message.message_type);
           console.log("🔔 RECEIVER: Message created_at:", message.created_at);
@@ -3528,14 +3650,42 @@ export default {
             "🔔 RECEIVER: Message conversation ID:",
             message.conversation_id
           );
-          console.log("🔔 RECEIVER: Current user ID:", currentUserId.value);
-          console.log("🔔 RECEIVER: Message sender ID:", message.sender_id);
+
+          // Check if we've already processed this notification
+          const notificationKey = `${message.id}-${message.conversation_id}`;
+          if (processedNotifications.value.has(notificationKey)) {
+            console.log(
+              "🔔 RECEIVER: Notification already processed, skipping:",
+              notificationKey
+            );
+            return;
+          }
 
           // Add message to current conversation if it's the one being viewed
           if (
             selectedConversation.value &&
             message.conversation_id === selectedConversation.value.id
           ) {
+            // Special handling for attendance notifications - show toast even when viewing conversation
+            if (message.message_type === "attendance_notification") {
+              console.log(
+                "🔔 ATTENDANCE NOTIFICATION: Showing toast for attendance notification"
+              );
+
+              // Mark notification as processed to prevent duplicates
+              const notificationKey = `${message.id}-${message.conversation_id}`;
+              if (!processedNotifications.value.has(notificationKey)) {
+                processedNotifications.value.add(notificationKey);
+
+                showMessageNotification({
+                  senderName: "System",
+                  message: message.content,
+                  conversationId: message.conversation_id,
+                });
+
+                console.log("✅ Attendance notification toast shown");
+              }
+            }
             console.log("Adding message to current conversation");
 
             // Validate message data
@@ -3645,7 +3795,8 @@ export default {
               message.message_type === "booking_cancelled" ||
               message.message_type === "reschedule_request" ||
               message.message_type === "reschedule_accepted" ||
-              message.message_type === "reschedule_rejected";
+              message.message_type === "reschedule_rejected" ||
+              message.message_type === "attendance_notification";
 
             // For booking cancellations, only show notification to the receiver (not the sender)
             const isBookingCancellation =
@@ -3654,12 +3805,31 @@ export default {
               ? message.sender_id !== currentUserId.value // Only show to receiver for cancellations
               : message.sender_id !== currentUserId.value || isSystemMessage; // Normal logic for other messages
 
-            if (shouldShowNotification && message.sender) {
+            console.log("🔔 NOTIFICATION CHECK:", {
+              messageId: message.id,
+              messageType: message.message_type,
+              senderId: message.sender_id,
+              currentUserId: currentUserId.value,
+              isSystemMessage,
+              isBookingCancellation,
+              shouldShowNotification,
+              hasSender: !!message.sender,
+            });
+
+            // Special handling for attendance notifications - always show them
+            const isAttendanceNotification =
+              message.message_type === "attendance_notification";
+
+            if (
+              (shouldShowNotification && message.sender) ||
+              isAttendanceNotification
+            ) {
               const senderName =
                 message.message_type === "booking_cancelled" ||
                 message.message_type === "reschedule_request" ||
                 message.message_type === "reschedule_accepted" ||
-                message.message_type === "reschedule_rejected"
+                message.message_type === "reschedule_rejected" ||
+                message.message_type === "attendance_notification"
                   ? "System"
                   : `${message.sender.first_name} ${message.sender.last_name}`;
 
@@ -3681,9 +3851,20 @@ export default {
                 messagePreview = "✅ Booking confirmed";
               } else if (message.message_type === "booking_cancelled") {
                 messagePreview = "❌ Booking cancelled";
+              } else if (message.message_type === "attendance_notification") {
+                messagePreview = "📋 Attendance marked";
               } else {
                 messagePreview = message.content;
               }
+
+              console.log("🔔 SHOWING NOTIFICATION:", {
+                senderName,
+                message: messagePreview,
+                conversationId: message.conversation_id,
+              });
+
+              // Mark notification as processed to prevent duplicates
+              processedNotifications.value.add(notificationKey);
 
               showMessageNotification({
                 senderName,
@@ -3947,7 +4128,12 @@ export default {
     const markAttendanceModal = ref(false);
     const selectedBookingForAttendance = ref(null);
     const attendanceMarkedBookings = ref(new Set());
-    const bookingAttendanceStatus = ref(new Map()); // Map of bookingId -> attendance status
+    const bookingAttendanceStatus = ref(new Map());
+    const checkingAttendanceStatus = ref(new Set());
+
+    // Session end functionality
+    const sessionEndModal = ref(false);
+    const selectedBookingForSessionEnd = ref(null);
 
     // Check if current user can mark attendance for a booking
     const canMarkAttendance = (message) => {
@@ -3967,13 +4153,6 @@ export default {
       const currentTime = new Date();
       const canMark = currentTime > sessionStartTime;
 
-      console.log("🔍 canMarkAttendance Debug:", {
-        sessionStartTime: sessionStartTime.toISOString(),
-        currentTime: currentTime.toISOString(),
-        canMark,
-        userType: authStore.user.user_type,
-      });
-
       // Only allow marking attendance after the session has started
       return canMark;
     };
@@ -3981,17 +4160,35 @@ export default {
     // Check attendance status for multiple bookings in batch
     const checkAttendanceStatusBatch = async (bookingIds) => {
       try {
-        const response = await fetch(
-          "http://localhost:3004/bookings/attendance-status",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${authStore.token}`,
-            },
-            body: JSON.stringify({ bookingIds }),
+        // Filter out bookings that we've marked locally
+        const bookingsToCheck = bookingIds.filter((bookingId) => {
+          if (attendanceMarkedBookings.value.has(bookingId)) {
+            console.log(
+              "🚫 Skipping batch check - attendance marked locally for booking:",
+              bookingId
+            );
+            // Set the status to true for locally marked bookings
+            bookingAttendanceStatus.value.set(bookingId, true);
+            return false;
           }
-        );
+          return true;
+        });
+
+        if (bookingsToCheck.length === 0) {
+          console.log(
+            "🚫 All bookings in batch are locally marked, skipping API call"
+          );
+          return;
+        }
+
+        const response = await fetch("/api/bookings/attendance-status", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authStore.token}`,
+          },
+          body: JSON.stringify({ bookingIds: bookingsToCheck }),
+        });
 
         if (response.ok) {
           const attendanceStatuses = await response.json();
@@ -4020,15 +4217,29 @@ export default {
         return bookingAttendanceStatus.value.get(bookingId);
       }
 
-      try {
-        const response = await fetch(
-          `http://localhost:3004/bookings/${bookingId}`,
-          {
-            headers: {
-              Authorization: `Bearer ${authStore.token}`,
-            },
-          }
+      // Check if we're already checking this booking to prevent duplicate requests
+      if (checkingAttendanceStatus.value.has(bookingId)) {
+        return false;
+      }
+
+      // CRITICAL: If we've marked this attendance locally, don't fetch from database
+      if (attendanceMarkedBookings.value.has(bookingId)) {
+        console.log(
+          "🚫 Skipping database fetch - attendance marked locally for booking:",
+          bookingId
         );
+        return true;
+      }
+
+      // Mark this booking as being checked
+      checkingAttendanceStatus.value.add(bookingId);
+
+      try {
+        const response = await fetch(`/api/bookings/${bookingId}`, {
+          headers: {
+            Authorization: `Bearer ${authStore.token}`,
+          },
+        });
 
         if (response.ok) {
           const booking = await response.json();
@@ -4045,7 +4256,17 @@ export default {
             attendance_status: booking.attendance_status,
             attendance_marked_at: booking.attendance_marked_at,
             hasAttendance,
+            wasInLocalSet: attendanceMarkedBookings.value.has(bookingId),
           });
+
+          // If we had it in local set but server says false, keep local state
+          if (attendanceMarkedBookings.value.has(bookingId) && !hasAttendance) {
+            console.log(
+              "⚠️ Server says false but we have it locally - keeping local state true"
+            );
+            bookingAttendanceStatus.value.set(bookingId, true);
+            return true;
+          }
 
           return hasAttendance;
         } else if (response.status === 429) {
@@ -4066,6 +4287,9 @@ export default {
         console.error("Error checking attendance from database:", error);
         bookingAttendanceStatus.value.set(bookingId, false);
         return false;
+      } finally {
+        // Remove from checking set
+        checkingAttendanceStatus.value.delete(bookingId);
       }
     };
 
@@ -4076,15 +4300,26 @@ export default {
         return false;
       }
 
-      // Check the reactive map first
-      const status = bookingAttendanceStatus.value.get(bookingData.bookingId);
-      if (status !== undefined) {
-        return status;
+      // Check if we have the status in our reactive map first
+      const cachedStatus = bookingAttendanceStatus.value.get(
+        bookingData.bookingId
+      );
+      if (cachedStatus !== undefined) {
+        return cachedStatus;
       }
 
-      // If not in map, trigger async check
-      checkAttendanceStatus(bookingData.bookingId);
-      return false; // Return false initially, will update when async check completes
+      // Fallback to message content
+      const isMarked =
+        bookingData.attendance_status === "attended" ||
+        bookingData.attendance_status === "no_show";
+
+      console.log("🔍 BUTTON CHECK:", {
+        bookingId: bookingData.bookingId,
+        attendance_status: bookingData.attendance_status,
+        isMarked: isMarked,
+      });
+
+      return isMarked;
     };
 
     // Show mark attendance modal
@@ -4095,6 +4330,17 @@ export default {
       }
 
       // Check if attendance is already marked
+      console.log(
+        "🔍 showMarkAttendanceModal: Checking attendance for booking:",
+        bookingData.bookingId
+      );
+      console.log("🔍 showMarkAttendanceModal: Booking data:", bookingData);
+      console.log("🔍 showMarkAttendanceModal: Message data:", {
+        senderId: message.senderId,
+        sender: message.sender,
+        content: message.content,
+      });
+
       if (isAttendanceMarked(message)) {
         console.log(
           "🚫 Attendance already marked, preventing modal from opening"
@@ -4112,9 +4358,11 @@ export default {
         ).toISOString(),
         subject: bookingData.subject || "Tutoring Session",
         student: {
+          id: message.senderId || bookingData.student_id, // Include student ID
           first_name: message.sender?.first_name || "Student",
           last_name: message.sender?.last_name || "",
         },
+        student_id: message.senderId || bookingData.student_id, // Also include as direct property
         tutor_id: authStore.user.id,
       };
 
@@ -4124,18 +4372,31 @@ export default {
     // Handle attendance marked event
     const handleAttendanceMarked = async (attendanceData) => {
       try {
-        // Send attendance message to the conversation
-        await messagingService.sendAttendanceMessage(
-          selectedConversation.value.id,
-          selectedBookingForAttendance.value.id,
-          attendanceData
-        );
+        // Only send attendance message if it wasn't already marked
+        if (!attendanceData.already_marked) {
+          // Send attendance message to the conversation
+          await messagingService.sendAttendanceMessage(
+            selectedConversation.value.id,
+            selectedBookingForAttendance.value.id,
+            attendanceData
+          );
+        }
 
         // Update the booking confirmation message with attendance status
         const bookingId = selectedBookingForAttendance.value.id;
+        console.log(
+          "🔄 Looking for booking confirmation message with ID:",
+          bookingId
+        );
+
         const updatedMessages = messages.value.map((msg) => {
           if (msg.messageType === "booking_confirmation") {
             const bookingData = getBookingData(msg);
+            console.log(
+              "🔄 Checking message with booking ID:",
+              bookingData?.bookingId
+            );
+
             if (bookingData && bookingData.bookingId === bookingId) {
               // Update the booking data with attendance status
               const updatedBookingData = {
@@ -4148,6 +4409,12 @@ export default {
                 "🔄 Updating booking data with attendance status:",
                 updatedBookingData
               );
+              console.log("🔄 Original booking data:", bookingData);
+              console.log(
+                "🔄 New message content:",
+                JSON.stringify(updatedBookingData)
+              );
+
               return {
                 ...msg,
                 content: JSON.stringify(updatedBookingData),
@@ -4160,25 +4427,173 @@ export default {
         messages.value = updatedMessages;
         console.log("✅ Messages updated with attendance status");
 
-        // Add to tracked set
-        attendanceMarkedBookings.value.add(bookingId);
+        console.log(
+          "✅ Attendance status updated in booking data for booking:",
+          bookingId
+        );
 
-        // Update the attendance status map
+        // Update the reactive map for immediate button updates
         bookingAttendanceStatus.value.set(bookingId, true);
+        console.log("✅ Updated reactive map for booking:", bookingId);
 
-        console.log("📝 Added booking to attendance marked set:", bookingId);
-        console.log("📝 Updated attendance status map for booking:", bookingId);
+        // Send notification to student that attendance has been marked
+        try {
+          // Get the booking data from the selected booking
+          const bookingData = selectedBookingForAttendance.value;
 
-        // Force reactive update
+          console.log("🔔 ATTENDANCE NOTIFICATION DEBUG:", {
+            bookingData: bookingData,
+            student: bookingData.student,
+            student_id: bookingData.student_id,
+          });
+
+          // Get student ID from the booking data
+          const studentId = bookingData.student?.id || bookingData.student_id;
+
+          console.log(
+            "🔔 ATTENDANCE NOTIFICATION: Student ID found:",
+            studentId
+          );
+
+          if (studentId) {
+            const sessionDate = new Date(
+              bookingData.confirmedTime
+            ).toLocaleDateString();
+            const attendanceStatus =
+              attendanceData.attendance_status === "attended"
+                ? "Present"
+                : "Absent";
+
+            const notificationPayload = {
+              recipient_id: studentId,
+              title: "Attendance Marked",
+              message: `Your attendance has been marked as "${attendanceStatus}" for the session on ${sessionDate}`,
+              type: "attendance_marked",
+              booking_id: bookingId,
+            };
+
+            // Send system notification
+            await fetch("/api/notifications", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${authStore.token}`,
+              },
+              body: JSON.stringify(notificationPayload),
+            });
+
+            console.log(
+              "✅ System notification sent to student about attendance marking"
+            );
+
+            // Also send a toast notification if the student is online
+            // We'll send this through the messaging system to the student's current session
+            try {
+              const notificationMessage = `📋 Your attendance has been marked as "${attendanceStatus}" for the session on ${sessionDate}`;
+
+              console.log(
+                "🔔 ATTENDANCE NOTIFICATION: Sending message via messaging service:",
+                {
+                  conversationId: selectedConversation.value.id,
+                  message: notificationMessage,
+                  messageType: "attendance_notification",
+                  messagingServiceConnected: messagingService.isConnected,
+                }
+              );
+
+              // Send a system message to notify the student
+              messagingService.sendMessage(
+                selectedConversation.value.id,
+                notificationMessage,
+                "attendance_notification"
+              );
+
+              console.log(
+                "✅ Toast notification sent to student via messaging system"
+              );
+            } catch (toastError) {
+              console.warn("⚠️ Could not send toast notification:", toastError);
+            }
+          } else {
+            console.warn("⚠️ Could not find student ID for notification");
+          }
+        } catch (error) {
+          console.error("Failed to send notification to student:", error);
+        }
+
+        // Force reactive update by triggering a re-render
         await nextTick();
-
-        // Also refresh messages to get the attendance_marked message
-        await loadMessages(selectedConversation.value.id);
 
         markAttendanceModal.value = false;
         selectedBookingForAttendance.value = null;
       } catch (error) {
         console.error("Error handling attendance marked:", error);
+      }
+    };
+
+    // Session end functionality
+    const canShowSessionEndModal = (message) => {
+      if (!authStore.user || authStore.user.user_type !== "student") {
+        return false;
+      }
+
+      const bookingData = getBookingData(message);
+      if (!bookingData || !bookingData.bookingId) {
+        return false;
+      }
+
+      // Check if session has ended (current time is after end time)
+      const now = new Date();
+      const endTime = new Date(bookingData.confirmedTime);
+      endTime.setMinutes(endTime.getMinutes() + (bookingData.duration || 60));
+
+      return now > endTime;
+    };
+
+    const showSessionEndModal = (message) => {
+      const bookingData = getBookingData(message);
+      if (!bookingData || !bookingData.bookingId) {
+        return;
+      }
+
+      // Create a booking object for the modal
+      selectedBookingForSessionEnd.value = {
+        id: bookingData.bookingId,
+        start_time: bookingData.confirmedTime,
+        end_time: new Date(
+          new Date(bookingData.confirmedTime).getTime() +
+            (bookingData.duration || 60) * 60000
+        ).toISOString(),
+        subject: bookingData.subject || "Tutoring Session",
+        level: bookingData.level || "N/A",
+        tutor: {
+          first_name: message.recipient?.first_name || "Tutor",
+          last_name: message.recipient?.last_name || "",
+        },
+        tutor_id: message.recipient?.id,
+        student_id: authStore.user.id,
+      };
+
+      sessionEndModal.value = true;
+    };
+
+    const handleReviewSubmitted = async (reviewData) => {
+      try {
+        console.log("Review submitted:", reviewData);
+        // Refresh messages to show any updates
+        await loadMessages(selectedConversation.value.id);
+      } catch (error) {
+        console.error("Error handling review submission:", error);
+      }
+    };
+
+    const handleAbsentReported = async (absentData) => {
+      try {
+        console.log("Absent reported:", absentData);
+        // Refresh messages to show any updates
+        await loadMessages(selectedConversation.value.id);
+      } catch (error) {
+        console.error("Error handling absent report:", error);
       }
     };
 
@@ -4327,6 +4742,9 @@ export default {
       showMarkAttendanceModal,
       canMarkAttendance,
       isAttendanceMarked,
+      attendanceMarkedBookings,
+      bookingAttendanceStatus,
+      checkingAttendanceStatus,
       checkAttendanceStatus,
       getAttendanceData,
       getAttendanceStatusClass,
@@ -4337,10 +4755,21 @@ export default {
       markAttendanceModal,
       selectedBookingForAttendance,
       bookingAttendanceStatus,
+      // Session end functionality
+      sessionEndModal,
+      selectedBookingForSessionEnd,
+      canShowSessionEndModal,
+      showSessionEndModal,
+      handleReviewSubmitted,
+      handleAbsentReported,
+      // Notification deduplication
+      processedNotifications,
     };
   },
   components: {
     MarkAttendanceModal,
+    SessionEndModal,
+    ToastNotifications,
   },
 };
 </script>
@@ -5111,7 +5540,7 @@ i.text-primary {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5359,12 +5788,11 @@ i.text-primary {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.7);
+  background-color: rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 99999;
-  backdrop-filter: blur(5px);
 }
 
 .modal-content {

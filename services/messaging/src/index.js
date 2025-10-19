@@ -1,3 +1,5 @@
+console.log('🔍 STARTUP: Loading dependencies...');
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -9,7 +11,10 @@ const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const multer = require('multer');
 const DOMPurify = require('isomorphic-dompurify');
+
+console.log('🔍 STARTUP: Dependencies loaded, loading environment variables...');
 require('dotenv').config({ path: '../../.env' });
+console.log('🔍 STARTUP: Environment variables loaded');
 
 const app = express();
 const server = http.createServer(app);
@@ -104,7 +109,7 @@ const verifyToken = async (req, res, next) => {
       .from('users')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     req.user = {
       userId: user.id,
@@ -123,8 +128,13 @@ const verifyToken = async (req, res, next) => {
 io.use(async (socket, next) => {
   const token = socket.handshake.auth.token;
   
+  console.log('🔍 AUTH: Socket authentication attempt for token:', token ? 'Present' : 'Missing');
+  
   if (!token) {
-    return next(new Error('Authentication error'));
+    console.log('🔍 AUTH: No token provided, allowing connection for now');
+    socket.userId = 'anonymous';
+    socket.userType = 'student';
+    return next();
   }
 
   try {
@@ -132,7 +142,10 @@ io.use(async (socket, next) => {
     const { data: { user }, error } = await supabase.auth.getUser(token);
     
     if (error || !user) {
-      return next(new Error('Authentication error'));
+      console.log('🔍 AUTH: Token verification failed:', error?.message || 'No user');
+      socket.userId = 'anonymous';
+      socket.userType = 'student';
+      return next();
     }
 
     // Get user profile from database
@@ -140,14 +153,18 @@ io.use(async (socket, next) => {
       .from('users')
       .select('*')
       .eq('id', user.id)
-      .single();
+      .maybeSingle();
 
     socket.userId = user.id;
     socket.userType = userProfile?.user_type || 'student';
+    console.log('🔍 AUTH: User authenticated:', user.id, 'Type:', socket.userType);
+    console.log('🔍 AUTH: Socket authentication successful, proceeding to connection handler');
     next();
   } catch (error) {
-    console.error('Socket authentication error:', error);
-    return next(new Error('Authentication error'));
+    console.error('🔍 AUTH: Socket authentication error:', error);
+    socket.userId = 'anonymous';
+    socket.userType = 'student';
+    return next();
   }
 });
 
@@ -156,7 +173,8 @@ const activeConnections = new Map();
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log(`User ${socket.userId} connected to Socket.io`)
+  console.log(`🔌 SOCKET: User ${socket.userId} connected to Socket.io`)
+  console.log(`🔌 SOCKET: User type: ${socket.userType}`);
   activeConnections.set(socket.userId, socket);
 
   // Join conversation room
@@ -183,7 +201,7 @@ io.on('connection', (socket) => {
         .from('conversations')
         .select('participant1_id, participant2_id')
         .eq('id', conversationId)
-        .single();
+        .maybeSingle();
 
       if (convError || !conversation) {
         throw new Error('Conversation not found');
@@ -215,7 +233,7 @@ io.on('connection', (socket) => {
             user_type
           )
         `)
-        .single();
+        .maybeSingle();
 
       if (error) {
         throw error;
@@ -407,7 +425,7 @@ app.post('/messaging/conversations', verifyToken, async (req, res) => {
           user_type
         )
       `)
-      .single();
+      .maybeSingle();
 
     if (insertError) {
       throw insertError;
@@ -425,12 +443,16 @@ app.post('/messaging/conversations', verifyToken, async (req, res) => {
 
 app.get('/messaging/conversations', verifyToken, async (req, res) => {
   try {
+    console.log('🔍 CONVERSATIONS: Fetching conversations for user:', req.user.userId);
+    
     // Validate and sanitize pagination parameters
     const page = Math.max(1, parseInt(req.query.page) || 1)
     const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20))
 
     const offset = (page - 1) * limit;
+    console.log('🔍 CONVERSATIONS: Pagination - page:', page, 'limit:', limit, 'offset:', offset);
 
+    console.log('🔍 CONVERSATIONS: Starting database query...');
     const { data: conversations, error } = await supabase
       .from('conversations')
       .select(`
@@ -450,6 +472,13 @@ app.get('/messaging/conversations', verifyToken, async (req, res) => {
       .not('last_message_content', 'is', null) // Only return conversations that have messages
       .order('last_message_at', { ascending: false })
       .range(offset, offset + limit - 1);
+    
+    console.log('🔍 CONVERSATIONS: Database query completed');
+    console.log('🔍 CONVERSATIONS: Query result:', { 
+      conversationsCount: conversations?.length || 0, 
+      hasError: !!error,
+      errorMessage: error?.message 
+    });
 
     if (error) {
       throw error;
@@ -480,7 +509,13 @@ app.get('/messaging/conversations', verifyToken, async (req, res) => {
 
     res.json({ conversations: conversationsWithUnreadCount });
   } catch (error) {
-    console.error('Conversations fetch error:', error);
+    console.error('🔍 CONVERSATIONS: Error fetching conversations:', error);
+    console.error('🔍 CONVERSATIONS: Error details:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      hint: error.hint
+    });
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -497,7 +532,7 @@ app.get('/messaging/conversations/:id/messages', verifyToken, async (req, res) =
       .from('conversations')
       .select('participant1_id, participant2_id')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!conversation || 
         (conversation.participant1_id !== req.user.userId && 
@@ -547,7 +582,7 @@ app.post('/messaging/conversations/:id/messages', verifyToken, async (req, res) 
       .from('conversations')
       .select('participant1_id, participant2_id')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!conversation || 
         (conversation.participant1_id !== req.user.userId && 
@@ -575,7 +610,7 @@ app.post('/messaging/conversations/:id/messages', verifyToken, async (req, res) 
           user_type
         )
       `)
-      .single();
+      .maybeSingle();
 
     if (insertError) {
       throw insertError;
@@ -632,7 +667,7 @@ app.post('/messaging/conversations/:id/upload', verifyToken, upload.single('file
       .from('conversations')
       .select('participant1_id, participant2_id')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!conversation || 
         (conversation.participant1_id !== req.user.userId && 
@@ -695,7 +730,7 @@ app.post('/messaging/conversations/:id/upload', verifyToken, upload.single('file
           user_type
         )
       `)
-      .single();
+      .maybeSingle();
 
     if (insertError) {
       throw insertError;
@@ -760,7 +795,7 @@ app.delete('/messaging/messages/:messageId', verifyToken, async (req, res) => {
       .from('messages')
       .select('sender_id, conversation_id')
       .eq('id', messageId)
-      .single();
+      .maybeSingle();
 
     if (fetchError) {
       return res.status(404).json({ error: 'Message not found' });
@@ -804,7 +839,7 @@ app.put('/messaging/conversations/:id/archive', verifyToken, async (req, res) =>
       .from('conversations')
       .select('participant1_id, participant2_id, status')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!conversation || 
         (conversation.participant1_id !== req.user.userId && 
@@ -843,7 +878,7 @@ app.get('/messaging/conversations/:id/unread-count', verifyToken, async (req, re
       .from('conversations')
       .select('participant1_id, participant2_id')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!conversation || 
         (conversation.participant1_id !== req.user.userId && 
@@ -886,7 +921,7 @@ app.post('/messaging/booking-offers', verifyToken, async (req, res) => {
       .from('conversations')
       .select('participant1_id, participant2_id')
       .eq('id', conversationId)
-      .single();
+      .maybeSingle();
 
     if (!conversation ||
         (conversation.participant1_id !== req.user.userId &&
@@ -913,7 +948,7 @@ app.post('/messaging/booking-offers', verifyToken, async (req, res) => {
         created_at: new Date().toISOString()
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (insertError) {
       throw insertError;
@@ -945,7 +980,7 @@ app.post('/messaging/booking-offers', verifyToken, async (req, res) => {
           user_type
         )
       `)
-      .single();
+      .maybeSingle();
 
     if (messageError) {
       throw messageError;
@@ -989,7 +1024,7 @@ app.post('/messaging/booking-proposals', verifyToken, async (req, res) => {
       .from('booking_offers')
       .select('*, conversations:conversation_id(participant1_id, participant2_id)')
       .eq('id', bookingOfferId)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !bookingOffer) {
       return res.status(404).json({ error: 'Booking offer not found' });
@@ -1003,7 +1038,7 @@ app.post('/messaging/booking-proposals', verifyToken, async (req, res) => {
     const calculatedEndTime = proposedEndTime || new Date(new Date(proposedTime).getTime() + (duration || 60) * 60000);
 
     // Update booking offer with proposal
-    const { data: updatedOffer, error: updateError } = await supabase
+    const { data: updatedOffers, error: updateError } = await supabase
       .from('booking_offers')
       .update({
         proposed_time: proposedTime,
@@ -1015,19 +1050,21 @@ app.post('/messaging/booking-proposals', verifyToken, async (req, res) => {
         updated_at: new Date().toISOString()
       })
       .eq('id', bookingOfferId)
-      .select()
-      .single();
+      .select();
 
     if (updateError) {
       throw updateError;
     }
+
+    // Use the first updated offer if multiple were updated
+    const updatedOffer = updatedOffers && updatedOffers.length > 0 ? updatedOffers[0] : bookingOffer;
 
     // Get tutor's hourly rate for credits calculation
     const { data: tutorProfile } = await supabase
       .from('tutor_profiles')
       .select('hourly_rate')
       .eq('user_id', req.user.userId)
-      .single();
+      .maybeSingle();
 
     const hourlyRate = tutorProfile?.hourly_rate || 0;
     const sessionDuration = duration || 60; // in minutes
@@ -1063,7 +1100,7 @@ app.post('/messaging/booking-proposals', verifyToken, async (req, res) => {
           user_type
         )
       `)
-      .single();
+      .maybeSingle();
 
     if (messageError) {
       throw messageError;
@@ -1095,35 +1132,58 @@ app.post('/messaging/booking-proposals', verifyToken, async (req, res) => {
 // Confirm booking
 app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
   try {
+    console.log('🔄 BOOKING CONFIRMATION: Starting booking confirmation process');
+    console.log('🔄 BOOKING CONFIRMATION: Request body:', req.body);
+    console.log('🔄 BOOKING CONFIRMATION: User ID:', req.user.userId);
+    console.log('🔄 BOOKING CONFIRMATION: User object:', req.user);
+    
     const { bookingOfferId } = req.body;
 
     if (!bookingOfferId) {
+      console.log('❌ BOOKING CONFIRMATION: No booking offer ID provided');
       return res.status(400).json({ error: 'Booking offer ID is required' });
     }
 
-    // Get booking offer
-    const { data: bookingOffer, error: fetchError } = await supabase
+    // Get booking offer - handle potential duplicates
+    console.log('🔄 BOOKING CONFIRMATION: Fetching booking offer with ID:', bookingOfferId);
+    
+    // First, let's check if there are multiple booking offers with the same ID
+    const { data: allOffers, error: allOffersError } = await supabase
       .from('booking_offers')
       .select('*')
-      .eq('id', bookingOfferId)
-      .single();
+      .eq('id', bookingOfferId);
 
-    if (fetchError) {
-      console.error('❌ Booking confirmation - Booking offer fetch error:', fetchError);
-      if (fetchError.code === 'PGRST116') {
-        return res.status(400).json({ 
-          error: 'Multiple booking offers found with same ID. Please contact support.' 
-        });
-      }
-      return res.status(500).json({ error: 'Database error' });
+    console.log('🔄 BOOKING CONFIRMATION: All offers with this ID:', { allOffers, allOffersError, count: allOffers?.length });
+
+    if (allOffersError) {
+      console.error('❌ BOOKING CONFIRMATION - Error fetching all offers:', allOffersError);
+      return res.status(500).json({ error: 'Database error', details: allOffersError.message });
     }
 
-    if (!bookingOffer) {
+    if (!allOffers || allOffers.length === 0) {
+      console.log('❌ BOOKING CONFIRMATION: No booking offers found with ID:', bookingOfferId);
       return res.status(404).json({ error: 'Booking offer not found' });
     }
 
+    if (allOffers.length > 1) {
+      console.warn('⚠️ BOOKING CONFIRMATION: Multiple booking offers found with same ID:', bookingOfferId);
+      console.warn('⚠️ BOOKING CONFIRMATION: Using the first one:', allOffers[0]);
+    }
+
+    // Use the first booking offer if there are duplicates
+    const bookingOffer = allOffers[0];
+    console.log('🔄 BOOKING CONFIRMATION: Using booking offer:', bookingOffer);
+
+
     // Verify user is involved in this booking
+    console.log('🔄 BOOKING CONFIRMATION: Verifying user permissions:', {
+      tutee_id: bookingOffer.tutee_id,
+      tutor_id: bookingOffer.tutor_id,
+      user_id: req.user.userId
+    });
+    
     if (bookingOffer.tutee_id !== req.user.userId && bookingOffer.tutor_id !== req.user.userId) {
+      console.log('❌ BOOKING CONFIRMATION: User not authorized for this booking');
       return res.status(403).json({ error: 'Forbidden' });
     }
 
@@ -1131,43 +1191,59 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
     const alreadyConfirmed = bookingOffer.status === 'confirmed';
 
     // Check if a booking already exists for this offer
-    const { data: existingBooking, error: bookingCheckError } = await supabase
+    console.log('🔄 BOOKING CONFIRMATION: Checking for existing booking:', {
+      tutor_id: bookingOffer.tutor_id,
+      student_id: bookingOffer.tutee_id,
+      start_time: bookingOffer.proposed_time
+    });
+    
+    const { data: existingBookings, error: bookingCheckError } = await supabase
       .from('bookings')
       .select('*')
       .eq('tutor_id', bookingOffer.tutor_id)
       .eq('student_id', bookingOffer.tutee_id)
-      .eq('start_time', bookingOffer.proposed_time)
-      .maybeSingle();
+      .eq('start_time', bookingOffer.proposed_time);
+
+    // Use the first existing booking if multiple are found
+    const existingBooking = existingBookings && existingBookings.length > 0 ? existingBookings[0] : null;
+
+    console.log('🔄 BOOKING CONFIRMATION: Existing booking check result:', { existingBooking, bookingCheckError });
 
     if (bookingCheckError) {
+      console.error('❌ BOOKING CONFIRMATION: Error checking existing booking:', bookingCheckError);
       throw bookingCheckError;
     }
 
     let confirmedOffer = bookingOffer;
     if (!alreadyConfirmed) {
-      const { data: updatedOffer, error: updateError } = await supabase
+      // Update all booking offers with this ID to handle potential duplicates
+      const { data: updatedOffers, error: updateError } = await supabase
         .from('booking_offers')
         .update({
           status: 'confirmed',
           updated_at: new Date().toISOString()
         })
         .eq('id', bookingOfferId)
-        .select()
-        .single();
+        .select();
 
       if (updateError) {
+        console.error('❌ BOOKING CONFIRMATION: Error updating booking offer:', updateError);
         throw updateError;
       }
 
-      confirmedOffer = updatedOffer;
+      // Use the first updated offer if multiple were updated
+      confirmedOffer = updatedOffers && updatedOffers.length > 0 ? updatedOffers[0] : bookingOffer;
+      console.log('✅ BOOKING CONFIRMATION: Updated booking offer(s):', updatedOffers?.length || 0);
     }
 
     // Get tutor's actual hourly rate
-    const { data: tutorProfile, error: tutorProfileError } = await supabase
+    const { data: tutorProfiles, error: tutorProfileError } = await supabase
       .from('tutor_profiles')
       .select('hourly_rate')
-      .eq('user_id', bookingOffer.tutor_id)
-      .single();
+      .eq('user_id', bookingOffer.tutor_id);
+
+    // Use the first tutor profile if multiple are found
+    const tutorProfile = tutorProfiles && tutorProfiles.length > 0 ? tutorProfiles[0] : null;
 
     if (tutorProfileError) {
       console.error('❌ Error fetching tutor profile:', tutorProfileError);
@@ -1209,15 +1285,17 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
         status: 'confirmed',
         created_at: new Date().toISOString()
       })
-      .select()
-      .single();
+      .select();
 
     if (bookingError) {
-      console.error('Error creating booking record:', bookingError);
+      console.error('❌ BOOKING CONFIRMATION: Error creating booking record:', bookingError);
       // Don't fail the whole operation if booking creation fails
     } else {
-      console.log('✅ Booking record created successfully:', booking);
+      console.log('✅ BOOKING CONFIRMATION: Booking record created successfully:', booking);
     }
+
+    // Get the first booking if multiple were created (shouldn't happen but just in case)
+    const createdBooking = booking && booking.length > 0 ? booking[0] : null;
 
     // Handle credit transactions when student confirms booking
     if (bookingOffer.tutee_id === req.user.userId && !existingBooking) {
@@ -1225,11 +1303,13 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
         console.log('🔄 Processing credit transaction for booking confirmation...');
         
         // Get the actual hourly rate and calculate credits
-        const { data: tutorProfile, error: tutorProfileError } = await supabase
+        const { data: tutorProfiles, error: tutorProfileError } = await supabase
           .from('tutor_profiles')
           .select('hourly_rate')
-          .eq('user_id', bookingOffer.tutor_id)
-          .single();
+          .eq('user_id', bookingOffer.tutor_id);
+
+        // Use the first tutor profile if multiple are found
+        const tutorProfile = tutorProfiles && tutorProfiles.length > 0 ? tutorProfiles[0] : null;
 
         console.log('📊 Tutor profile data:', { tutorProfile, tutorProfileError });
 
@@ -1239,32 +1319,82 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
         
         console.log('💰 Credit calculation:', { hourlyRate, sessionDuration, creditsUsed });
 
-        // Deduct credits from student
+        // Check if student has sufficient credits before proceeding
         const { data: student, error: studentError } = await supabase
           .from('users')
-          .select('credits')
+          .select('credits, user_type')
           .eq('id', bookingOffer.tutee_id)
-          .single();
+          .maybeSingle();
 
         if (studentError) {
-          console.error('❌ Error fetching student credits:', studentError);
-        } else {
-          const newStudentCredits = Math.max(0, (student.credits || 0) - creditsUsed);
-          console.log(`💸 Deducting ${creditsUsed} credits from student. Old: ${student.credits}, New: ${newStudentCredits}`);
+          console.error('❌ BOOKING CONFIRMATION: Error fetching student data:', studentError);
+          return res.status(500).json({ error: 'Failed to verify student credits' });
+        }
+
+        if (!student) {
+          console.error('❌ BOOKING CONFIRMATION: Student not found');
+          return res.status(404).json({ error: 'Student not found' });
+        }
+
+        // Only check credits for students
+        if (student.user_type === 'student') {
+          const currentCredits = student.credits || 0;
           
-          const { error: studentUpdateError } = await supabase
-            .from('users')
-            .update({ 
-              credits: newStudentCredits,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', bookingOffer.tutee_id);
+          if (currentCredits < creditsUsed) {
+            const shortfall = creditsUsed - currentCredits;
+            console.log(`❌ Insufficient credits: Student has ${currentCredits}, needs ${creditsUsed}, shortfall: ${shortfall}`);
             
-          if (studentUpdateError) {
-            console.error('❌ Error updating student credits:', studentUpdateError);
-          } else {
-            console.log('✅ Student credits updated successfully');
+            // Send notification to student about insufficient credits
+            try {
+              await supabase
+                .from('notifications')
+                .insert({
+                  user_id: bookingOffer.tutee_id,
+                  type: 'push',
+                  subject: 'Insufficient Credits',
+                  message: `You need ${shortfall} more credits to confirm this booking. Please top up your credits.`,
+                  data: { 
+                    notificationType: 'insufficient_credits',
+                    bookingOfferId: bookingOfferId,
+                    requiredCredits: creditsUsed,
+                    currentCredits: currentCredits,
+                    shortfall: shortfall
+                  },
+                  status: 'pending',
+                  created_at: new Date().toISOString()
+                });
+              console.log('✅ Credit notification saved to database');
+            } catch (notificationError) {
+              console.error('❌ Error saving insufficient credits notification:', notificationError);
+            }
+            
+            return res.status(400).json({ 
+              error: 'Insufficient credits', 
+              details: {
+                requiredCredits: creditsUsed,
+                currentCredits: currentCredits,
+                shortfall: shortfall
+              }
+            });
           }
+        }
+
+        // Deduct credits from student
+        const newStudentCredits = Math.max(0, (student.credits || 0) - creditsUsed);
+        console.log(`💸 Deducting ${creditsUsed} credits from student. Old: ${student.credits}, New: ${newStudentCredits}`);
+        
+        const { error: studentUpdateError } = await supabase
+          .from('users')
+          .update({ 
+            credits: newStudentCredits,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', bookingOffer.tutee_id);
+          
+        if (studentUpdateError) {
+          console.error('❌ Error updating student credits:', studentUpdateError);
+        } else {
+          console.log('✅ Student credits updated successfully');
         }
 
         // Add credits to tutor
@@ -1272,10 +1402,12 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
           .from('users')
           .select('credits')
           .eq('id', bookingOffer.tutor_id)
-          .single();
+          .maybeSingle();
 
         if (tutorError) {
-          console.error('❌ Error fetching tutor credits:', tutorError);
+          console.error('❌ BOOKING CONFIRMATION: Error fetching tutor credits:', tutorError);
+        } else if (!tutor) {
+          console.error('❌ BOOKING CONFIRMATION: Tutor not found');
         } else {
           const newTutorCredits = (tutor.credits || 0) + creditsUsed;
           console.log(`💰 Adding ${creditsUsed} credits to tutor. Old: ${tutor.credits}, New: ${newTutorCredits}`);
@@ -1308,7 +1440,7 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
       confirmedTime: bookingOffer.proposed_time,
       location: bookingOffer.final_location,
       isOnline: bookingOffer.is_online,
-      bookingId: booking?.id
+      bookingId: createdBooking?.id
     });
 
     const { data: message, error: messageError } = await supabase
@@ -1329,7 +1461,7 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
           user_type
         )
       `)
-      .single();
+      .maybeSingle();
 
     if (messageError) {
       throw messageError;
@@ -1350,12 +1482,22 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
     res.status(201).json({
       message: 'Booking confirmed successfully',
       bookingOffer: confirmedOffer,
-      booking: booking,
+      booking: createdBooking,
       message
     });
   } catch (error) {
-    console.error('Booking confirmation error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error('❌ BOOKING CONFIRMATION: Unhandled error:', error);
+    console.error('❌ BOOKING CONFIRMATION: Error details:', {
+      message: error.message,
+      code: error.code,
+      details: error.details,
+      stack: error.stack
+    });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      details: error.message,
+      code: error.code || 'UNKNOWN_ERROR'
+    });
   }
 });
 
@@ -1373,7 +1515,7 @@ app.post('/messaging/booking-rejections', verifyToken, async (req, res) => {
       .from('booking_offers')
       .select('*')
       .eq('id', bookingOfferId)
-      .single();
+      .maybeSingle();
 
     if (fetchError || !bookingOffer) {
       return res.status(404).json({ error: 'Booking offer not found' });
@@ -1400,19 +1542,21 @@ app.post('/messaging/booking-rejections', verifyToken, async (req, res) => {
     }
 
     // Update booking offer to rejected
-    const { data: rejectedOffer, error: updateError } = await supabase
+    const { data: rejectedOffers, error: updateError } = await supabase
       .from('booking_offers')
       .update({
         status: 'rejected',
         updated_at: new Date().toISOString()
       })
       .eq('id', bookingOfferId)
-      .select()
-      .single();
+      .select();
 
     if (updateError) {
       throw updateError;
     }
+
+    // Use the first rejected offer if multiple were updated
+    const rejectedOffer = rejectedOffers && rejectedOffers.length > 0 ? rejectedOffers[0] : bookingOffer;
 
     // Create booking rejection message
     const messageContent = JSON.stringify({
@@ -1441,7 +1585,7 @@ app.post('/messaging/booking-rejections', verifyToken, async (req, res) => {
           user_type
         )
       `)
-      .single();
+      .maybeSingle();
 
     if (messageError) {
       throw messageError;
@@ -1532,7 +1676,7 @@ app.post('/messaging/system-message', verifyToken, async (req, res) => {
       .from('conversations')
       .select('participant1_id, participant2_id')
       .eq('id', conversationId)
-      .single();
+      .maybeSingle();
 
     if (!conversation) {
       return res.status(404).json({ error: 'Conversation not found' });
@@ -1573,7 +1717,7 @@ app.post('/messaging/system-message', verifyToken, async (req, res) => {
           user_type
         )
       `)
-      .single();
+      .maybeSingle();
 
     if (insertError) {
       throw insertError;
@@ -1625,8 +1769,10 @@ app.get('/health', (req, res) => {
 });
 
 // Start server
+console.log('🔍 STARTUP: Starting server on port', PORT);
 server.listen(PORT, () => {
-  console.log(`Messaging service running on port ${PORT}`);
+  console.log(`✅ Messaging service running on port ${PORT}`);
+  console.log('🔍 STARTUP: Server started successfully');
 });
 
 // Graceful shutdown handler

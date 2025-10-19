@@ -290,6 +290,41 @@ export const useAuthStore = defineStore('auth', () => {
         console.log('✅ User subscription established')
     }
 
+    const refreshUserData = async () => {
+        try {
+            if (!user.value?.id) {
+                console.log('ℹ️ No user ID available for refresh')
+                return
+            }
+
+            console.log('🔄 Manually refreshing user data...')
+            
+            // Fetch fresh user data from the database
+            const { data: freshUserData, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', user.value.id)
+                .single()
+
+            if (error) {
+                console.error('❌ Error refreshing user data:', error)
+                return
+            }
+
+            if (freshUserData) {
+                const oldCredits = user.value.credits
+                user.value = freshUserData
+                console.log('✅ User data refreshed:', {
+                    oldCredits,
+                    newCredits: user.value.credits,
+                    fullUser: user.value
+                })
+            }
+        } catch (error) {
+            console.error('❌ Error in refreshUserData:', error)
+        }
+    }
+
     const logout = async () => {
         console.log('🚪 Logging out user...')
 
@@ -592,6 +627,7 @@ export const useAuthStore = defineStore('auth', () => {
         updateProfile,
         forgotPassword,
         resetPassword,
+        refreshUserData,
         cleanup
     }
 })

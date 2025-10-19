@@ -274,6 +274,49 @@ app.get('/bookings/student/:studentId', verifyToken, async (req, res) => {
   }
 });
 
+// Get a specific booking by ID
+app.get('/bookings/:id', verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const currentUserId = req.user.userId;
+
+    const { data: booking, error } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        tutor:tutor_id (
+          first_name,
+          last_name,
+          email
+        ),
+        student:student_id (
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+      throw error;
+    }
+
+    // Verify user has access to this booking (either student or tutor)
+    if (booking.student_id !== currentUserId && booking.tutor_id !== currentUserId) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+
+    res.json({ booking });
+  } catch (error) {
+    console.error('Booking fetch error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/bookings/tutor/:tutorId', verifyToken, async (req, res) => {
   try {
     const { tutorId } = req.params;
@@ -961,6 +1004,61 @@ app.post('/booking-confirmations', verifyToken, async (req, res) => {
 
     console.log(`💰 Booking credit calculation: ${hourlyRate} credits/hour × ${sessionDurationHours} hours = ${totalAmount} credits`);
 
+    // Check if student has sufficient credits before proceeding
+    const { data: student, error: studentError } = await supabase
+      .from('users')
+      .select('credits, user_type')
+      .eq('id', bookingOffer.tutee_id)
+      .single();
+
+    if (studentError) {
+      console.error('❌ Error fetching student data:', studentError);
+      return res.status(500).json({ error: 'Failed to verify student credits' });
+    }
+
+    // Only check credits for students
+    if (student.user_type === 'student') {
+      const currentCredits = student.credits || 0;
+      
+      if (currentCredits < totalAmount) {
+        const shortfall = totalAmount - currentCredits;
+        console.log(`❌ Insufficient credits: Student has ${currentCredits}, needs ${totalAmount}, shortfall: ${shortfall}`);
+        
+        // Send notification to student about insufficient credits
+        try {
+          await supabase
+            .from('notifications')
+            .insert({
+              user_id: bookingOffer.tutee_id,
+              type: 'push',
+              subject: 'Insufficient Credits',
+              message: `You need ${shortfall} more credits to confirm this booking. Please top up your credits.`,
+              data: { 
+                notificationType: 'insufficient_credits',
+                bookingOfferId: bookingOfferId,
+                requiredCredits: totalAmount,
+                currentCredits: currentCredits,
+                shortfall: shortfall
+              },
+              status: 'pending',
+              created_at: new Date().toISOString()
+            });
+          console.log('✅ Credit notification saved to database');
+        } catch (notificationError) {
+          console.error('❌ Error saving insufficient credits notification:', notificationError);
+        }
+        
+        return res.status(400).json({ 
+          error: 'Insufficient credits', 
+          details: {
+            requiredCredits: totalAmount,
+            currentCredits: currentCredits,
+            shortfall: shortfall
+          }
+        });
+      }
+    }
+
     // Create a final booking record from the confirmed offer
     const { data: finalBooking, error: bookingError } = await supabase
       .from('bookings')
@@ -982,6 +1080,62 @@ app.post('/booking-confirmations', verifyToken, async (req, res) => {
 
     if (bookingError) {
       console.error('Failed to create final booking:', bookingError);
+    }
+
+    // Deduct credits from student and add to tutor
+    if (student.user_type === 'student') {
+      try {
+        // Deduct credits from student
+        const newStudentCredits = Math.max(0, (student.credits || 0) - totalAmount);
+        console.log(`💸 Deducting ${totalAmount} credits from student. Old: ${student.credits}, New: ${newStudentCredits}`);
+        
+        const { error: studentUpdateError } = await supabase
+          .from('users')
+          .update({ 
+            credits: newStudentCredits,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', bookingOffer.tutee_id);
+          
+        if (studentUpdateError) {
+          console.error('❌ Error updating student credits:', studentUpdateError);
+        } else {
+          console.log('✅ Student credits updated successfully');
+        }
+
+        // Add credits to tutor
+        const { data: tutor, error: tutorError } = await supabase
+          .from('users')
+          .select('credits')
+          .eq('id', bookingOffer.tutor_id)
+          .single();
+
+        if (tutorError) {
+          console.error('❌ Error fetching tutor credits:', tutorError);
+        } else {
+          const newTutorCredits = (tutor.credits || 0) + totalAmount;
+          console.log(`💰 Adding ${totalAmount} credits to tutor. Old: ${tutor.credits}, New: ${newTutorCredits}`);
+          
+          const { error: tutorUpdateError } = await supabase
+            .from('users')
+            .update({ 
+              credits: newTutorCredits,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', bookingOffer.tutor_id);
+            
+          if (tutorUpdateError) {
+            console.error('❌ Error updating tutor credits:', tutorUpdateError);
+          } else {
+            console.log('✅ Tutor credits updated successfully');
+          }
+        }
+
+        console.log(`✅ Credits transferred: ${totalAmount} from student to tutor`);
+      } catch (creditError) {
+        console.error('Error processing credit transaction:', creditError);
+        // Don't fail the booking confirmation if credit processing fails
+      }
     }
 
     // Create confirmation message

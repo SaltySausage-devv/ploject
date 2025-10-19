@@ -283,6 +283,7 @@
 import { ref, computed, onMounted } from "vue";
 import { useAuthStore } from "../../stores/auth";
 import { useToast } from "../../composables/useToast";
+import { useCreditService } from "../../services/creditService";
 
 export default {
   name: "RescheduleRequestModal",
@@ -296,12 +297,14 @@ export default {
   setup(props, { emit }) {
     const authStore = useAuthStore();
     const { showToast } = useToast();
+    const creditService = useCreditService();
 
     // Reactive data
     const loading = ref(false);
     const responseMessage = ref("");
     const tutorHourlyRate = ref(0);
     const loadingCredits = ref(false);
+    const currentRequest = ref(null); // Track current request for cancellation
 
     // Computed properties
     const responded = computed(() => {
@@ -503,9 +506,76 @@ export default {
       }
     };
 
+    // Check if student has sufficient credits for the rescheduled session
+    async function checkStudentCreditsForReschedule() {
+      try {
+        // Only check if user is a student and this is a pending reschedule request
+        if (!creditService.isStudent() || responded.value) {
+          return;
+        }
+
+        // Only check if tutor initiated the reschedule (student is the recipient)
+        if (props.booking.reschedule_requester_type !== "tutor") {
+          return;
+        }
+
+        // Calculate credit difference
+        const originalDurationHours = sessionDurationInHours.value;
+        const newDurationHours =
+          (new Date(props.booking.pending_reschedule_end_time) -
+            new Date(props.booking.pending_reschedule_start_time)) /
+          (1000 * 60 * 60);
+
+        const originalCredits =
+          props.booking.hourly_rate * originalDurationHours;
+        const newCredits = tutorHourlyRate.value * newDurationHours;
+        const creditDifference = newCredits - originalCredits;
+
+        console.log("🔍 Credit check for reschedule:", {
+          originalCredits,
+          newCredits,
+          creditDifference,
+          tutorHourlyRate: tutorHourlyRate.value,
+        });
+
+        // If the new session costs more, check student's credits
+        if (creditDifference > 0) {
+          // Get student's current credits
+          const response = await fetch("/api/users/profile", {
+            headers: {
+              Authorization: `Bearer ${authStore.token}`,
+            },
+          });
+
+          if (response.ok) {
+            const userData = await response.json();
+            const currentCredits = userData.credits || 0;
+
+            if (currentCredits < creditDifference) {
+              const shortfall = creditDifference - currentCredits;
+
+              // Show insufficient credits notification
+              creditService.showInsufficientCreditsNotification(
+                creditDifference,
+                currentCredits,
+                "reschedule"
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking student credits for reschedule:", error);
+        // Don't show error to user, just log it
+      }
+    }
+
     // Load tutor hourly rate when component mounts
-    onMounted(() => {
-      loadTutorHourlyRate();
+    onMounted(async () => {
+      await loadTutorHourlyRate();
+      // Check credits after tutor rate is loaded
+      setTimeout(() => {
+        checkStudentCreditsForReschedule();
+      }, 100); // Small delay to ensure tutor rate is set
     });
 
     // Methods
@@ -527,8 +597,28 @@ export default {
     }
 
     async function handleAccept() {
+      // Prevent multiple simultaneous requests
+      if (loading.value) {
+        console.log(
+          "🔄 FRONTEND: Request already in progress, ignoring accept"
+        );
+        return;
+      }
+
       try {
+        console.log(
+          "🔄 FRONTEND: Starting accept process for booking:",
+          props.booking.id
+        );
         loading.value = "accept";
+
+        // Cancel any existing request
+        if (currentRequest.value) {
+          currentRequest.value.abort();
+        }
+
+        const controller = new AbortController();
+        currentRequest.value = controller;
 
         const response = await fetch(
           `/api/calendar/bookings/${props.booking.id}/reschedule/accept`,
@@ -541,36 +631,87 @@ export default {
             body: JSON.stringify({
               response_message: responseMessage.value,
             }),
+            signal: controller.signal,
           }
         );
 
+        console.log("🔄 FRONTEND: Accept response status:", response.status);
+
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(
+          const error = new Error(
             errorData.error || "Failed to accept reschedule request"
           );
+          error.details = errorData.details; // Attach credit details
+          throw error;
         }
 
         const result = await response.json();
+
+        // Refresh credit balance after successful reschedule acceptance
+        await creditService.refreshCredits();
+
         showToast(
           result.message || "Reschedule request accepted successfully",
           "success"
         );
+
         emit("responded");
       } catch (error) {
         console.error("Error accepting reschedule request:", error);
-        showToast(
-          error.message || "Failed to accept reschedule request",
-          "error"
-        );
+
+        // Check if it's an insufficient credits error
+        if (
+          error.message &&
+          error.message.includes("Insufficient credits for reschedule")
+        ) {
+          // Show specific credit top-up notification
+          if (error.details && error.details.shortfall) {
+            creditService.showInsufficientCreditsNotification(
+              error.details.requiredCredits,
+              error.details.currentCredits,
+              "reschedule"
+            );
+          } else {
+            showToast(error.message, "error");
+          }
+        } else {
+          showToast(
+            error.message || "Failed to accept reschedule request",
+            "error"
+          );
+        }
       } finally {
+        // Ensure loading state is always reset
         loading.value = false;
+        currentRequest.value = null;
+        console.log("🔄 FRONTEND: Loading state reset after accept");
       }
     }
 
     async function handleReject() {
+      // Prevent multiple simultaneous requests
+      if (loading.value) {
+        console.log(
+          "🔄 FRONTEND: Request already in progress, ignoring reject"
+        );
+        return;
+      }
+
       try {
+        console.log(
+          "🔄 FRONTEND: Starting reject process for booking:",
+          props.booking.id
+        );
         loading.value = "reject";
+
+        // Cancel any existing request
+        if (currentRequest.value) {
+          currentRequest.value.abort();
+        }
+
+        const controller = new AbortController();
+        currentRequest.value = controller;
 
         const response = await fetch(
           `/api/calendar/bookings/${props.booking.id}/reschedule/reject`,
@@ -583,8 +724,11 @@ export default {
             body: JSON.stringify({
               response_message: responseMessage.value,
             }),
+            signal: controller.signal,
           }
         );
+
+        console.log("🔄 FRONTEND: Reject response status:", response.status);
 
         if (!response.ok) {
           const errorData = await response.json();
@@ -603,7 +747,10 @@ export default {
           "error"
         );
       } finally {
+        // Ensure loading state is always reset
         loading.value = false;
+        currentRequest.value = null;
+        console.log("🔄 FRONTEND: Loading state reset after reject");
       }
     }
 

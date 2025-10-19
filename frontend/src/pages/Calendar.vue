@@ -251,9 +251,20 @@ export default {
       }
     }
 
-    function handleBookingUpdated() {
-      selectedBooking.value = null;
-      fetchCalendarData();
+    async function handleBookingUpdated() {
+      // Refresh calendar data first
+      await fetchCalendarData();
+
+      // Update the selectedBooking with fresh data if it exists
+      if (selectedBooking.value) {
+        const updatedBooking = bookings.value.find(
+          (booking) => booking.id === selectedBooking.value.id
+        );
+        if (updatedBooking) {
+          selectedBooking.value = updatedBooking;
+        }
+      }
+
       showToast("Booking updated successfully", "success");
     }
 

@@ -640,6 +640,9 @@ app.post('/bookings/:id/reschedule', verifyToken, async (req, res) => {
     // Determine requester type
     const requesterType = booking.tutor_id === req.user.userId ? 'tutor' : 'student';
 
+    // Tutors can initiate reschedule requests without credit validation
+    // Credit validation will happen when the student accepts the reschedule
+
     // Update booking with reschedule request details
     const updateData = {
       pending_reschedule_start_time: start_time,
@@ -658,6 +661,12 @@ app.post('/bookings/:id/reschedule', verifyToken, async (req, res) => {
       updateData.pending_reschedule_location = new_location;
     }
     
+    console.log('🔄 CREATING RESCHEDULE REQUEST:', {
+      bookingId: id,
+      updateData: updateData,
+      requesterType: requesterType
+    });
+    
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update(updateData)
@@ -669,6 +678,14 @@ app.post('/bookings/:id/reschedule', verifyToken, async (req, res) => {
       console.error('Reschedule request creation error:', updateError);
       return res.status(500).json({ error: 'Failed to create reschedule request' });
     }
+
+    console.log('✅ RESCHEDULE REQUEST CREATED:', {
+      bookingId: id,
+      rescheduleStatus: updatedBooking.reschedule_status,
+      rescheduleRequestedBy: updatedBooking.reschedule_requested_by,
+      pendingStartTime: updatedBooking.pending_reschedule_start_time,
+      pendingEndTime: updatedBooking.pending_reschedule_end_time
+    });
 
 
     // Send notification to the other party via messaging system
@@ -1189,7 +1206,7 @@ app.post('/bookings/:id/reschedule/accept', verifyToken, async (req, res) => {
       return res.status(400).json({ error: 'No pending reschedule request found' });
     }
 
-    // Get tutor's hourly rate for updating booking rates
+    // Get tutor's hourly rate for credit validation
     const { data: tutorProfile, error: tutorProfileError } = await supabase
       .from('tutor_profiles')
       .select('hourly_rate')
@@ -1197,6 +1214,94 @@ app.post('/bookings/:id/reschedule/accept', verifyToken, async (req, res) => {
       .single();
 
     const hourlyRate = tutorProfile?.hourly_rate || 10; // Use 10 as fallback
+
+    // CREDIT VALIDATION - Check credits BEFORE updating booking
+    try {
+      console.log('🔄 Processing credit validation for reschedule acceptance...');
+      console.log('🔍 Reschedule acceptance details:', {
+        bookingId: booking.id,
+        userId: userId,
+        studentId: booking.student_id,
+        tutorId: booking.tutor_id,
+        currentStart: booking.start_time,
+        currentEnd: booking.end_time,
+        newStart: booking.pending_reschedule_start_time,
+        newEnd: booking.pending_reschedule_end_time
+      });
+
+      // Use the hourly rate we already fetched above
+      if (tutorProfileError) {
+        console.error('❌ Error fetching tutor profile:', tutorProfileError);
+      } else if (tutorProfile?.hourly_rate) {
+        const hourlyRate = tutorProfile.hourly_rate;
+        
+        // Calculate current session duration (in hours)
+        const currentStart = new Date(booking.start_time);
+        const currentEnd = new Date(booking.end_time);
+        const currentDurationHours = (currentEnd.getTime() - currentStart.getTime()) / (1000 * 60 * 60);
+        const currentCredits = hourlyRate * currentDurationHours;
+
+        // Calculate new session duration (in hours)
+        const newStart = new Date(booking.pending_reschedule_start_time);
+        const newEnd = new Date(booking.pending_reschedule_end_time);
+        const newDurationHours = (newEnd.getTime() - newStart.getTime()) / (1000 * 60 * 60);
+        const newCredits = hourlyRate * newDurationHours;
+
+        // Calculate credit difference
+        const creditDifference = newCredits - currentCredits;
+
+        console.log('💰 Credit calculation:', {
+          hourlyRate,
+          currentDurationHours,
+          currentCredits,
+          newDurationHours,
+          newCredits,
+          creditDifference
+        });
+
+        // Check if student has sufficient credits for reschedule (if credit difference is positive)
+        if (creditDifference > 0) {
+          // Get student data to check user type and credits
+          const { data: studentData, error: studentDataError } = await supabase
+            .from('users')
+            .select('credits, user_type')
+            .eq('id', booking.student_id)
+            .single();
+
+          if (studentDataError) {
+            console.error('❌ Error fetching student data for credit validation:', studentDataError);
+            return res.status(500).json({ error: 'Failed to verify student credits' });
+          }
+
+          // Only check credits for students
+          if (studentData.user_type === 'student') {
+            const currentStudentCredits = studentData.credits || 0;
+            
+            if (currentStudentCredits < creditDifference) {
+              const shortfall = creditDifference - currentStudentCredits;
+              console.log(`❌ Insufficient credits for reschedule: Student has ${currentStudentCredits}, needs ${creditDifference}, shortfall: ${shortfall}`);
+              
+              return res.status(400).json({ 
+                error: 'Insufficient credits for reschedule', 
+                details: {
+                  requiredCredits: creditDifference,
+                  currentCredits: currentStudentCredits,
+                  shortfall: shortfall,
+                  message: `You need ${shortfall} more credits to accept this reschedule. Please top up your credits.`
+                }
+              });
+            }
+          }
+        }
+      } else {
+        console.log('⚠️ Tutor hourly rate not found - skipping credit validation');
+      }
+    } catch (creditError) {
+      console.error('❌ Error processing credit validation:', creditError);
+      return res.status(500).json({ error: 'Failed to validate credits' });
+    }
+
+    // If we get here, credit validation passed - now update the booking
     const newDurationHours = (new Date(booking.pending_reschedule_end_time) - new Date(booking.pending_reschedule_start_time)) / (1000 * 60 * 60);
     const newTotalAmount = hourlyRate * newDurationHours;
 
@@ -1286,6 +1391,41 @@ app.post('/bookings/:id/reschedule/accept', verifyToken, async (req, res) => {
           newCredits,
           creditDifference
         });
+
+        // Check if student has sufficient credits for reschedule (if credit difference is positive)
+        if (creditDifference > 0) {
+          // Get student data to check user type and credits
+          const { data: studentData, error: studentDataError } = await supabase
+            .from('users')
+            .select('credits, user_type')
+            .eq('id', booking.student_id)
+            .single();
+
+          if (studentDataError) {
+            console.error('❌ Error fetching student data for credit validation:', studentDataError);
+            return res.status(500).json({ error: 'Failed to verify student credits' });
+          }
+
+          // Only check credits for students
+          if (studentData.user_type === 'student') {
+            const currentStudentCredits = studentData.credits || 0;
+            
+            if (currentStudentCredits < creditDifference) {
+              const shortfall = creditDifference - currentStudentCredits;
+              console.log(`❌ Insufficient credits for reschedule: Student has ${currentStudentCredits}, needs ${creditDifference}, shortfall: ${shortfall}`);
+              
+              return res.status(400).json({ 
+                error: 'Insufficient credits for reschedule', 
+                details: {
+                  requiredCredits: creditDifference,
+                  currentCredits: currentStudentCredits,
+                  shortfall: shortfall,
+                  message: `You need ${shortfall} more credits to accept this reschedule. Please top up your credits.`
+                }
+              });
+            }
+          }
+        }
 
         if (creditDifference !== 0) {
           console.log('🔍 Credit difference is not zero, proceeding with transaction...');
@@ -1436,7 +1576,7 @@ app.post('/bookings/:id/reschedule/accept', verifyToken, async (req, res) => {
 
     res.json({ 
       data: updatedBooking, 
-      message: 'Reschedule request accepted successfully. Booking has been updated.' 
+      message: 'Reschedule request accepted successfully. Booking has been updated.'
     });
   } catch (error) {
     console.error('Accept reschedule request error:', error);
@@ -1451,12 +1591,32 @@ app.post('/bookings/:id/reschedule/reject', verifyToken, async (req, res) => {
     const userId = req.user.userId;
     const { response_message } = req.body;
 
+    console.log('🔍 REJECT RESCHEDULE REQUEST:', {
+      bookingId: id,
+      userId: userId,
+      responseMessage: response_message
+    });
+
     // Get booking
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
       .select('*')
       .eq('id', id)
       .single();
+
+    console.log('🔍 REJECT RESCHEDULE DEBUG:', {
+      bookingId: id,
+      userId: userId,
+      booking: booking,
+      fetchError: fetchError,
+      rescheduleStatus: booking?.reschedule_status,
+      rescheduleRequestedBy: booking?.reschedule_requested_by,
+      pendingRescheduleStartTime: booking?.pending_reschedule_start_time,
+      pendingRescheduleEndTime: booking?.pending_reschedule_end_time,
+      rescheduleRequestedAt: booking?.reschedule_requested_at,
+      rescheduleRequesterType: booking?.reschedule_requester_type,
+      rescheduleReason: booking?.reschedule_reason
+    });
 
     if (fetchError || !booking) {
       return res.status(404).json({ error: 'Booking not found' });
@@ -1473,28 +1633,70 @@ app.post('/bookings/:id/reschedule/reject', verifyToken, async (req, res) => {
     }
 
     // Check if there's a pending reschedule request
-    if (booking.reschedule_status !== 'pending') {
+    console.log('🔍 CHECKING RESCHEDULE STATUS:', {
+      rescheduleStatus: booking.reschedule_status,
+      isPending: booking.reschedule_status === 'pending',
+      hasPendingFields: !!(booking.pending_reschedule_start_time && booking.pending_reschedule_end_time),
+      bookingId: id
+    });
+    
+    // Check if there's a valid reschedule request (either status is pending OR has pending fields OR has reschedule requester)
+    const hasValidRescheduleRequest = booking.reschedule_status === 'pending' || 
+                                     (booking.pending_reschedule_start_time && booking.pending_reschedule_end_time) ||
+                                     booking.reschedule_requested_by;
+    
+    if (!hasValidRescheduleRequest) {
+      console.log('❌ NO PENDING RESCHEDULE REQUEST:', {
+        currentStatus: booking.reschedule_status,
+        expectedStatus: 'pending',
+        hasPendingFields: !!(booking.pending_reschedule_start_time && booking.pending_reschedule_end_time),
+        hasRequester: !!booking.reschedule_requested_by,
+        pendingStartTime: booking.pending_reschedule_start_time,
+        pendingEndTime: booking.pending_reschedule_end_time,
+        requesterId: booking.reschedule_requested_by
+      });
       return res.status(400).json({ error: 'No pending reschedule request found' });
     }
 
     // Update the booking: reject and clear reschedule request fields
+    console.log('🔄 REJECTING RESCHEDULE REQUEST:', {
+      bookingId: id,
+      currentStartTime: booking.start_time,
+      currentEndTime: booking.end_time,
+      pendingStartTime: booking.pending_reschedule_start_time,
+      pendingEndTime: booking.pending_reschedule_end_time
+    });
+
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update({
         reschedule_status: 'rejected',
         reschedule_responded_at: new Date().toISOString(),
         reschedule_response_message: response_message || 'Rejected',
-        // Clear pending fields after rejecting
+        // Clear ALL pending fields after rejecting
         pending_reschedule_start_time: null,
-        pending_reschedule_end_time: null
+        pending_reschedule_end_time: null,
+        pending_reschedule_location: null,
+        // Keep original booking times unchanged
+        // start_time and end_time are NOT updated - they stay as original
       })
       .eq('id', id)
       .select()
       .single();
 
     if (updateError) {
+      console.error('❌ Error updating booking for rejection:', updateError);
       throw updateError;
     }
+
+    console.log('✅ RESCHEDULE REQUEST REJECTED:', {
+      bookingId: id,
+      rescheduleStatus: updatedBooking.reschedule_status,
+      startTime: updatedBooking.start_time,
+      endTime: updatedBooking.end_time,
+      pendingStartTime: updatedBooking.pending_reschedule_start_time,
+      pendingEndTime: updatedBooking.pending_reschedule_end_time
+    });
 
     // Send notification to requester
     console.log(`📧 Sending notification to user ${booking.reschedule_requested_by} that reschedule was rejected`);

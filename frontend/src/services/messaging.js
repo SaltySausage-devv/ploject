@@ -4,7 +4,7 @@ import { useAuthStore } from '../stores/auth'
 
 // Create a separate API client for messaging service
 const messagingApi = axios.create({
-  baseURL: 'http://localhost:3005',
+  baseURL: '/api',
   timeout: 10000
 })
 
@@ -34,6 +34,8 @@ class MessagingService {
   // Initialize Socket.io connection
   connect(token) {
     console.log('🔌 MESSAGING SERVICE: connect() called');
+    console.log('🔌 MESSAGING SERVICE: Token provided:', !!token);
+    console.log('🔌 MESSAGING SERVICE: Token preview:', token ? token.substring(0, 20) + '...' : 'null');
     console.log('🔌 MESSAGING SERVICE: Has existing socket?', !!this.socket);
     console.log('🔌 MESSAGING SERVICE: Current isConnected?', this.isConnected);
     
@@ -42,7 +44,7 @@ class MessagingService {
       this.disconnect()
     }
 
-    console.log('🔌 MESSAGING SERVICE: Creating new socket connection to port 3005');
+    console.log('🔌 MESSAGING SERVICE: Creating new socket connection to http://localhost:3005');
     
     this.socket = io('http://localhost:3005', {
       auth: {
@@ -58,10 +60,19 @@ class MessagingService {
       this.isConnected = true
     })
 
-          this.socket.on('disconnect', () => {
-            console.log('Socket.io disconnected')
-            this.isConnected = false
-          })
+    this.socket.on('disconnect', () => {
+      console.log('🔌 MESSAGING SERVICE: Socket.io disconnected')
+      this.isConnected = false
+    })
+
+    this.socket.on('connect_error', (error) => {
+      console.error('🔌 MESSAGING SERVICE: Socket.io connection error:', error)
+      this.isConnected = false
+    })
+
+    this.socket.on('error', (error) => {
+      console.error('🔌 MESSAGING SERVICE: Socket.io error:', error)
+    })
 
           this.socket.on('reconnect', () => {
             this.isConnected = true
@@ -333,7 +344,7 @@ class MessagingService {
       formData.append('session_notes', attendanceData.session_notes || '')
       formData.append('proof_photo', attendanceData.proof_photo)
 
-      const response = await fetch(`http://localhost:3004/bookings/${bookingId}/mark-attendance`, {
+      const response = await fetch(`/api/bookings/${bookingId}/mark-attendance`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authStore.token}`

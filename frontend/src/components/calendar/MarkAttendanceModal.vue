@@ -232,6 +232,9 @@ export default {
     const fileInput = ref(null);
     const attendanceMarked = ref(false);
 
+    // Global request tracking to prevent duplicate requests
+    const pendingRequests = new Set();
+
     // Computed properties
     const canSubmit = computed(() => {
       return attendanceStatus.value; // Temporarily removed proof photo requirement
@@ -294,8 +297,24 @@ export default {
     }
 
     async function handleSubmit() {
+      // Prevent multiple rapid submissions
+      if (loading.value) {
+        return;
+      }
+
+      // Check if there's already a pending request for this booking
+      const requestKey = `attendance-${props.booking.id}`;
+      if (pendingRequests.has(requestKey)) {
+        showToast(
+          "Attendance marking is already in progress, please wait...",
+          "warning"
+        );
+        return;
+      }
+
       try {
         loading.value = true;
+        pendingRequests.add(requestKey);
 
         if (!canSubmit.value) {
           showToast("Please select attendance status", "error");
@@ -313,20 +332,101 @@ export default {
         console.log("  - Payload:", payload);
         console.log("  - Auth token available:", !!authStore.token);
 
-        const response = await fetch(
-          `http://localhost:3004/bookings/${props.booking.id}/mark-attendance`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${authStore.token}`,
-            },
-            body: JSON.stringify(payload),
+        // Implement retry logic with exponential backoff
+        let retryCount = 0;
+        const maxRetries = 3;
+        let response;
+
+        while (retryCount <= maxRetries) {
+          try {
+            response = await fetch(
+              `/api/bookings/${props.booking.id}/mark-attendance`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${authStore.token}`,
+                },
+                body: JSON.stringify(payload),
+              }
+            );
+
+            // If successful or not a rate limit error, break out of retry loop
+            if (response.ok || response.status !== 429) {
+              break;
+            }
+
+            // If rate limited and we have retries left, wait and retry
+            if (response.status === 429 && retryCount < maxRetries) {
+              const waitTime = Math.pow(2, retryCount) * 1000; // Exponential backoff: 1s, 2s, 4s
+              console.log(
+                `Rate limited, waiting ${waitTime}ms before retry ${
+                  retryCount + 1
+                }/${maxRetries}`
+              );
+              showToast(
+                `Rate limited, retrying in ${waitTime / 1000} seconds...`,
+                "warning"
+              );
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+              retryCount++;
+              continue;
+            }
+
+            // If we've exhausted retries or it's not a rate limit, break
+            break;
+          } catch (error) {
+            if (retryCount < maxRetries) {
+              const waitTime = Math.pow(2, retryCount) * 1000;
+              console.log(
+                `Request failed, waiting ${waitTime}ms before retry ${
+                  retryCount + 1
+                }/${maxRetries}`
+              );
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+              retryCount++;
+              continue;
+            }
+            throw error;
           }
-        );
+        }
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
+
+          // Handle specific error cases
+          if (
+            response.status === 400 &&
+            errorData.error &&
+            errorData.error.includes("already been marked")
+          ) {
+            // Attendance was already marked - treat as success
+            showToast("Attendance was already marked for this session", "info");
+            attendanceMarked.value = true;
+
+            // Close modal after a short delay
+            setTimeout(() => {
+              emit("attendance-marked", {
+                attendance_status: attendanceStatus.value,
+                session_notes: sessionNotes.value,
+                already_marked: true,
+              });
+            }, 2000);
+            return; // Exit early, don't throw error
+          } else if (response.status === 429) {
+            throw new Error(
+              "Too many requests. Please wait a moment and try again."
+            );
+          } else if (response.status === 401) {
+            throw new Error("Authentication failed. Please log in again.");
+          } else if (response.status === 404) {
+            throw new Error(
+              "Booking not found. Please refresh the page and try again."
+            );
+          } else if (response.status >= 500) {
+            throw new Error("Server error. Please try again later.");
+          }
+
           throw new Error(errorData.error || "Failed to mark attendance");
         }
 
@@ -344,6 +444,7 @@ export default {
         showToast("Failed to mark attendance", "error");
       } finally {
         loading.value = false;
+        pendingRequests.delete(requestKey);
       }
     }
 
