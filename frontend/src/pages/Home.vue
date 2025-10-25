@@ -108,11 +108,11 @@
                 Join thousands of students and tutors who trust TutorConnect
               </p>
               <div class="d-flex gap-3 justify-content-center flex-wrap">
-                <a href="http://localhost:3000/register" class="btn btn-lg">
+                <a href="http://localhost:3000/register" class="btn btn-cyberpunk btn-lg">
                   <i class="fas fa-user-plus me-2"></i>
                   Sign Up Now
                 </a>
-                <router-link to="/search" class="btn btn-outline-light btn-lg">
+                <router-link to="/search" class="btn btn-cyberpunk btn-lg">
                   <i class="fas fa-search me-2"></i>
                   Browse Tutors
                 </router-link>
