@@ -360,6 +360,50 @@ section {
   color: var(--cyber-text-muted) !important;
 }
 
+/* Info table layout: shared label column so labels align vertically and values wrap under themselves */
+.info-table {
+  display: grid;
+  grid-template-columns: 140px 1fr; /* fixed label column ensures alignment across rows */
+  column-gap: 12px;
+  row-gap: 10px;
+  align-items: start;
+}
+
+.info-label {
+  font-weight: 800;
+  color: var(--cyber-orange);
+  white-space: nowrap; /* keep the label on one line */
+}
+
+.info-value {
+  color: var(--cyber-text);
+  line-height: 1.25;
+  word-break: break-word; /* allow wrapping long addresses */
+}
+
+@media (max-width: 520px) {
+  .info-table {
+    grid-template-columns: 1fr; /* stack label above value on narrow screens */
+  }
+  .info-label {
+    margin-bottom: 6px;
+  }
+}
+
+/* Participant inline label/name */
+.participant-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.participant-label {
+  font-weight: 800;
+  color: var(--cyber-orange);
+}
+.participant-name {
+  color: var(--cyber-text);
+}
+
 /* Cyberpunk Navbar */
 .navbar {
   background: rgba(10, 10, 10, 0.4) !important;

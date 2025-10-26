@@ -65,14 +65,14 @@ export function useCreditService() {
     
     // For reschedule, show the difference amount, not the total
     const creditMessage = action === 'reschedule' 
-      ? `You need ${shortfall} more credits to ${actionText}. Click to top up your credits.`
-      : `You need ${requiredCredits} credits to ${actionText}, but only have ${currentCredits}. Please top up ${shortfall} more credits.`
+      ? `You need ${shortfall} more Credits to ${actionText}. Click to top up your Credits.`
+      : `You need ${requiredCredits} Credits to ${actionText}, but only have ${currentCredits}. Please top up ${shortfall} more Credits.`
     
     // Show toast notification
     toast.showToast(
       action === 'reschedule' 
-        ? `Insufficient credits! You need ${shortfall} more credits to ${actionText}. Please top up your credits.`
-        : `Insufficient credits! You need ${requiredCredits} credits to ${actionText}, but only have ${currentCredits}. Please top up ${shortfall} more credits.`,
+        ? `Insufficient Credits! You need ${shortfall} more Credits to ${actionText}. Please top up your Credits.`
+        : `Insufficient Credits! You need ${requiredCredits} Credits to ${actionText}, but only have ${currentCredits}. Please top up ${shortfall} more Credits.`,
       'warning',
       8000
     )
@@ -94,7 +94,7 @@ export function useCreditService() {
   const showZeroCreditsNotification = () => {
     // Show toast notification
     toast.showToast(
-      'You have no credits remaining! Please top up your credits to continue booking sessions.',
+      'You have no Credits remaining! Please top up your Credits to continue booking sessions.',
       'error',
       8000
     )
@@ -102,7 +102,7 @@ export function useCreditService() {
     // Show system notification
     notifications.showNotification({
       title: 'No Credits Remaining',
-      message: 'You have 0 credits. Please top up your credits to book sessions.',
+      message: 'You have 0 Credits. Please top up your Credits to book sessions.',
       onClick: () => {
         // Navigate to profile page where they can top up credits
         window.location.href = '/profile'

@@ -69,7 +69,7 @@ export default {
         month: 'Month',
         week: 'Week',
         day: 'Day',
-        today: 'Current Month'
+  today: 'Current'
       },
       headerToolbar: {
         left: "prev,next today",
@@ -82,7 +82,8 @@ export default {
       dayMaxEvents: true,
       weekends: true,
       events: bookings.value,
-      eventClick: handleEventClick,
+  eventClick: handleEventClick,
+  dateClick: handleDateClick,
       select: handleDateSelect,
       eventDrop: handleEventDrop,
       eventResize: handleEventResize,
@@ -194,6 +195,24 @@ export default {
       }
     }
 
+    function handleDateClick(info) {
+      // When a date cell is clicked, open the booking details for the first event on that day (if any)
+      const clickedDate = info.date; // Date object
+      // Find events that start on the same calendar date
+      const matching = bookings.value.find((ev) => {
+        try {
+          const evDate = new Date(ev.start);
+          return evDate.toDateString() === clickedDate.toDateString();
+        } catch (e) {
+          return false;
+        }
+      });
+
+      if (matching && matching.extendedProps) {
+        selectedBooking.value = matching.extendedProps;
+      }
+    }
+
     function handleDateSelect(info) {
       // Future: Could allow booking request creation
       console.log("Date selected:", info.start, info.end);
@@ -255,6 +274,11 @@ export default {
       if (type === "booking") {
         // Add booking status indicator
         info.el.classList.add("booking-event");
+        // Make the whole event clickable (not just inner elements) to open booking details
+        info.el.style.cursor = 'pointer'
+        info.el.addEventListener('click', () => {
+          selectedBooking.value = event.extendedProps
+        })
       }
     }
 

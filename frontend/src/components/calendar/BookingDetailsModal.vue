@@ -47,36 +47,34 @@
           <div class="row mb-4">
             <div class="col-md-6">
               <h6 class="text-muted">Session Details</h6>
-              <p class="mb-2"><strong>Title:</strong> {{ booking.title }}</p>
-              <p class="mb-2">
-                <strong>Date:</strong>
-                {{ formatDate(booking.start || booking.start_time) }}
-              </p>
-              <p class="mb-2">
-                <strong>Time:</strong>
-                {{ formatTime(booking.start || booking.start_time) }} -
-                {{ formatTime(booking.end || booking.end_time) }}
-              </p>
-              <p class="mb-2">
-                <strong>Duration:</strong>
-                {{
-                  calculateDuration(
-                    booking.start || booking.start_time,
-                    booking.end || booking.end_time
-                  )
-                }}
-              </p>
-              <p v-if="booking.is_online" class="mb-2">
-                <strong>Type:</strong> <i class="fas fa-video me-1"></i> Online
-                Session
-              </p>
-              <p v-else class="mb-2">
-                <strong>Type:</strong>
-                <i class="fas fa-map-marker-alt me-1"></i> In-person Session
-              </p>
-              <p v-if="booking.location && !booking.is_online" class="mb-2">
-                <strong>Location:</strong> {{ booking.location }}
-              </p>
+              <div class="info-table mb-2">
+                <div class="info-label">Title:</div>
+                <div class="info-value">{{ booking.title }}</div>
+
+                <div class="info-label">Date:</div>
+                <div class="info-value">{{ formatDate(booking.start || booking.start_time) }}</div>
+
+                <div class="info-label">Time:</div>
+                <div class="info-value">{{ formatTime(booking.start || booking.start_time) }} - {{ formatTime(booking.end || booking.end_time) }}</div>
+
+                <div class="info-label">Duration:</div>
+                <div class="info-value">{{ calculateDuration(booking.start || booking.start_time, booking.end || booking.end_time) }}</div>
+
+                <div class="info-label">Type:</div>
+                <div class="info-value">
+                  <template v-if="booking.is_online">
+                    <i class="fas fa-video me-1"></i> Online Session
+                  </template>
+                  <template v-else>
+                    <i class="fas fa-map-marker-alt me-1"></i> In-person Session
+                  </template>
+                </div>
+
+                <template v-if="booking.location && !booking.is_online">
+                  <div class="info-label">Location:</div>
+                  <div class="info-value">{{ booking.location }}</div>
+                </template>
+              </div>
             </div>
             <div class="col-md-6">
               <h6 class="text-muted">Participants</h6>
@@ -94,10 +92,9 @@
                       )
                     }}
                   </div>
-                  <div>
-                    <strong>Tutor:</strong><br />
-                    {{ booking.tutor?.first_name }}
-                    {{ booking.tutor?.last_name }}
+                  <div class="participant-info">
+                    <strong class="participant-label">Tutor:</strong>
+                    <span class="participant-name">{{ booking.tutor?.first_name }} {{ booking.tutor?.last_name }}</span>
                   </div>
                 </div>
                 <div class="d-flex align-items-center">
@@ -113,10 +110,9 @@
                       )
                     }}
                   </div>
-                  <div>
-                    <strong>Student:</strong><br />
-                    {{ booking.student?.first_name }}
-                    {{ booking.student?.last_name }}
+                  <div class="participant-info">
+                    <strong class="participant-label">Student:</strong>
+                    <span class="participant-name">{{ booking.student?.first_name }} {{ booking.student?.last_name }}</span>
                   </div>
                 </div>
               </div>
@@ -124,11 +120,11 @@
               <h6 class="text-muted">Payment</h6>
               <p class="mb-2">
                 <strong>Hourly Rate:</strong>
-                {{ booking.hourly_rate || "N/A" }} credits/hour
+                {{ booking.hourly_rate || "N/A" }} Credits/hour
               </p>
               <p class="mb-2">
                 <strong>Total Amount:</strong>
-                {{ booking.total_amount || "N/A" }} credits
+                {{ booking.total_amount || "N/A" }} Credits
               </p>
               <span
                 :class="getPaymentStatusClass(booking.payment_status)"
@@ -624,6 +620,52 @@ export default {
   padding: 1.75rem 1.5rem;
   font-size: 0.95rem;
   line-height: 1.6;
+}
+
+/* Improve detail typography: labels and values */
+.modal-body p {
+  margin-bottom: 0.9rem;
+  font-size: 1.02rem;
+  line-height: 1.45;
+  color: rgba(255,255,255,0.95);
+}
+
+.modal-body p strong {
+  display: inline-block;
+  min-width: 150px;
+  color: var(--cyber-orange);
+  font-weight: 900;
+  font-size: 1.02rem;
+  text-transform: none;
+}
+
+/* Participants block styling */
+.modal-body .avatar-sm {
+  width: 40px;
+  height: 40px;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 0.75rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.modal-body .col-md-6 > h6 {
+  margin-bottom: 1rem;
+  color: var(--cyber-text-muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+}
+
+/* Payment numbers emphasis */
+.modal-body p strong + span, .modal-body p strong + em, .modal-body p strong + small {
+  font-weight: 700;
+}
+
+.modal-body .payment-value {
+  font-weight: 800;
+  color: #ffffff;
 }
 
 .modal-footer {
