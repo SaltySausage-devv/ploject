@@ -111,8 +111,24 @@ const generateChartData = (data, startDate, endDate, period) => {
   const spendingData = [];
   const chartLabels = [];
   
-  const days = parseInt(period);
-  for (let i = days - 1; i >= 0; i--) {
+  // For earnings data, extend the range to include future dates
+  const hasFutureData = data.some(item => {
+    const itemDate = new Date(item.start_time || item.created_at);
+    return itemDate > new Date();
+  });
+  
+  let startOffset, endOffset;
+  if (hasFutureData) {
+    // Include future dates for earnings
+    startOffset = parseInt(period) - 1;
+    endOffset = 7; // Include 7 days in the future
+  } else {
+    // Normal behavior for past data
+    startOffset = parseInt(period) - 1;
+    endOffset = 0;
+  }
+  
+  for (let i = startOffset; i >= -endOffset; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
     chartLabels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
@@ -124,19 +140,23 @@ const generateChartData = (data, startDate, endDate, period) => {
     
     const dayData = data.filter(item => {
       const itemDate = new Date(item.start_time || item.created_at);
+      // For earnings, include future dates by checking if the item date matches the current chart date
+      // This allows future confirmed bookings to appear in the chart
       return itemDate >= dayStart && itemDate <= dayEnd;
     });
     
-    // Calculate total hours for the day
-    const totalHours = dayData.reduce((sum, item) => {
-      if (item.start_time && item.end_time) {
-        const start = new Date(item.start_time);
-        const end = new Date(item.end_time);
-        const hours = (end - start) / (1000 * 60 * 60); // Convert to hours
-        return sum + hours;
-      }
-      return sum;
-    }, 0);
+    // Calculate total hours for the day (only completed/confirmed bookings)
+    const totalHours = dayData
+      .filter(item => item.status === 'completed' || item.status === 'confirmed')
+      .reduce((sum, item) => {
+        if (item.start_time && item.end_time) {
+          const start = new Date(item.start_time);
+          const end = new Date(item.end_time);
+          const hours = (end - start) / (1000 * 60 * 60); // Convert to hours
+          return sum + hours;
+        }
+        return sum;
+      }, 0);
     
     // Calculate total spending for the day (only completed/confirmed bookings)
     const totalSpending = dayData
@@ -180,7 +200,19 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     const { startDate, endDate } = getDateRange(period);
     console.log('📊 ANALYTICS: Date range:', { startDate: startDate.toISOString(), endDate: endDate.toISOString() });
 
-    // Get student bookings with tutor info
+    // Get all student bookings with tutor info (no date filter for recentActivity)
+    const { data: allBookings, error: allBookingsError } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        tutor:users!tutor_id(
+          first_name,
+          last_name
+        )
+      `)
+      .eq('student_id', studentId);
+
+    // Get date-filtered bookings for KPIs and charts
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
@@ -222,13 +254,13 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     console.log('📊 ANALYTICS: Found messages:', messages?.length || 0);
 
     // Calculate metrics (only completed/confirmed bookings for main KPIs)
-    const totalSessions = bookings
+    const totalSessions = allBookings
       ?.filter(b => b.status === 'completed' || b.status === 'confirmed').length || 0;
-    const completedSessions = bookings?.filter(b => b.status === 'completed').length || 0;
-    const cancelledSessions = bookings?.filter(b => b.status === 'cancelled').length || 0;
-    const pendingSessions = bookings?.filter(b => b.status === 'pending').length || 0;
+    const completedSessions = allBookings?.filter(b => b.status === 'completed').length || 0;
+    const cancelledSessions = allBookings?.filter(b => b.status === 'cancelled').length || 0;
+    const pendingSessions = allBookings?.filter(b => b.status === 'pending').length || 0;
 
-    const totalHours = bookings
+    const totalHours = allBookings
       ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
       ?.reduce((sum, b) => {
         if (b.start_time && b.end_time) {
@@ -239,11 +271,11 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
         return sum;
       }, 0) || 0;
 
-    const totalSpent = bookings
+    const totalSpent = allBookings
       ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
       ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
     const tutorsWorkedWith = new Set(
-      bookings
+      allBookings
         ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
         ?.map(b => b.tutor_id)
     ).size || 0;
@@ -255,7 +287,7 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     const subjectHours = {};
     const subjectSpending = {};
     
-    bookings
+    allBookings
       ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
       ?.forEach(booking => {
         const subject = booking.subject || 'General Tutoring';
@@ -274,7 +306,7 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
         count,
         hours: subjectHours[subject]?.toFixed(1) || 0,
         spending: subjectSpending[subject]?.toFixed(2) || 0,
-        percentage: ((count / (bookings?.length || 1)) * 100).toFixed(1)
+        percentage: ((count / (bookings?.filter(b => b.status === 'completed' || b.status === 'confirmed').length || 1)) * 100).toFixed(1)
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -310,7 +342,7 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
 
     // Recent activity with ratings (only completed/confirmed bookings)
-    const recentActivity = bookings
+    const recentActivity = allBookings
       ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
       ?.slice(0, 10)
       .map(booking => {
@@ -323,8 +355,8 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
           subject: booking.subject || 'General',
           tutorName: `${booking.tutor?.first_name || ''} ${booking.tutor?.last_name || ''}`.trim() || 'Tutor',
           duration: booking.start_time && booking.end_time ? 
-            ((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60)).toFixed(1) + 'h' : 'N/A',
-          cost: `$${booking.total_amount || 0}`,
+            Math.round(((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60))) + 'h' : 'N/A',
+          cost: parseFloat(booking.total_amount || 0),
           rating: rating,
           status: booking.status
         };
@@ -403,7 +435,26 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
       sampleAllBooking: allBookings?.[0] 
     });
     
-    // Now get bookings within date range
+    // Get all confirmed/completed bookings for earnings (regardless of date)
+    // and bookings within date range for other metrics
+    const { data: allConfirmedBookings, error: allConfirmedError } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        student:users!student_id(
+          first_name,
+          last_name
+        )
+      `)
+      .eq('tutor_id', tutorId)
+      .in('status', ['confirmed', 'completed']);
+    
+    console.log('📊 TUTOR ANALYTICS: All confirmed bookings:', { 
+      allConfirmedCount: allConfirmedBookings?.length || 0, 
+      allConfirmedError,
+      sampleConfirmed: allConfirmedBookings?.[0] 
+    });
+    
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
@@ -450,12 +501,11 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
     const cancelledBookings = bookings?.filter(b => b.status === 'cancelled').length || 0;
     const pendingBookings = bookings?.filter(b => b.status === 'pending').length || 0;
 
-    const totalEarnings = bookings
-      ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
+    const totalEarnings = allConfirmedBookings
       ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
 
     const totalHours = bookings
-      ?.filter(b => b.status === 'completed')
+      ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
       ?.reduce((sum, b) => {
         if (b.start_time && b.end_time) {
           const start = new Date(b.start_time);
@@ -470,20 +520,22 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
       : 0;
 
-    // Subject distribution from actual bookings
+    // Subject distribution from actual bookings (only completed/confirmed)
     const subjectCounts = {};
     const subjectHours = {};
     const subjectSpending = {};
     
-    bookings?.forEach(booking => {
-      const subject = booking.subject || 'General Tutoring';
-      const duration = (new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60);
-      const amount = parseFloat(booking.total_amount) || 0;
-      
-      subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
-      subjectHours[subject] = (subjectHours[subject] || 0) + duration;
-      subjectSpending[subject] = (subjectSpending[subject] || 0) + amount;
-    });
+    bookings
+      ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
+      ?.forEach(booking => {
+        const subject = booking.subject || 'General Tutoring';
+        const duration = (new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60);
+        const amount = parseFloat(booking.total_amount) || 0;
+        
+        subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
+        subjectHours[subject] = (subjectHours[subject] || 0) + duration;
+        subjectSpending[subject] = (subjectSpending[subject] || 0) + amount;
+      });
 
     const subjectDistribution = Object.entries(subjectCounts)
       .map(([subject, count]) => ({ 
@@ -491,7 +543,7 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
         count,
         hours: subjectHours[subject]?.toFixed(1) || 0,
         spending: subjectSpending[subject]?.toFixed(2) || 0,
-        percentage: ((count / (bookings?.length || 1)) * 100).toFixed(1)
+        percentage: ((count / (bookings?.filter(b => b.status === 'completed' || b.status === 'confirmed').length || 1)) * 100).toFixed(1)
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -518,8 +570,49 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
     const bookingsChange = calculateGrowth(totalBookings, prevBookings?.length || 0);
     const studentsChange = calculateGrowth(totalStudents, new Set(prevBookings?.map(b => b.student_id)).size || 0);
 
-    // Chart data
-    const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
+    // Chart data - use all confirmed bookings for earnings, date-filtered for hours
+    console.log('📊 TUTOR ANALYTICS: Generating chart data with:', {
+      allConfirmedBookingsCount: allConfirmedBookings?.length || 0,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      period,
+      sampleBooking: allConfirmedBookings?.[0]
+    });
+    
+    // Simple earnings chart data generation
+    const earningsData = [];
+    const earningsLabels = [];
+    
+    // Generate last 30 days + 7 future days
+    for (let i = 29; i >= -7; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      earningsLabels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+      
+      const dayStart = new Date(date);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setHours(23, 59, 59, 999);
+      
+      const dayEarnings = allConfirmedBookings
+        ?.filter(booking => {
+          const bookingDate = new Date(booking.start_time);
+          return bookingDate >= dayStart && bookingDate <= dayEnd;
+        })
+        ?.reduce((sum, booking) => sum + (parseFloat(booking.total_amount) || 0), 0) || 0;
+      
+      earningsData.push(parseFloat(dayEarnings.toFixed(2)));
+    }
+    
+    console.log('📊 TUTOR ANALYTICS: Simple earnings data generated:', {
+      earningsDataLength: earningsData.length,
+      earningsLabelsLength: earningsLabels.length,
+      nonZeroDays: earningsData.filter(d => d > 0).length,
+      sampleEarnings: earningsData.slice(0, 5),
+      sampleLabels: earningsLabels.slice(0, 5)
+    });
+    
+    const { chartData, spendingData, chartLabels } = generateChartData(allConfirmedBookings || [], startDate, endDate, period);
 
     // Recent activity (only completed/confirmed bookings)
     const recentActivity = bookings
@@ -530,8 +623,8 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
         subject: booking.subject || 'General',
         studentName: `${booking.student?.first_name || ''} ${booking.student?.last_name || ''}`.trim() || 'Student',
         duration: booking.start_time && booking.end_time ? 
-          ((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60)).toFixed(1) + 'h' : 'N/A',
-        earnings: `$${booking.total_amount || 0}`,
+          Math.round(((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60))) + 'h' : 'N/A',
+        earnings: parseFloat(booking.total_amount || 0),
         status: booking.status
       })) || [];
 
@@ -553,7 +646,8 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
         bookingsChange: parseFloat(bookingsChange),
         studentsChange: parseFloat(studentsChange),
         chartData,
-        chartLabels,
+        spendingData: earningsData,
+        chartLabels: earningsLabels,
         recentActivity
       }
     });
@@ -676,7 +770,7 @@ app.get('/analytics/centre/:centreId', verifyToken, async (req, res) => {
           tutorName: `${tutor?.first_name || ''} ${tutor?.last_name || ''}`.trim() || 'Tutor',
           subject: booking.subject || 'General',
           students: 1,
-          revenue: `$${booking.total_amount || 0}`,
+          revenue: parseFloat(booking.total_amount || 0),
           status: booking.status
         };
       }) || [];

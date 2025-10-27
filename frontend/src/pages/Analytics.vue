@@ -357,7 +357,7 @@ export default {
               new Date(activity.date).toLocaleDateString(),
               activity.subject || 'N/A',
               activity.studentName || 'N/A',
-              `${activity.duration || 0}h`,
+              activity.duration || 'N/A',
               `$${activity.earnings || 0}`,
               activity.rating || 'N/A'
             ];
@@ -367,7 +367,7 @@ export default {
               activity.subject || 'N/A',
               activity.tutorName || 'N/A',
               activity.duration || 'N/A',
-              activity.cost || 'N/A',
+              `$${activity.cost || 0}`,
               activity.rating || 'N/A'
             ];
           case 'centre':
