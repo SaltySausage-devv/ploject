@@ -64,15 +64,15 @@
         <div class="row mb-4">
           <!-- Main Chart -->
           <div class="col-lg-6 mb-4">
-            <div class="card cyberpunk-card">
+            <div class="card cyberpunk-card h-100">
               <div class="card-header cyberpunk-header">
                 <h5 class="cyberpunk-title mb-0">
                   <i class="fas fa-chart-area me-2"></i>
                   {{ getMainChartTitle() }}
                 </h5>
               </div>
-              <div class="card-body">
-                <div style="position: relative; height: 400px; width: 100%;">
+              <div class="card-body d-flex flex-column">
+                <div style="position: relative; height: 400px; width: 100%; flex: 1;">
                   <canvas ref="mainChart"></canvas>
                 </div>
               </div>
@@ -81,21 +81,19 @@
 
           <!-- Secondary Chart -->
           <div class="col-lg-6 mb-4">
-            <div class="card cyberpunk-card">
+            <div class="card cyberpunk-card h-100">
               <div class="card-header cyberpunk-header">
                 <h5 class="cyberpunk-title mb-0">
                   <i class="fas fa-chart-pie me-2"></i>
                   {{ getSecondaryChartTitle() }}
                 </h5>
               </div>
-              <div class="card-body">
-                <div style="position: relative; height: 400px; width: 100%;">
+              <div class="card-body d-flex flex-column">
+                <div style="position: relative; height: 400px; width: 100%; flex: 1;">
                   <canvas ref="secondaryChart" style="max-width: 100%; max-height: 100%;"></canvas>
                 </div>
                 <div v-if="!analyticsData.pieLabels || analyticsData.pieLabels.length === 0" class="text-center text-muted mt-3">
                   <p>No subject data available</p>
-                  <small>pieLabels: {{ analyticsData.pieLabels }}</small><br>
-                  <small>pieData: {{ analyticsData.pieData }}</small>
                 </div>
               </div>
             </div>

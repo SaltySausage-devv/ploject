@@ -138,10 +138,12 @@ const generateChartData = (data, startDate, endDate, period) => {
       return sum;
     }, 0);
     
-    // Calculate total spending for the day
-    const totalSpending = dayData.reduce((sum, item) => {
-      return sum + (parseFloat(item.total_amount) || 0);
-    }, 0);
+    // Calculate total spending for the day (only completed/confirmed bookings)
+    const totalSpending = dayData
+      .filter(item => item.status === 'completed' || item.status === 'confirmed')
+      .reduce((sum, item) => {
+        return sum + (parseFloat(item.total_amount) || 0);
+      }, 0);
     
     hoursData.push(parseFloat(totalHours.toFixed(1)));
     spendingData.push(parseFloat(totalSpending.toFixed(2)));
@@ -219,41 +221,52 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
 
     console.log('📊 ANALYTICS: Found messages:', messages?.length || 0);
 
-    // Calculate metrics
-    const totalSessions = bookings?.length || 0;
+    // Calculate metrics (only completed/confirmed bookings for main KPIs)
+    const totalSessions = bookings
+      ?.filter(b => b.status === 'completed' || b.status === 'confirmed').length || 0;
     const completedSessions = bookings?.filter(b => b.status === 'completed').length || 0;
     const cancelledSessions = bookings?.filter(b => b.status === 'cancelled').length || 0;
     const pendingSessions = bookings?.filter(b => b.status === 'pending').length || 0;
 
-    const totalHours = bookings?.reduce((sum, b) => {
-      if (b.start_time && b.end_time) {
-        const start = new Date(b.start_time);
-        const end = new Date(b.end_time);
-        return sum + (end - start) / (1000 * 60 * 60);
-      }
-      return sum;
-    }, 0) || 0;
+    const totalHours = bookings
+      ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
+      ?.reduce((sum, b) => {
+        if (b.start_time && b.end_time) {
+          const start = new Date(b.start_time);
+          const end = new Date(b.end_time);
+          return sum + (end - start) / (1000 * 60 * 60);
+        }
+        return sum;
+      }, 0) || 0;
 
-    const totalSpent = bookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
-    const tutorsWorkedWith = new Set(bookings?.map(b => b.tutor_id)).size || 0;
+    const totalSpent = bookings
+      ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
+      ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+    const tutorsWorkedWith = new Set(
+      bookings
+        ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
+        ?.map(b => b.tutor_id)
+    ).size || 0;
     const totalReviews = reviews?.length || 0;
     const totalMessages = messages?.length || 0;
 
-    // Subject distribution from bookings with enhanced data
+    // Subject distribution from bookings with enhanced data (only completed/confirmed)
     const subjectCounts = {};
     const subjectHours = {};
     const subjectSpending = {};
     
-    bookings?.forEach(booking => {
-      const subject = booking.subject || 'General Tutoring';
-      const duration = booking.start_time && booking.end_time ? 
-        (new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60) : 0;
-      const amount = booking.total_amount || 0;
-      
-      subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
-      subjectHours[subject] = (subjectHours[subject] || 0) + duration;
-      subjectSpending[subject] = (subjectSpending[subject] || 0) + amount;
-    });
+    bookings
+      ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
+      ?.forEach(booking => {
+        const subject = booking.subject || 'General Tutoring';
+        const duration = booking.start_time && booking.end_time ? 
+          (new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60) : 0;
+        const amount = booking.total_amount || 0;
+        
+        subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
+        subjectHours[subject] = (subjectHours[subject] || 0) + duration;
+        subjectSpending[subject] = (subjectSpending[subject] || 0) + amount;
+      });
 
     const subjectDistribution = Object.entries(subjectCounts)
       .map(([subject, count]) => ({ 
@@ -296,23 +309,26 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     // Chart data
     const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
 
-    // Recent activity with ratings
-    const recentActivity = bookings?.slice(0, 10).map(booking => {
-      // Find rating for this booking
-      const bookingReview = reviews?.find(review => review.booking_id === booking.id);
-      const rating = bookingReview ? bookingReview.rating : 'N/A';
-      
-      return {
-        date: booking.created_at,
-        subject: booking.subject || 'General',
-        tutorName: `${booking.tutor?.first_name || ''} ${booking.tutor?.last_name || ''}`.trim() || 'Tutor',
-        duration: booking.start_time && booking.end_time ? 
-          ((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60)).toFixed(1) + 'h' : 'N/A',
-        cost: `$${booking.total_amount || 0}`,
-        rating: rating,
-        status: booking.status
-      };
-    }) || [];
+    // Recent activity with ratings (only completed/confirmed bookings)
+    const recentActivity = bookings
+      ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
+      ?.slice(0, 10)
+      .map(booking => {
+        // Find rating for this booking
+        const bookingReview = reviews?.find(review => review.booking_id === booking.id);
+        const rating = bookingReview ? bookingReview.rating : 'N/A';
+        
+        return {
+          date: booking.created_at,
+          subject: booking.subject || 'General',
+          tutorName: `${booking.tutor?.first_name || ''} ${booking.tutor?.last_name || ''}`.trim() || 'Tutor',
+          duration: booking.start_time && booking.end_time ? 
+            ((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60)).toFixed(1) + 'h' : 'N/A',
+          cost: `$${booking.total_amount || 0}`,
+          rating: rating,
+          status: booking.status
+        };
+      }) || [];
 
     const responseData = {
       totalSessions,
@@ -353,14 +369,41 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
     const { tutorId } = req.params;
     const { period = '30' } = req.query;
     
+    console.log('📊 TUTOR ANALYTICS: Starting for tutorId:', tutorId);
+    console.log('📊 TUTOR ANALYTICS: User making request:', req.user);
+    
     // Check if user is the tutor or admin
     if (req.user.userId !== tutorId && req.user.userType !== 'admin') {
+      console.log('📊 TUTOR ANALYTICS: Access denied - user not authorized');
       return res.status(403).json({ error: 'Forbidden' });
     }
 
     const { startDate, endDate } = getDateRange(period);
 
+    console.log('📊 TUTOR ANALYTICS: Date range:', { startDate: startDate.toISOString(), endDate: endDate.toISOString() });
+
     // Get tutor's bookings with student info
+    console.log('📊 TUTOR ANALYTICS: Querying bookings for tutorId:', tutorId);
+    
+    // First, let's check all bookings for this tutor without date filter
+    const { data: allBookings, error: allBookingsError } = await supabase
+      .from('bookings')
+      .select(`
+        *,
+        student:users!student_id(
+          first_name,
+          last_name
+        )
+      `)
+      .eq('tutor_id', tutorId);
+    
+    console.log('📊 TUTOR ANALYTICS: All bookings for tutor:', { 
+      allBookingsCount: allBookings?.length || 0, 
+      allBookingsError,
+      sampleAllBooking: allBookings?.[0] 
+    });
+    
+    // Now get bookings within date range
     const { data: bookings, error: bookingsError } = await supabase
       .from('bookings')
       .select(`
@@ -373,6 +416,12 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
       .eq('tutor_id', tutorId)
       .gte('start_time', startDate.toISOString())
       .lte('start_time', endDate.toISOString());
+    
+    console.log('📊 TUTOR ANALYTICS: Bookings query result:', { 
+      bookingsCount: bookings?.length || 0, 
+      bookingsError,
+      sampleBooking: bookings?.[0] 
+    });
 
     if (bookingsError) throw bookingsError;
 
@@ -421,11 +470,34 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
       : 0;
 
-    // Subject distribution from profile
-    const subjectDistribution = (profile?.subjects || []).map(subject => ({
-      subject,
-      count: bookings?.filter(b => b.subject === subject).length || 0
-    })).sort((a, b) => b.count - a.count);
+    // Subject distribution from actual bookings
+    const subjectCounts = {};
+    const subjectHours = {};
+    const subjectSpending = {};
+    
+    bookings?.forEach(booking => {
+      const subject = booking.subject || 'General Tutoring';
+      const duration = (new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60);
+      const amount = parseFloat(booking.total_amount) || 0;
+      
+      subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
+      subjectHours[subject] = (subjectHours[subject] || 0) + duration;
+      subjectSpending[subject] = (subjectSpending[subject] || 0) + amount;
+    });
+
+    const subjectDistribution = Object.entries(subjectCounts)
+      .map(([subject, count]) => ({ 
+        subject, 
+        count,
+        hours: subjectHours[subject]?.toFixed(1) || 0,
+        spending: subjectSpending[subject]?.toFixed(2) || 0,
+        percentage: ((count / (bookings?.length || 1)) * 100).toFixed(1)
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    // Create pie chart data
+    const pieLabels = subjectDistribution.map(item => item.subject);
+    const pieData = subjectDistribution.map(item => item.count);
 
     // Growth metrics
     const prevStartDate = new Date(startDate);
@@ -449,16 +521,19 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
     // Chart data
     const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
 
-    // Recent activity
-    const recentActivity = bookings?.slice(0, 10).map(booking => ({
-      date: booking.created_at,
-      subject: booking.subject || 'General',
-      studentName: `${booking.student?.first_name || ''} ${booking.student?.last_name || ''}`.trim() || 'Student',
-      duration: booking.start_time && booking.end_time ? 
-        ((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60)).toFixed(1) + 'h' : 'N/A',
-      earnings: `$${booking.total_amount || 0}`,
-      status: booking.status
-    })) || [];
+    // Recent activity (only completed/confirmed bookings)
+    const recentActivity = bookings
+      ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
+      ?.slice(0, 10)
+      .map(booking => ({
+        date: booking.created_at,
+        subject: booking.subject || 'General',
+        studentName: `${booking.student?.first_name || ''} ${booking.student?.last_name || ''}`.trim() || 'Student',
+        duration: booking.start_time && booking.end_time ? 
+          ((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60)).toFixed(1) + 'h' : 'N/A',
+        earnings: `$${booking.total_amount || 0}`,
+        status: booking.status
+      })) || [];
 
     res.json({
       success: true,
@@ -472,6 +547,8 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
         totalStudents,
         averageRating: averageRating.toFixed(1),
         subjectDistribution,
+        pieLabels,
+        pieData,
         earningsChange: parseFloat(earningsChange),
         bookingsChange: parseFloat(bookingsChange),
         studentsChange: parseFloat(studentsChange),
@@ -588,18 +665,21 @@ app.get('/analytics/centre/:centreId', verifyToken, async (req, res) => {
     // Chart data
     const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
 
-    // Recent activity
-    const recentActivity = bookings?.slice(0, 10).map(booking => {
-      const tutor = tutors?.find(t => t.user_id === booking.tutor_id);
-      return {
-        date: booking.created_at,
-        tutorName: `${tutor?.first_name || ''} ${tutor?.last_name || ''}`.trim() || 'Tutor',
-        subject: booking.subject || 'General',
-        students: 1,
-        revenue: `$${booking.total_amount || 0}`,
-        status: booking.status
-      };
-    }) || [];
+    // Recent activity (only completed/confirmed bookings)
+    const recentActivity = bookings
+      ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
+      ?.slice(0, 10)
+      .map(booking => {
+        const tutor = tutors?.find(t => t.user_id === booking.tutor_id);
+        return {
+          date: booking.created_at,
+          tutorName: `${tutor?.first_name || ''} ${tutor?.last_name || ''}`.trim() || 'Tutor',
+          subject: booking.subject || 'General',
+          students: 1,
+          revenue: `$${booking.total_amount || 0}`,
+          status: booking.status
+        };
+      }) || [];
 
     res.json({
       success: true,
