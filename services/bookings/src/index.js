@@ -1060,13 +1060,13 @@ app.post('/booking-confirmations', verifyToken, async (req, res) => {
     }
 
     // Get tutor's primary subject for the booking
-    const { data: tutorProfile } = await supabase
+    const { data: tutorSubjects } = await supabase
       .from('tutor_profiles')
       .select('subjects')
       .eq('user_id', bookingOffer.tutor_id)
       .single();
     
-    const primarySubject = tutorProfile?.subjects?.[0] || 'General Tutoring';
+    const primarySubject = tutorSubjects?.subjects?.[0] || 'General Tutoring';
     const subjectLevel = tutorProfile?.subjects?.length > 1 ? 'Multi-Subject' : 'Single Subject';
 
     // Create a final booking record from the confirmed offer

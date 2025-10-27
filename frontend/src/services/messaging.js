@@ -5,7 +5,7 @@ import { useAuthStore } from '../stores/auth'
 // Create a separate API client for messaging service
 const messagingApi = axios.create({
   baseURL: '/api',
-  timeout: 10000
+  timeout: 30000 // Increased to 30 seconds for large message histories
 })
 
 // Add auth interceptor for messaging API

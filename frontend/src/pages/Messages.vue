@@ -1241,17 +1241,17 @@
                 >
                   <div
                     v-for="(prediction, index) in predictions.tutee"
-                    :key="prediction.place_id"
+                    :key="prediction.placeId"
                     class="autocomplete-item"
                     :class="{ active: selectedIndex.tutee === index }"
                     @mousedown.prevent="selectPrediction('tutee', prediction)"
                     @mouseenter="selectedIndex.tutee = index"
                   >
                     <div class="place-name">
-                      {{ prediction.structured_formatting.main_text }}
+                      {{ prediction.mainText }}
                     </div>
                     <div class="place-address">
-                      {{ prediction.structured_formatting.secondary_text }}
+                      {{ prediction.secondaryText }}
                     </div>
                   </div>
                 </div>
@@ -1601,17 +1601,17 @@
                 >
                   <div
                     v-for="(prediction, index) in predictions.tutor"
-                    :key="prediction.place_id"
+                    :key="prediction.placeId"
                     class="autocomplete-item"
                     :class="{ active: selectedIndex.tutor === index }"
                     @mousedown.prevent="selectPrediction('tutor', prediction)"
                     @mouseenter="selectedIndex.tutor = index"
                   >
                     <div class="place-name">
-                      {{ prediction.structured_formatting.main_text }}
+                      {{ prediction.mainText }}
                     </div>
                     <div class="place-address">
-                      {{ prediction.structured_formatting.secondary_text }}
+                      {{ prediction.secondaryText }}
                     </div>
                   </div>
                 </div>
@@ -1721,6 +1721,7 @@ import { useAuthStore } from "../stores/auth";
 import messagingService from "../services/messaging.js";
 import { useNotifications } from "../composables/useNotifications";
 import { useCreditService } from "../services/creditService";
+import { useGoogleMapsProxy } from "../composables/useGoogleMapsProxy";
 import axios from "axios";
 import MarkAttendanceModal from "../components/calendar/MarkAttendanceModal.vue";
 import SessionEndModal from "../components/calendar/SessionEndModal.vue";
@@ -1813,9 +1814,9 @@ export default {
     const tuteeDropdown = ref(null);
     const tutorDropdown = ref(null);
 
-    const googleMaps = ref(null);
-    const googleMapsReady = ref(false);
-    const googleMapsError = ref(null);
+    // Initialize Google Maps proxy composable
+    const { getAutocompletePredictions, getPlaceDetails, generateSessionToken } = useGoogleMapsProxy();
+    const sessionToken = ref(generateSessionToken());
 
     // Custom autocomplete state
     const predictions = ref({
@@ -1830,8 +1831,6 @@ export default {
       tutee: -1,
       tutor: -1,
     });
-    const autocompleteService = ref(null);
-    const placesService = ref(null);
     let inputTimeout = null;
 
     watch(
@@ -1858,120 +1857,9 @@ export default {
       }
     );
 
-    watch(
-      () => [
-        bookingProposal.value.locationChoice,
-        selectedBookingOffer.value?.isOnline,
-      ],
-      async ([locationChoice, isOnline]) => {
-        if (
-          showBookingProposalModal.value &&
-          locationChoice === "tutor" &&
-          isOnline === false
-        ) {
-          await setupAutocomplete("tutor");
-        }
-      }
-    );
+    // Location choice watcher removed - no longer needed with backend proxy
 
-    const ensureGoogleMapsLoaded = async () => {
-      if (googleMapsReady.value) {
-        return googleMaps.value;
-      }
-
-      if (googleMapsError.value) {
-        return null;
-      }
-
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
-        console.warn(
-          "VITE_GOOGLE_MAPS_API_KEY is not set. Location autocomplete will fall back to manual input."
-        );
-        googleMapsError.value = new Error("Missing Google Maps API key");
-        return null;
-      }
-
-      try {
-        // Set the API key globally for the loader
-        if (
-          !window.google ||
-          !window.google.maps ||
-          !window.google.maps.places
-        ) {
-          // Remove any existing script tags to avoid conflicts
-          const existingScript = document.querySelector(
-            'script[src*="maps.googleapis.com"]'
-          );
-          if (existingScript) {
-            existingScript.remove();
-          }
-
-          // Create callback function that will be called when Google Maps loads
-          window.initGoogleMaps = () => {
-            console.log("Google Maps loaded successfully");
-          };
-
-          // Load Google Maps with Places library
-          const script = document.createElement("script");
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
-          script.async = true;
-          script.defer = true;
-
-          await new Promise((resolve, reject) => {
-            script.onload = () => {
-              // Wait a bit for the libraries to fully initialize
-              setTimeout(() => {
-                if (
-                  window.google &&
-                  window.google.maps &&
-                  window.google.maps.places
-                ) {
-                  resolve();
-                } else {
-                  reject(
-                    new Error("Google Maps Places library failed to load")
-                  );
-                }
-              }, 100);
-            };
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
-        }
-
-        googleMaps.value = window.google;
-        googleMapsReady.value = true;
-        return googleMaps.value;
-      } catch (error) {
-        googleMapsError.value = error;
-        console.error("Failed to load Google Maps:", error);
-        return null;
-      }
-    };
-
-    // Initialize Google Maps services
-    const initializeGoogleServices = async () => {
-      const google = await ensureGoogleMapsLoaded();
-      if (!google) return false;
-
-      if (!autocompleteService.value) {
-        autocompleteService.value =
-          new google.maps.places.AutocompleteService();
-        console.log("✅ AutocompleteService initialized");
-      }
-
-      if (!placesService.value) {
-        // PlacesService needs a DOM element, using a hidden div
-        const div = document.createElement("div");
-        placesService.value = new google.maps.places.PlacesService(div);
-        console.log("✅ PlacesService initialized");
-      }
-
-      return true;
-    };
-
-    // Handle input changes and fetch predictions
+    // Handle input changes and fetch predictions using backend proxy
     const handleLocationInput = async (type, event) => {
       const query = event.target.value;
 
@@ -1984,32 +1872,23 @@ export default {
       // Debounce the API calls
       clearTimeout(inputTimeout);
       inputTimeout = setTimeout(async () => {
-        const initialized = await initializeGoogleServices();
-        if (!initialized) return;
+        try {
+          const results = await getAutocompletePredictions(query, sessionToken.value);
+          console.log(`📍 Predictions for ${type}:`, results);
 
-        const request = {
-          input: query,
-          componentRestrictions: { country: "sg" },
-        };
-
-        autocompleteService.value.getPlacePredictions(
-          request,
-          (results, status) => {
-            console.log(`📍 Predictions for ${type}:`, results, status);
-
-            if (
-              status === window.google.maps.places.PlacesServiceStatus.OK &&
-              results
-            ) {
-              predictions.value[type] = results;
-              showDropdown.value[type] = true;
-              selectedIndex.value[type] = -1;
-            } else {
-              predictions.value[type] = [];
-              showDropdown.value[type] = false;
-            }
+          if (results && results.length > 0) {
+            predictions.value[type] = results;
+            showDropdown.value[type] = true;
+            selectedIndex.value[type] = -1;
+          } else {
+            predictions.value[type] = [];
+            showDropdown.value[type] = false;
           }
-        );
+        } catch (error) {
+          console.error(`Failed to get predictions for ${type}:`, error);
+          predictions.value[type] = [];
+          showDropdown.value[type] = false;
+        }
       }, 300);
     };
 
@@ -2049,36 +1928,26 @@ export default {
       }
     };
 
-    // Select a prediction and get detailed place info
+    // Select a prediction and get detailed place info using backend proxy
     const selectPrediction = async (type, prediction) => {
       console.log(`📍 Selected prediction for ${type}:`, prediction);
 
-      const initialized = await initializeGoogleServices();
-      if (!initialized) return;
+      try {
+        const place = await getPlaceDetails(prediction.placeId);
+        console.log(`📍 Place details for ${type}:`, place);
 
-      const request = {
-        placeId: prediction.place_id,
-        fields: ["name", "formatted_address", "address_components", "geometry"],
-      };
-
-      placesService.value.getDetails(request, (place, status) => {
-        console.log(`📍 Place details for ${type}:`, place, status);
-
-        if (
-          status === window.google.maps.places.PlacesServiceStatus.OK &&
-          place
-        ) {
+        if (place) {
           let address = "";
 
           // Combine name with formatted address
-          if (place.name && place.formatted_address) {
-            if (place.formatted_address.includes(place.name)) {
-              address = place.formatted_address;
+          if (place.name && place.formattedAddress) {
+            if (place.formattedAddress.includes(place.name)) {
+              address = place.formattedAddress;
             } else {
-              address = `${place.name}, ${place.formatted_address}`;
+              address = `${place.name}, ${place.formattedAddress}`;
             }
-          } else if (place.formatted_address) {
-            address = place.formatted_address;
+          } else if (place.formattedAddress) {
+            address = place.formattedAddress;
           } else if (place.name) {
             address = place.name;
           }
@@ -2091,13 +1960,18 @@ export default {
           } else {
             bookingProposal.value.tutorLocation = address;
           }
-        }
 
-        // Hide dropdown
-        showDropdown.value[type] = false;
-        selectedIndex.value[type] = -1;
-        predictions.value[type] = [];
-      });
+          // Generate new session token after successful place selection
+          sessionToken.value = generateSessionToken();
+        }
+      } catch (error) {
+        console.error(`Failed to get place details for ${type}:`, error);
+      }
+
+      // Hide dropdown
+      showDropdown.value[type] = false;
+      selectedIndex.value[type] = -1;
+      predictions.value[type] = [];
     };
 
     // Handle input focus
@@ -5308,13 +5182,19 @@ h6 {
     flex-direction: row;
     align-items: center;
   }
-  
+
   .message-input-row {
     flex: 1;
   }
-  
+
   .message-buttons-row {
     flex-shrink: 0;
+  }
+
+  /* Minimal padding for desktop - just enough for the input box height (~60-70px) */
+  .messages-container {
+    padding-bottom: 70px !important;
+    margin-bottom: 0 !important;
   }
 }
 
@@ -5694,6 +5574,28 @@ i.text-primary {
 
   .back-btn-mobile {
     font-size: 1.1rem;
+  }
+}
+
+/* Medium mobile and tablet: 577px to 768px ONLY - Fix input overlay issue */
+@media (min-width: 577px) and (max-width: 768px) {
+  /* Add bottom padding to prevent messages from being hidden behind input */
+  .messages-container {
+    padding: 15px 15px 120px 15px !important;
+  }
+
+  .message-input {
+    padding: 12px 15px !important;
+  }
+
+  /* Ensure card-body has enough bottom padding for mobile */
+  .chat-col.show-on-mobile .chat-card .card-body {
+    padding-bottom: 80px !important;
+  }
+
+  /* Also ensure padding for non-mobile chat view */
+  .chat-card .card-body {
+    padding-bottom: 80px !important;
   }
 }
 

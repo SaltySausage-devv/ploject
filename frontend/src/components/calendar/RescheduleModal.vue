@@ -83,7 +83,7 @@
                 >
                   <div
                     v-for="(suggestion, index) in locationSuggestions"
-                    :key="suggestion.place_id"
+                    :key="suggestion.placeId"
                     class="suggestion-item"
                     :class="{ active: selectedLocationIndex === index }"
                     @mousedown.prevent="selectLocation(suggestion)"
@@ -92,10 +92,10 @@
                     <i class="fas fa-map-marker-alt me-2 text-primary"></i>
                     <div>
                       <div class="suggestion-main">
-                        {{ suggestion.structured_formatting.main_text }}
+                        {{ suggestion.mainText }}
                       </div>
                       <div class="suggestion-secondary">
-                        {{ suggestion.structured_formatting.secondary_text }}
+                        {{ suggestion.secondaryText }}
                       </div>
                     </div>
                   </div>
@@ -262,6 +262,7 @@ import { ref, computed, onMounted } from "vue";
 import { useToast } from "../../composables/useToast";
 import { useAuthStore } from "../../stores/auth";
 import { useCreditService } from "../../services/creditService";
+import { useGoogleMapsProxy } from "../../composables/useGoogleMapsProxy";
 
 export default {
   name: "RescheduleModal",
@@ -291,12 +292,9 @@ export default {
     const selectedLocationIndex = ref(-1);
     const locationSearchTimeout = ref(null);
 
-    // Google Maps services
-    const googleMaps = ref(null);
-    const googleMapsReady = ref(false);
-    const googleMapsError = ref(null);
-    const autocompleteService = ref(null);
-    const placesService = ref(null);
+    // Initialize Google Maps proxy composable
+    const { getAutocompletePredictions, getPlaceDetails, generateSessionToken } = useGoogleMapsProxy();
+    const sessionToken = ref(generateSessionToken());
 
     // Credits calculation
     const tutorHourlyRate = ref(0);
@@ -482,104 +480,7 @@ export default {
     }
 
     // Google Maps initialization
-    const ensureGoogleMapsLoaded = async () => {
-      if (googleMapsReady.value) {
-        return googleMaps.value;
-      }
-
-      if (googleMapsError.value) {
-        return null;
-      }
-
-      const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-      if (!apiKey) {
-        console.warn(
-          "VITE_GOOGLE_MAPS_API_KEY is not set. Location autocomplete will fall back to manual input."
-        );
-        googleMapsError.value = new Error("Missing Google Maps API key");
-        return null;
-      }
-
-      try {
-        // Set the API key globally for the loader
-        if (
-          !window.google ||
-          !window.google.maps ||
-          !window.google.maps.places
-        ) {
-          // Remove any existing script tags to avoid conflicts
-          const existingScript = document.querySelector(
-            'script[src*="maps.googleapis.com"]'
-          );
-          if (existingScript) {
-            existingScript.remove();
-          }
-
-          // Create callback function that will be called when Google Maps loads
-          window.initGoogleMaps = () => {
-            console.log("Google Maps loaded successfully");
-          };
-
-          // Load Google Maps with Places library
-          const script = document.createElement("script");
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`;
-          script.async = true;
-          script.defer = true;
-
-          await new Promise((resolve, reject) => {
-            script.onload = () => {
-              // Wait a bit for the libraries to fully initialize
-              setTimeout(() => {
-                if (
-                  window.google &&
-                  window.google.maps &&
-                  window.google.maps.places
-                ) {
-                  resolve();
-                } else {
-                  reject(
-                    new Error("Google Maps Places library failed to load")
-                  );
-                }
-              }, 100);
-            };
-            script.onerror = reject;
-            document.head.appendChild(script);
-          });
-        }
-
-        googleMaps.value = window.google;
-        googleMapsReady.value = true;
-        return googleMaps.value;
-      } catch (error) {
-        googleMapsError.value = error;
-        console.error("Failed to load Google Maps:", error);
-        return null;
-      }
-    };
-
-    // Initialize Google Maps services
-    const initializeGoogleServices = async () => {
-      const google = await ensureGoogleMapsLoaded();
-      if (!google) return false;
-
-      if (!autocompleteService.value) {
-        autocompleteService.value =
-          new google.maps.places.AutocompleteService();
-        console.log("✅ AutocompleteService initialized");
-      }
-
-      if (!placesService.value) {
-        // PlacesService needs a DOM element, using a hidden div
-        const div = document.createElement("div");
-        placesService.value = new google.maps.places.PlacesService(div);
-        console.log("✅ PlacesService initialized");
-      }
-
-      return true;
-    };
-
-    // Location-related methods
+    // Location-related methods using backend proxy
     const handleLocationInput = async (event) => {
       const query = event.target.value;
 
@@ -595,32 +496,23 @@ export default {
       }
 
       locationSearchTimeout.value = setTimeout(async () => {
-        const initialized = await initializeGoogleServices();
-        if (!initialized) return;
+        try {
+          const results = await getAutocompletePredictions(query, sessionToken.value);
+          console.log("📍 Location predictions:", results);
 
-        const request = {
-          input: query,
-          componentRestrictions: { country: "sg" },
-        };
-
-        autocompleteService.value.getPlacePredictions(
-          request,
-          (results, status) => {
-            console.log("📍 Location predictions:", results, status);
-
-            if (
-              status === window.google.maps.places.PlacesServiceStatus.OK &&
-              results
-            ) {
-              locationSuggestions.value = results;
-              showLocationSuggestions.value = true;
-              selectedLocationIndex.value = -1;
-            } else {
-              locationSuggestions.value = [];
-              showLocationSuggestions.value = false;
-            }
+          if (results && results.length > 0) {
+            locationSuggestions.value = results;
+            showLocationSuggestions.value = true;
+            selectedLocationIndex.value = -1;
+          } else {
+            locationSuggestions.value = [];
+            showLocationSuggestions.value = false;
           }
-        );
+        } catch (error) {
+          console.error("Failed to get location predictions:", error);
+          locationSuggestions.value = [];
+          showLocationSuggestions.value = false;
+        }
       }, 300);
     };
 
@@ -666,6 +558,8 @@ export default {
       locationSuggestions.value = [];
       showLocationSuggestions.value = false;
       selectedLocationIndex.value = -1;
+      // Generate new session token after selection for billing optimization
+      sessionToken.value = generateSessionToken();
     };
 
     const handleLocationFocus = () => {
