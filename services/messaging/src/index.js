@@ -1273,14 +1273,14 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
     }
 
     // Get tutor's primary subject for the booking
-    const { data: tutorProfile } = await supabase
+    const { data: tutorProfileData } = await supabase
       .from('tutor_profiles')
       .select('subjects')
       .eq('user_id', bookingOffer.tutor_id)
       .single();
     
-    const primarySubject = tutorProfile?.subjects?.[0] || 'General Tutoring';
-    const subjectLevel = tutorProfile?.subjects?.length > 1 ? 'Multi-Subject' : 'Single Subject';
+    const primarySubject = tutorProfileData?.subjects?.[0] || 'General Tutoring';
+    const subjectLevel = tutorProfileData?.subjects?.length > 1 ? 'Multi-Subject' : 'Single Subject';
 
     // Create booking record in bookings table
     const { data: booking, error: bookingError } = await supabase

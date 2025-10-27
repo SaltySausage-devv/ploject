@@ -34,6 +34,12 @@ app.use(limiter);
 const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   
+  console.log('🔐 Token verification:', {
+    hasAuthHeader: !!req.headers.authorization,
+    tokenLength: token?.length || 0,
+    tokenStart: token?.substring(0, 20) || 'none'
+  });
+  
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
@@ -41,6 +47,13 @@ const verifyToken = async (req, res, next) => {
   try {
     // Verify token with Supabase
     const { data: { user }, error } = await supabase.auth.getUser(token);
+    
+    console.log('🔐 Supabase auth result:', {
+      hasUser: !!user,
+      userId: user?.id,
+      email: user?.email,
+      error: error?.message
+    });
     
     if (error || !user) {
       return res.status(401).json({ error: 'Invalid token' });
@@ -59,6 +72,7 @@ const verifyToken = async (req, res, next) => {
       userType: userProfile?.user_type || 'student'
     };
     
+    console.log('🔐 User info added to request:', req.user);
     next();
   } catch (error) {
     console.error('Token verification error:', error);
@@ -93,7 +107,8 @@ const getDateRange = (period) => {
 
 // Helper function to generate chart data
 const generateChartData = (data, startDate, endDate, period) => {
-  const chartData = [];
+  const hoursData = [];
+  const spendingData = [];
   const chartLabels = [];
   
   const days = parseInt(period);
@@ -108,14 +123,35 @@ const generateChartData = (data, startDate, endDate, period) => {
     dayEnd.setHours(23, 59, 59, 999);
     
     const dayData = data.filter(item => {
-      const itemDate = new Date(item.created_at);
+      const itemDate = new Date(item.start_time || item.created_at);
       return itemDate >= dayStart && itemDate <= dayEnd;
     });
     
-    chartData.push(dayData.length);
+    // Calculate total hours for the day
+    const totalHours = dayData.reduce((sum, item) => {
+      if (item.start_time && item.end_time) {
+        const start = new Date(item.start_time);
+        const end = new Date(item.end_time);
+        const hours = (end - start) / (1000 * 60 * 60); // Convert to hours
+        return sum + hours;
+      }
+      return sum;
+    }, 0);
+    
+    // Calculate total spending for the day
+    const totalSpending = dayData.reduce((sum, item) => {
+      return sum + (parseFloat(item.total_amount) || 0);
+    }, 0);
+    
+    hoursData.push(parseFloat(totalHours.toFixed(1)));
+    spendingData.push(parseFloat(totalSpending.toFixed(2)));
   }
   
-  return { chartData, chartLabels };
+  return { 
+    chartData: hoursData, 
+    spendingData: spendingData,
+    chartLabels 
+  };
 };
 
 // Helper function to calculate growth percentage
@@ -258,18 +294,25 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     const hoursChange = calculateGrowth(totalHours, prevHours);
 
     // Chart data
-    const { chartData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
+    const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
 
-    // Recent activity
-    const recentActivity = bookings?.slice(0, 10).map(booking => ({
-      date: booking.created_at,
-      subject: booking.subject || 'General',
-      tutorName: `${booking.tutor?.first_name || ''} ${booking.tutor?.last_name || ''}`.trim() || 'Tutor',
-      duration: booking.start_time && booking.end_time ? 
-        ((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60)).toFixed(1) + 'h' : 'N/A',
-      cost: `$${booking.total_amount || 0}`,
-      status: booking.status
-    })) || [];
+    // Recent activity with ratings
+    const recentActivity = bookings?.slice(0, 10).map(booking => {
+      // Find rating for this booking
+      const bookingReview = reviews?.find(review => review.booking_id === booking.id);
+      const rating = bookingReview ? bookingReview.rating : 'N/A';
+      
+      return {
+        date: booking.created_at,
+        subject: booking.subject || 'General',
+        tutorName: `${booking.tutor?.first_name || ''} ${booking.tutor?.last_name || ''}`.trim() || 'Tutor',
+        duration: booking.start_time && booking.end_time ? 
+          ((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60)).toFixed(1) + 'h' : 'N/A',
+        cost: `$${booking.total_amount || 0}`,
+        rating: rating,
+        status: booking.status
+      };
+    }) || [];
 
     const responseData = {
       totalSessions,
@@ -287,6 +330,7 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
       sessionsChange: parseFloat(sessionsChange),
       hoursChange: parseFloat(hoursChange),
       chartData,
+      spendingData,
       chartLabels,
       recentActivity
     };
@@ -358,7 +402,7 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
     const pendingBookings = bookings?.filter(b => b.status === 'pending').length || 0;
 
     const totalEarnings = bookings
-      ?.filter(b => b.status === 'completed')
+      ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
       ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
 
     const totalHours = bookings
@@ -395,7 +439,7 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
       .lt('created_at', startDate.toISOString());
 
     const prevEarnings = prevBookings
-      ?.filter(b => b.status === 'completed')
+      ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
       ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
 
     const earningsChange = calculateGrowth(totalEarnings, prevEarnings);
@@ -403,7 +447,7 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
     const studentsChange = calculateGrowth(totalStudents, new Set(prevBookings?.map(b => b.student_id)).size || 0);
 
     // Chart data
-    const { chartData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
+    const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
 
     // Recent activity
     const recentActivity = bookings?.slice(0, 10).map(booking => ({
@@ -542,7 +586,7 @@ app.get('/analytics/centre/:centreId', verifyToken, async (req, res) => {
     const studentsChange = calculateGrowth(totalStudents, new Set(prevBookings?.map(b => b.student_id)).size || 0);
 
     // Chart data
-    const { chartData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
+    const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
 
     // Recent activity
     const recentActivity = bookings?.slice(0, 10).map(booking => {
@@ -652,7 +696,7 @@ app.get('/analytics/platform', verifyToken, async (req, res) => {
       : 0;
 
     // Chart data
-    const { chartData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
+    const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
 
     res.json({
       success: true,

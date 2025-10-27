@@ -61,9 +61,9 @@
         </div>
 
         <!-- Charts Section -->
-        <div class="row mb-5">
+        <div class="row mb-4">
           <!-- Main Chart -->
-          <div class="col-lg-8 mb-4">
+          <div class="col-lg-6 mb-4">
             <div class="card cyberpunk-card">
               <div class="card-header cyberpunk-header">
                 <h5 class="cyberpunk-title mb-0">
@@ -72,13 +72,15 @@
                 </h5>
               </div>
               <div class="card-body">
-                <canvas ref="mainChart" width="400" height="200"></canvas>
+                <div style="position: relative; height: 400px; width: 100%;">
+                  <canvas ref="mainChart"></canvas>
+                </div>
               </div>
             </div>
           </div>
 
           <!-- Secondary Chart -->
-          <div class="col-lg-4 mb-4">
+          <div class="col-lg-6 mb-4">
             <div class="card cyberpunk-card">
               <div class="card-header cyberpunk-header">
                 <h5 class="cyberpunk-title mb-0">
@@ -87,11 +89,38 @@
                 </h5>
               </div>
               <div class="card-body">
-                <canvas ref="secondaryChart" width="300" height="200"></canvas>
+                <div style="position: relative; height: 400px; width: 100%;">
+                  <canvas ref="secondaryChart" style="max-width: 100%; max-height: 100%;"></canvas>
+                </div>
+                <div v-if="!analyticsData.pieLabels || analyticsData.pieLabels.length === 0" class="text-center text-muted mt-3">
+                  <p>No subject data available</p>
+                  <small>pieLabels: {{ analyticsData.pieLabels }}</small><br>
+                  <small>pieData: {{ analyticsData.pieData }}</small>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <!-- Spending Chart - Full Width -->
+        <div class="row mb-5">
+          <div class="col-12">
+            <div class="card cyberpunk-card">
+              <div class="card-header cyberpunk-header">
+                <h5 class="cyberpunk-title mb-0">
+                  <i class="fas fa-dollar-sign me-2"></i>
+                  {{ getSpendingChartTitle() }}
+                </h5>
+              </div>
+              <div class="card-body">
+                <div style="position: relative; height: 400px; width: 100%;">
+                  <canvas ref="spendingChart"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
 
         <!-- Data Tables -->
         <div class="row">
@@ -114,6 +143,12 @@
                     <tbody>
                       <tr v-for="(row, index) in tableData" :key="index">
                         <td v-for="(cell, cellIndex) in row" :key="cellIndex">{{ cell }}</td>
+                      </tr>
+                      <tr v-if="tableData.length === 0">
+                        <td colspan="6" class="text-center text-muted py-4">
+                          <i class="fas fa-info-circle me-2"></i>
+                          No recent activity data available
+                        </td>
                       </tr>
                     </tbody>
                   </table>
@@ -145,8 +180,10 @@ export default {
     // Chart refs
     const mainChart = ref(null)
     const secondaryChart = ref(null)
+    const spendingChart = ref(null)
     let mainChartInstance = null
     let secondaryChartInstance = null
+    let spendingChartInstance = null
 
     // Computed properties
     const userType = computed(() => authStore.userType)
@@ -163,8 +200,8 @@ export default {
 
     const getMainChartTitle = () => {
       switch (userType.value) {
-        case 'tutor': return 'Earnings Over Time'
-        case 'student': return 'Learning Progress'
+        case 'tutor': return 'Teaching Hours'
+        case 'student': return 'Learning Hours'
         case 'centre': return 'Revenue Trends'
         default: return 'Performance Metrics'
       }
@@ -176,6 +213,15 @@ export default {
         case 'student': return 'Subject Focus'
         case 'centre': return 'Tutor Performance'
         default: return 'Breakdown'
+      }
+    }
+
+    const getSpendingChartTitle = () => {
+      switch (userType.value) {
+        case 'tutor': return 'Daily Earnings'
+        case 'student': return 'Daily Spending'
+        case 'centre': return 'Daily Revenue'
+        default: return 'Daily Financials'
       }
     }
 
@@ -297,8 +343,16 @@ export default {
     })
 
     const tableData = computed(() => {
-      if (!analyticsData.value.recentActivity) return []
-      return analyticsData.value.recentActivity.map(activity => {
+      if (!analyticsData.value.recentActivity) {
+        return [];
+      }
+      
+      // Sort by date (newest first)
+      const sortedActivities = [...analyticsData.value.recentActivity].sort((a, b) => 
+        new Date(b.date) - new Date(a.date)
+      );
+      
+      return sortedActivities.map((activity) => {
         switch (userType.value) {
           case 'tutor':
             return [
@@ -308,16 +362,16 @@ export default {
               `${activity.duration || 0}h`,
               `$${activity.earnings || 0}`,
               activity.rating || 'N/A'
-            ]
+            ];
           case 'student':
             return [
               new Date(activity.date).toLocaleDateString(),
               activity.subject || 'N/A',
               activity.tutorName || 'N/A',
-              `${activity.duration || 0}h`,
-              `$${activity.cost || 0}`,
+              activity.duration || 'N/A',
+              activity.cost || 'N/A',
               activity.rating || 'N/A'
-            ]
+            ];
           case 'centre':
             return [
               new Date(activity.date).toLocaleDateString(),
@@ -326,18 +380,20 @@ export default {
               activity.students || 0,
               `$${activity.revenue || 0}`,
               activity.rating || 'N/A'
-            ]
+            ];
           default:
-            return []
+            return [];
         }
-      })
-    })
+      });
+    });
 
     // Mock data generation completely removed - only real data from API
 
     // Load analytics data
     const loadAnalytics = async () => {
-      if (!userId.value) return
+      if (!userId.value) {
+        return;
+      }
 
       isLoading.value = true
       error.value = ''
@@ -378,7 +434,10 @@ export default {
         if (response.data.success) {
           analyticsData.value = response.data.data
           await nextTick()
-          createCharts()
+          // Add a small delay to ensure DOM is fully rendered
+          setTimeout(() => {
+            createCharts()
+          }, 100)
         } else {
           throw new Error(response.data.error || 'Failed to load analytics data')
         }
@@ -410,6 +469,7 @@ export default {
     const createCharts = () => {
       if (mainChartInstance) mainChartInstance.destroy()
       if (secondaryChartInstance) secondaryChartInstance.destroy()
+      if (spendingChartInstance) spendingChartInstance.destroy()
 
       // Main chart (line chart)
       if (mainChart.value) {
@@ -453,35 +513,108 @@ export default {
 
       // Secondary chart (doughnut chart)
       if (secondaryChart.value) {
-        const ctx = secondaryChart.value.getContext('2d')
-        secondaryChartInstance = new Chart(ctx, {
-          type: 'doughnut',
-          data: {
-            labels: analyticsData.value.pieLabels || [],
+        try {
+          const ctx = secondaryChart.value.getContext('2d')
+          
+          // Prepare chart data - handle empty data gracefully
+          const hasData = analyticsData.value.pieLabels && analyticsData.value.pieLabels.length > 0
+          const chartData = {
+            labels: hasData ? analyticsData.value.pieLabels : ['No Data'],
             datasets: [{
-              data: analyticsData.value.pieData || [],
-              backgroundColor: [
+              data: hasData ? analyticsData.value.pieData : [1],
+              backgroundColor: hasData ? [
                 '#ff8c42',
                 '#ffd23f',
                 '#10b981',
                 '#3b82f6',
                 '#8b5cf6',
                 '#ef4444'
-              ]
+              ] : ['#666666']
             }]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                labels: {
-                  color: '#ffffff'
+          }
+          
+          secondaryChartInstance = new Chart(ctx, {
+            type: 'doughnut',
+            data: chartData,
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  position: 'right',
+                  labels: {
+                    color: '#ffffff',
+                    font: {
+                      size: 12
+                    }
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      const label = context.label || '';
+                      const value = context.parsed || 0;
+                      const total = context.dataset.data.reduce((sum, val) => sum + val, 0);
+                      const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                      return `${label}: ${value} sessions (${percentage}%)`;
+                    }
+                  }
                 }
               }
             }
-          }
-        })
+          })
+        } catch (error) {
+          console.error('Error creating secondary chart:', error)
+        }
+      }
+
+      // Spending chart (line chart)
+      if (spendingChart.value) {
+        try {
+          const ctx = spendingChart.value.getContext('2d')
+          spendingChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: analyticsData.value.chartLabels || [],
+              datasets: [{
+                label: getSpendingChartTitle(),
+                data: analyticsData.value.spendingData || [],
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                tension: 0.4,
+                fill: true
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  labels: {
+                    color: '#ffffff'
+                  }
+                }
+              },
+              scales: {
+                x: {
+                  ticks: { color: '#ffffff' },
+                  grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                y: {
+                  ticks: { 
+                    color: '#ffffff',
+                    callback: function(value) {
+                      return '$' + value.toFixed(2)
+                    }
+                  },
+                  grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                }
+              }
+            }
+          })
+        } catch (error) {
+          console.error('Error creating spending chart:', error)
+        }
       }
     }
 
@@ -509,10 +642,12 @@ export default {
       tableData,
       mainChart,
       secondaryChart,
+      spendingChart,
       userType,
       getPageTitle,
       getMainChartTitle,
       getSecondaryChartTitle,
+      getSpendingChartTitle,
       loadAnalytics
     }
   }
@@ -569,6 +704,38 @@ export default {
   border: 2px solid var(--cyber-grey-light) !important;
   color: var(--cyber-text) !important;
   border-radius: 8px;
+}
+
+/* Table styling to match dark theme */
+.table {
+  background: rgba(42, 42, 42, 0.9) !important;
+  color: var(--cyber-text) !important;
+}
+
+.table thead th {
+  background: rgba(255, 140, 66, 0.2) !important;
+  color: var(--cyber-orange) !important;
+  border-color: var(--cyber-orange) !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.table tbody tr {
+  background: rgba(42, 42, 42, 0.9) !important;
+  color: var(--cyber-text) !important;
+  border-color: rgba(255, 140, 66, 0.3) !important;
+}
+
+.table tbody tr:hover {
+  background: rgba(255, 140, 66, 0.1) !important;
+}
+
+.table tbody td {
+  background: transparent !important;
+  color: var(--cyber-text) !important;
+  border-color: rgba(255, 140, 66, 0.3) !important;
+  padding: 0.75rem;
   padding: 0.5rem 1rem;
   font-size: 0.9rem;
 }
