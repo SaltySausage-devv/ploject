@@ -111,7 +111,7 @@
                 <router-link to="/register" class="btn btn-cyberpunk btn-lg">
                   <i class="fas fa-user-plus me-2"></i>
                   Sign Up Now
-                </a>
+                </router-link>
                 <router-link to="/search" class="btn btn-cyberpunk btn-lg">
                   <i class="fas fa-search me-2"></i>
                   Browse Tutors
