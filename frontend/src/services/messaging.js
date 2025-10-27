@@ -1,6 +1,7 @@
 import { io } from 'socket.io-client'
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { getApiUrl } from '../utils/api-helper'
 
 // Create a separate API client for messaging service
 const messagingApi = axios.create({
@@ -11,9 +12,14 @@ const messagingApi = axios.create({
 // Add auth interceptor for messaging API
 messagingApi.interceptors.request.use(
   (config) => {
+    // Rewrite URL for production (full backend URLs)
+    if (config.url && config.url.startsWith('/')) {
+      const fullPath = config.baseURL + config.url
+      config.url = getApiUrl(fullPath)
+      config.baseURL = '' // Clear baseURL since we now have full URL
+    }
+    
     const authStore = useAuthStore()
-    
-    
     if (authStore.token) {
       config.headers.Authorization = `Bearer ${authStore.token}`
     }
