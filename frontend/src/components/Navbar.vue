@@ -11,13 +11,13 @@
         <span class="fw-bold">TutorConnect</span>
       </router-link>
 
-      <!-- Credits Icon for Students - Always visible on navbar -->
-      <div class="navbar-credits-container" v-if="isAuthenticated && userType === 'student'">
+      <!-- Credits Icon for Students - Mobile: Visible, Desktop: In navbar collapse -->
+      <div class="navbar-credits-container d-lg-none" v-if="isAuthenticated && userType === 'student'">
         <CreditsIcon />
       </div>
 
-      <!-- Notifications Icon - Mobile only (always visible on navbar) -->
-      <div class="navbar-notification-container" v-if="isAuthenticated">
+      <!-- Notifications Icon - Mobile: Visible, Desktop: In navbar collapse -->
+      <div class="navbar-notification-container d-lg-none" v-if="isAuthenticated">
         <div class="nav-item dropdown">
           <a
             class="nav-link position-relative d-flex align-items-center"
@@ -71,7 +71,7 @@
       </div>
 
       <button
-        class="navbar-toggler cyberpunk-hamburger"
+        class="navbar-toggler cyberpunk-hamburger d-lg-none"
         type="button"
         data-bs-toggle="collapse"
         data-bs-target="#navbarNav"
@@ -114,7 +114,7 @@
 
         <ul class="navbar-nav">
           <!-- Credits Icon for Students - Desktop view -->
-          <li class="nav-item desktop-credits-item" v-if="isAuthenticated && userType === 'student'">
+          <li class="nav-item d-none d-lg-block" v-if="isAuthenticated && userType === 'student'">
             <CreditsIcon />
           </li>
 
@@ -149,7 +149,7 @@
           </li>
 
           <!-- Notifications Dropdown - Desktop only -->
-          <li class="nav-item dropdown desktop-notification-item" v-if="isAuthenticated">
+          <li class="nav-item dropdown d-none d-lg-block" v-if="isAuthenticated">
             <a
               class="nav-link position-relative d-flex align-items-center"
               href="#"
@@ -788,19 +788,22 @@ export default {
 
 /* Credits container - visible on mobile, hidden on desktop */
 .navbar-credits-container {
-  margin-left: auto;
-  margin-right: 1rem;
+  margin-left: 0;
+  margin-right: 0.1rem;
   display: flex;
   align-items: center;
+  height: 40px;
+  order: 1;
 }
 
 /* Notification container - visible on mobile, hidden on desktop */
 .navbar-notification-container {
-  margin-right: 1rem;
+  margin-right: 0.3rem;
   margin-left: 0;
   display: flex;
   align-items: center;
-  height: 100%;
+  height: 40px;
+  order: 2;
 }
 
 .navbar-notification-container .nav-item {
@@ -808,56 +811,53 @@ export default {
   align-items: center;
   list-style: none;
   margin: 0;
-  height: 100%;
+  padding: 0;
 }
 
 .navbar-notification-container .nav-link {
-  padding: 0.5rem;
+  padding: 0;
   color: var(--cyber-text) !important;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 40px;
+  height: 40px;
+  margin: 0;
 }
 
 .navbar-notification-container .nav-link i {
   font-size: 1.5rem !important;
+  line-height: 1 !important;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-notification-container .notification-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
 }
 
 .navbar-notification-container .dropdown-menu {
   right: 0;
 }
 
-/* Hide mobile version on desktop */
-@media (min-width: 992px) {
-  .navbar-credits-container {
-    display: none !important;
-  }
-  
-  .navbar-notification-container {
-    display: none !important;
-  }
-}
 
-/* Hide desktop version on mobile */
-@media (max-width: 991px) {
-  .desktop-credits-item {
-    display: none !important;
-  }
-  
-  .desktop-notification-item {
-    display: none !important;
-  }
-}
 
 /* Clean hamburger menu for all screen sizes */
 .cyberpunk-hamburger {
   border: 1px solid rgba(255, 255, 255, 0.3) !important;
   border-radius: 4px;
   padding: 0.5rem;
-  margin-right: 1rem;
+  margin-right: 0.2rem !important;
   margin-left: 0;
   background: rgba(255, 255, 255, 0.05) !important;
   transition: all 0.3s ease;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  order: 3;
 }
 
 .cyberpunk-hamburger:hover {
@@ -888,6 +888,8 @@ export default {
     padding-right: 0.5rem;
     max-width: 100%;
     margin: 0;
+    display: flex;
+    align-items: center;
   }
 
   .navbar-brand {
@@ -1092,6 +1094,14 @@ export default {
   overflow: hidden;
 }
 
+/* Desktop notification dropdown positioning - move leftwards from edge */
+@media (min-width: 992px) {
+  .dropdown-menu-end.notifications-dropdown {
+    right: 20px !important;
+    left: auto !important;
+  }
+}
+
 .notifications-header {
   padding: 1rem;
   border-bottom: 1px solid var(--cyber-orange, #ff8c42);
@@ -1272,22 +1282,6 @@ export default {
   }
 }
 
-@media (max-width: 768px) {
-  .desktop-notification-item .notifications-dropdown {
-    width: 320px;
-  }
-}
-
-@media (max-width: 576px) {
-  .desktop-notification-item .notifications-dropdown {
-    width: 280px;
-    max-height: 400px;
-  }
-
-  .desktop-notification-item .notifications-body {
-    max-height: 300px;
-  }
-}
 
 /* Penalty Points Styling */
 .penalty-points-text {
@@ -1316,5 +1310,75 @@ export default {
   color: var(--cyber-text);
   border: 1px solid var(--cyber-orange);
   border-radius: 6px;
+}
+
+/* iPhone SE and very small screens */
+@media (max-width: 375px) {
+  .navbar {
+    min-height: 56px;
+  }
+
+  .navbar .container {
+    min-height: 56px;
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+  }
+
+  .navbar-brand {
+    font-size: 1rem;
+    margin-right: 0.5rem;
+  }
+
+  .navbar-brand i {
+    font-size: 0.9rem;
+  }
+
+  .navbar-credits-container {
+    margin-right: 0.5rem;
+    transform: scale(0.85);
+  }
+
+  .navbar-notification-container {
+    margin-right: 0.5rem;
+  }
+
+  .navbar-notification-container .nav-link {
+    width: 34px;
+    height: 34px;
+  }
+
+  .navbar-notification-container .nav-link i {
+    font-size: 1.1rem !important;
+  }
+
+  .navbar-notification-container .notification-badge {
+    font-size: 0.6rem;
+    padding: 0.15rem 0.35rem;
+    min-width: 16px;
+    height: 16px;
+    top: 4px;
+    right: 4px;
+  }
+
+  .cyberpunk-hamburger {
+    margin-right: 0.5rem !important;
+    padding: 0.25rem 0.4rem;
+  }
+
+  .cyberpunk-hamburger .navbar-toggler-icon {
+    width: 20px;
+    height: 20px;
+  }
+
+  .navbar-collapse {
+    top: 56px;
+    padding: 0.75rem 1rem;
+    max-height: calc(100vh - 56px);
+  }
+
+  .navbar-notification-container .notifications-dropdown {
+    top: 56px !important;
+    max-height: calc(100vh - 56px) !important;
+  }
 }
 </style>

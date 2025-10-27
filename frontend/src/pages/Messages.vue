@@ -986,8 +986,9 @@
                 v-if="selectedConversation"
                 class="message-input p-3 border-top"
               >
-                <form @submit.prevent="sendMessage" class="d-flex gap-2">
-                  <div class="flex-grow-1">
+                <form @submit.prevent="sendMessage" class="message-input-form">
+                  <!-- Row 1: Input field -->
+                  <div class="message-input-row">
                     <input
                       type="text"
                       v-model="newMessage"
@@ -996,43 +997,47 @@
                       :disabled="isLoading"
                     />
                   </div>
-                  <!-- Hidden file input for images only -->
-                  <input
-                    ref="fileInput"
-                    type="file"
-                    accept="image/*"
-                    style="display: none"
-                    @change="handleFileSelect"
-                  />
-                  <button
-                    type="button"
-                    class="btn btn-outline-secondary"
-                    @click="attachFile"
-                    :disabled="isLoading"
-                  >
-                    <i class="fas fa-paperclip"></i>
-                  </button>
+                  
+                  <!-- Row 2: Buttons -->
+                  <div class="message-buttons-row">
+                    <!-- Hidden file input for images only -->
+                    <input
+                      ref="fileInput"
+                      type="file"
+                      accept="image/*"
+                      style="display: none"
+                      @change="handleFileSelect"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      @click="attachFile"
+                      :disabled="isLoading"
+                    >
+                      <i class="fas fa-paperclip"></i>
+                    </button>
 
-                  <!-- Booking Offer Button (only for tutees/parents talking to tutors) -->
-                  <button
-                    v-if="canBookSession"
-                    type="button"
-                    class="btn btn-outline-warning"
-                    @click="showBookingOfferModal = true"
-                    :disabled="isLoading"
-                    title="Send Booking Request"
-                  >
-                    <i class="fas fa-calendar-plus"></i>
-                  </button>
+                    <!-- Booking Offer Button (only for tutees/parents talking to tutors) -->
+                    <button
+                      v-if="canBookSession"
+                      type="button"
+                      class="btn btn-outline-secondary"
+                      @click="showBookingOfferModal = true"
+                      :disabled="isLoading"
+                      title="Send Booking Request"
+                    >
+                      <i class="fas fa-calendar-plus"></i>
+                    </button>
 
-                  <button
-                    type="submit"
-                    class="btn btn-primary"
-                    :disabled="!newMessage.trim() || isLoading"
-                  >
-                    <span v-if="isLoading" class="spinner me-1"></span>
-                    <i v-else class="fas fa-paper-plane"></i>
-                  </button>
+                    <button
+                      type="submit"
+                      class="btn btn-primary"
+                      :disabled="!newMessage.trim() || isLoading"
+                    >
+                      <span v-if="isLoading" class="spinner me-1"></span>
+                      <i v-else class="fas fa-paper-plane"></i>
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
@@ -5280,6 +5285,39 @@ h6 {
   right: 0 !important;
 }
 
+/* Message Input Form Layout */
+.message-input-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.message-input-row {
+  width: 100%;
+}
+
+.message-buttons-row {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+/* Desktop: Single row layout */
+@media (min-width: 769px) {
+  .message-input-form {
+    flex-direction: row;
+    align-items: center;
+  }
+  
+  .message-input-row {
+    flex: 1;
+  }
+  
+  .message-buttons-row {
+    flex-shrink: 0;
+  }
+}
+
 /* Form Controls */
 .form-control {
   background: rgba(42, 42, 42, 0.8) !important;
@@ -5641,9 +5679,9 @@ i.text-primary {
     max-width: 95%;
   }
 
-  /* Smaller padding on very small screens */
+  /* Increase bottom padding to prevent messages from being hidden behind input */
   .messages-container {
-    padding: 10px 10px 70px 10px !important;
+    padding: 10px 10px 120px 10px !important;
   }
 
   .message-input {
