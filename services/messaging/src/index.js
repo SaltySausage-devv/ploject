@@ -1786,7 +1786,7 @@ app.get('/health', (req, res) => {
 
 // Start server
 console.log('🔍 STARTUP: Starting server on port', PORT);
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`✅ Messaging service running on port ${PORT}`);
   console.log('🔍 STARTUP: Server started successfully');
 });
