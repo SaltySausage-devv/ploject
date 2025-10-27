@@ -164,7 +164,7 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useAuthStore } from '../stores/auth'
 import Chart from 'chart.js/auto'
-import api from '../services/api'
+import axios from 'axios'
 
 export default {
   name: 'Analytics',
@@ -420,7 +420,10 @@ export default {
         }
 
         // Fetch real data from analytics service
-        const response = await api.get(endpoint, {
+        const response = await axios.get(endpoint, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          },
           params: {
             period: selectedPeriod.value
           }

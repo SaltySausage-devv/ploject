@@ -12,11 +12,9 @@ const messagingApi = axios.create({
 // Add auth interceptor for messaging API
 messagingApi.interceptors.request.use(
   (config) => {
-    // Construct full path (baseURL + url)
-    const fullPath = config.baseURL && config.url ? config.baseURL + config.url : config.url
-    
     // Rewrite URL for production (full backend URLs)
-    if (fullPath && fullPath.startsWith('/api/')) {
+    if (config.url && config.url.startsWith('/')) {
+      const fullPath = config.baseURL + config.url
       config.url = getApiUrl(fullPath)
       config.baseURL = '' // Clear baseURL since we now have full URL
     }
@@ -25,7 +23,6 @@ messagingApi.interceptors.request.use(
     if (authStore.token) {
       config.headers.Authorization = `Bearer ${authStore.token}`
     }
-    
     return config
   },
   (error) => {
