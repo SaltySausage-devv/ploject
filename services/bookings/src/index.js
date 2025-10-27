@@ -28,14 +28,18 @@ const supabase = createClient(
 console.log('✅ Supabase client initialized');
 
 // Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 app.use(cors({
   origin: [
     'http://localhost:3000',
     'http://localhost:5173',
     process.env.FRONTEND_URL || 'https://tutorconnect-production.up.railway.app'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json());
 
