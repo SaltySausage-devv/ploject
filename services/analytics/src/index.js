@@ -615,7 +615,7 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
     const { chartData, spendingData, chartLabels } = generateChartData(allConfirmedBookings || [], startDate, endDate, period);
 
     // Recent activity (only completed/confirmed bookings)
-    const recentActivity = bookings
+    const recentActivity = allConfirmedBookings
       ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
       ?.slice(0, 10)
       .map(booking => ({
