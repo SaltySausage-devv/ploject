@@ -44,8 +44,7 @@ TutorConnect is a full-stack web application that revolutionizes the tutoring in
 - **Database**: Supabase (PostgreSQL)
 - **Message Queue**: RabbitMQ
 - **Load Balancer**: Nginx
-- **Containerization**: Docker + Docker Compose
-- **Deployment**: Vercel/Heroku ready
+- **Deployment**: Railway ready with super-dev script
 
 ## 📁 Complete Codebase Structure
 
@@ -81,13 +80,11 @@ TutorConnect/
 │   │   ├── main.js                  # Vue app entry point
 │   │   └── style.css                # Global styles with cyberpunk theme
 │   ├── package.json                 # Frontend dependencies
-│   ├── vite.config.js               # Vite configuration
-│   └── Dockerfile                   # Frontend container
+│   └── vite.config.js               # Vite configuration
 ├── 📁 services/                     # Microservices backend
 │   ├── 📁 auth/                     # Authentication service
 │   │   ├── src/index.js             # Auth service implementation
-│   │   ├── package.json             # Auth dependencies
-│   │   └── Dockerfile               # Auth container
+│   │   └── package.json             # Auth dependencies
 │   ├── 📁 users/                    # Users service
 │   ├── 📁 profiles/                 # Profiles service
 │   ├── 📁 bookings/                 # Bookings service
@@ -100,7 +97,6 @@ TutorConnect/
 │   ├── 📁 calendar/                 # Calendar service
 │   └── 📁 maps/                     # Maps service
 ├── 📄 package.json                  # Root package configuration
-├── 📄 docker-compose.yml            # Container orchestration
 ├── 📄 nginx.conf                    # Load balancer configuration
 ├── 📄 start-dev.sh                  # Development startup script
 ├── 📄 env.example                   # Environment variables template
@@ -114,7 +110,7 @@ TutorConnect/
 ### **Prerequisites**
 - Node.js 18+
 - npm or yarn
-- Docker (optional, for containerized deployment)
+- Railway CLI (for deployment)
 - Supabase account
 - Google Cloud Platform account (optional, for Calendar/Maps APIs)
 
@@ -279,8 +275,8 @@ npm run dev:users
 npm run dev:frontend
 # ... etc
 
-# Docker deployment
-docker-compose up -d
+# Railway deployment
+npm run deploy:railway
 ```
 
 ## 📊 Database Schema
@@ -303,23 +299,19 @@ docker-compose up -d
 
 ## 🚀 Deployment
 
-### **Docker Deployment**
+### **Railway Deployment**
 ```bash
-# Build and start all services
-docker-compose up -d
+# Deploy to Railway
+npm run deploy:railway
 
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
+# Or setup Railway CLI first
+npm run deploy:setup
 ```
 
 ### **Production Deployment**
-- **Frontend**: Deploy to Vercel/Netlify
-- **Backend**: Deploy to Heroku/Railway
+- **All Services**: Deploy to Railway using super-dev script
 - **Database**: Use Supabase production instance
-- **Load Balancer**: Configure Nginx for production
+- **Load Balancer**: Railway handles load balancing automatically
 
 ## 🔧 Performance Optimizations
 

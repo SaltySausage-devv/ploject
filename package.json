@@ -20,7 +20,10 @@
     "dev:maps": "cd services/maps && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
     "build": "npm run build:frontend",
-    "build:frontend": "cd frontend && npm run build"
+    "build:frontend": "cd frontend && npm run build",
+    "health": "node -e \"require('http').get('http://localhost:' + (process.env.PORT || 3000) + '/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) })\"",
+    "deploy:railway": "node scripts/deploy-railway.js",
+    "deploy:setup": "npm install -g @railway/cli && railway login"
   },
   "keywords": [
     "tutor",
