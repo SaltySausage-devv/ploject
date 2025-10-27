@@ -1272,15 +1272,25 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
       console.log(`💰 Booking credit calculation: ${hourlyRate} credits/hour × ${sessionDurationHours} hours = ${finalTotalAmount} credits`);
     }
 
+    // Get tutor's primary subject for the booking
+    const { data: tutorProfile } = await supabase
+      .from('tutor_profiles')
+      .select('subjects')
+      .eq('user_id', bookingOffer.tutor_id)
+      .single();
+    
+    const primarySubject = tutorProfile?.subjects?.[0] || 'General Tutoring';
+    const subjectLevel = tutorProfile?.subjects?.length > 1 ? 'Multi-Subject' : 'Single Subject';
+
     // Create booking record in bookings table
     const { data: booking, error: bookingError } = await supabase
       .from('bookings')
       .insert({
         tutor_id: bookingOffer.tutor_id,
         student_id: bookingOffer.tutee_id,
-        title: 'Tutoring Session', // Add title field for calendar display
-        subject: 'Tutoring Session', // Default subject
-        level: 'General', // Default level
+        title: `${primarySubject} Session`, // Dynamic title based on tutor's subject
+        subject: primarySubject, // Use tutor's primary subject
+        level: subjectLevel, // Dynamic level based on tutor's subjects
         start_time: bookingOffer.proposed_time,
         end_time: bookingOffer.proposed_end_time || new Date(new Date(bookingOffer.proposed_time).getTime() + (bookingOffer.duration || 60) * 60 * 1000), // Use proposed_end_time or calculate from duration
         location: bookingOffer.final_location,

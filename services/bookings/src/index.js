@@ -1059,12 +1059,25 @@ app.post('/booking-confirmations', verifyToken, async (req, res) => {
       }
     }
 
+    // Get tutor's primary subject for the booking
+    const { data: tutorProfile } = await supabase
+      .from('tutor_profiles')
+      .select('subjects')
+      .eq('user_id', bookingOffer.tutor_id)
+      .single();
+    
+    const primarySubject = tutorProfile?.subjects?.[0] || 'General Tutoring';
+    const subjectLevel = tutorProfile?.subjects?.length > 1 ? 'Multi-Subject' : 'Single Subject';
+
     // Create a final booking record from the confirmed offer
     const { data: finalBooking, error: bookingError } = await supabase
       .from('bookings')
       .insert({
         tutor_id: bookingOffer.tutor_id,
         student_id: bookingOffer.tutee_id,
+        title: `${primarySubject} Session`,
+        subject: primarySubject, // Use tutor's primary subject
+        level: subjectLevel,
         start_time: bookingOffer.proposed_time,
         end_time: new Date(new Date(bookingOffer.proposed_time).getTime() + 60 * 60 * 1000).toISOString(), // 1 hour session
         location: bookingOffer.final_location,

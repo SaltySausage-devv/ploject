@@ -7,7 +7,7 @@ const Joi = require('joi');
 require('dotenv').config({ path: '../../.env' });
 
 const app = express();
-const PORT = process.env.PORT || 3015;
+const PORT = process.env.PORT || 3008;
 
 // Initialize Supabase client
 const supabase = createClient(
@@ -132,12 +132,15 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     const { studentId } = req.params;
     const { period = '30' } = req.query;
     
+    console.log('📊 ANALYTICS: Student analytics request:', { studentId, period, user: req.user });
+    
     // Check if user is the student or admin
     if (req.user.userId !== studentId && req.user.userType !== 'admin') {
       return res.status(403).json({ error: 'Forbidden' });
     }
 
     const { startDate, endDate } = getDateRange(period);
+    console.log('📊 ANALYTICS: Date range:', { startDate: startDate.toISOString(), endDate: endDate.toISOString() });
 
     // Get student bookings with tutor info
     const { data: bookings, error: bookingsError } = await supabase
@@ -150,24 +153,35 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
         )
       `)
       .eq('student_id', studentId)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
+      .gte('start_time', startDate.toISOString())
+      .lte('start_time', endDate.toISOString());
 
-    if (bookingsError) throw bookingsError;
+    if (bookingsError) {
+      console.error('📊 ANALYTICS: Bookings error:', bookingsError);
+      throw bookingsError;
+    }
+
+    console.log('📊 ANALYTICS: Found bookings:', bookings?.length || 0);
 
     // Get student reviews
     const { data: reviews } = await supabase
       .from('reviews')
       .select('*')
       .eq('student_id', studentId)
-      .gte('created_at', startDate.toISOString());
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
+
+    console.log('📊 ANALYTICS: Found reviews:', reviews?.length || 0);
 
     // Get student messages
     const { data: messages } = await supabase
       .from('messages')
       .select('*')
       .eq('sender_id', studentId)
-      .gte('created_at', startDate.toISOString());
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
+
+    console.log('📊 ANALYTICS: Found messages:', messages?.length || 0);
 
     // Calculate metrics
     const totalSessions = bookings?.length || 0;
@@ -189,16 +203,35 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     const totalReviews = reviews?.length || 0;
     const totalMessages = messages?.length || 0;
 
-    // Subject distribution from bookings
+    // Subject distribution from bookings with enhanced data
     const subjectCounts = {};
+    const subjectHours = {};
+    const subjectSpending = {};
+    
     bookings?.forEach(booking => {
-      const subject = booking.subject || 'General';
+      const subject = booking.subject || 'General Tutoring';
+      const duration = booking.start_time && booking.end_time ? 
+        (new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60) : 0;
+      const amount = booking.total_amount || 0;
+      
       subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
+      subjectHours[subject] = (subjectHours[subject] || 0) + duration;
+      subjectSpending[subject] = (subjectSpending[subject] || 0) + amount;
     });
 
     const subjectDistribution = Object.entries(subjectCounts)
-      .map(([subject, count]) => ({ subject, count }))
+      .map(([subject, count]) => ({ 
+        subject, 
+        count,
+        hours: subjectHours[subject]?.toFixed(1) || 0,
+        spending: subjectSpending[subject]?.toFixed(2) || 0,
+        percentage: ((count / (bookings?.length || 1)) * 100).toFixed(1)
+      }))
       .sort((a, b) => b.count - a.count);
+
+    // Create pie chart data
+    const pieLabels = subjectDistribution.map(item => item.subject);
+    const pieData = subjectDistribution.map(item => item.count);
 
     // Growth metrics (compare with previous period)
     const prevStartDate = new Date(startDate);
@@ -208,8 +241,8 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
       .from('bookings')
       .select('*')
       .eq('student_id', studentId)
-      .gte('created_at', prevStartDate.toISOString())
-      .lt('created_at', startDate.toISOString());
+      .gte('start_time', prevStartDate.toISOString())
+      .lt('start_time', startDate.toISOString());
 
     const prevSessions = prevBookings?.length || 0;
     const prevHours = prevBookings?.reduce((sum, b) => {
@@ -238,25 +271,31 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
       status: booking.status
     })) || [];
 
+    const responseData = {
+      totalSessions,
+      completedSessions,
+      cancelledSessions,
+      pendingSessions,
+      totalHours: totalHours.toFixed(1),
+      totalSpent: totalSpent.toFixed(2),
+      tutorsWorkedWith,
+      totalReviews,
+      totalMessages,
+      subjectDistribution,
+      pieLabels,
+      pieData,
+      sessionsChange: parseFloat(sessionsChange),
+      hoursChange: parseFloat(hoursChange),
+      chartData,
+      chartLabels,
+      recentActivity
+    };
+
+    console.log('📊 ANALYTICS: Response data:', responseData);
+
     res.json({
       success: true,
-      data: {
-        totalSessions,
-        completedSessions,
-        cancelledSessions,
-        pendingSessions,
-        totalHours: totalHours.toFixed(1),
-        totalSpent: totalSpent.toFixed(2),
-        tutorsWorkedWith,
-        totalReviews,
-        totalMessages,
-        subjectDistribution,
-        sessionsChange: parseFloat(sessionsChange),
-        hoursChange: parseFloat(hoursChange),
-        chartData,
-        chartLabels,
-        recentActivity
-      }
+      data: responseData
     });
   } catch (error) {
     console.error('Student analytics error:', error);
@@ -288,8 +327,8 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
         )
       `)
       .eq('tutor_id', tutorId)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
+      .gte('start_time', startDate.toISOString())
+      .lte('start_time', endDate.toISOString());
 
     if (bookingsError) throw bookingsError;
 
@@ -298,7 +337,8 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
       .from('reviews')
       .select('*')
       .eq('tutor_id', tutorId)
-      .gte('created_at', startDate.toISOString());
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
 
     if (reviewsError) throw reviewsError;
 
@@ -640,7 +680,43 @@ app.get('/analytics/platform', verifyToken, async (req, res) => {
 
 // Health check
 app.get('/health', (req, res) => {
-  res.json({ status: 'OK', service: 'analytics', timestamp: new Date().toISOString() });
+  res.json({ 
+    status: 'OK', 
+    service: 'analytics', 
+    timestamp: new Date().toISOString(),
+    port: PORT,
+    supabase: process.env.SUPABASE_URL ? 'configured' : 'not configured'
+  });
+});
+
+// Test endpoint to check database connection
+app.get('/test-db', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('count')
+      .limit(1);
+    
+    if (error) {
+      res.json({ 
+        status: 'error', 
+        message: 'Database connection failed', 
+        error: error.message 
+      });
+    } else {
+      res.json({ 
+        status: 'success', 
+        message: 'Database connection successful',
+        supabase_url: process.env.SUPABASE_URL ? 'configured' : 'not configured'
+      });
+    }
+  } catch (err) {
+    res.json({ 
+      status: 'error', 
+      message: 'Database test failed', 
+      error: err.message 
+    });
+  }
 });
 
 // Error handling middleware

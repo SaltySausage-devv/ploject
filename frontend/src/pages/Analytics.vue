@@ -333,109 +333,7 @@ export default {
       })
     })
 
-    // Generate mock data based on user type
-    const generateMockData = () => {
-      const period = parseInt(selectedPeriod.value)
-      const chartData = []
-      const chartLabels = []
-      
-      // Generate chart data for the period
-      for (let i = period - 1; i >= 0; i--) {
-        const date = new Date()
-        date.setDate(date.getDate() - i)
-        chartLabels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }))
-        
-        // Generate random data based on user type
-        if (userType.value === 'tutor') {
-          chartData.push(Math.floor(Math.random() * 200) + 50) // Earnings
-        } else if (userType.value === 'student') {
-          chartData.push(Math.floor(Math.random() * 100) + 20) // Spending
-        } else if (userType.value === 'centre') {
-          chartData.push(Math.floor(Math.random() * 500) + 100) // Revenue
-        }
-      }
-
-      // Generate pie chart data
-      const subjects = ['Mathematics', 'Science', 'English', 'History', 'Physics', 'Chemistry']
-      const pieLabels = subjects.slice(0, Math.floor(Math.random() * 4) + 2)
-      const pieData = pieLabels.map(() => Math.floor(Math.random() * 20) + 5)
-
-      // Generate recent activity
-      const recentActivity = []
-      for (let i = 0; i < 10; i++) {
-        const date = new Date()
-        date.setDate(date.getDate() - Math.floor(Math.random() * 30))
-        recentActivity.push({
-          date: date.toISOString(),
-          subject: subjects[Math.floor(Math.random() * subjects.length)],
-          studentName: `Student ${i + 1}`,
-          tutorName: `Tutor ${i + 1}`,
-          duration: Math.floor(Math.random() * 3) + 1,
-          earnings: Math.floor(Math.random() * 100) + 50,
-          cost: Math.floor(Math.random() * 80) + 30,
-          revenue: Math.floor(Math.random() * 200) + 100,
-          rating: Math.floor(Math.random() * 2) + 4
-        })
-      }
-
-      // Return data based on user type
-      if (userType.value === 'tutor') {
-        return {
-          totalEarnings: (Math.random() * 2000 + 500).toFixed(2),
-          totalBookings: Math.floor(Math.random() * 50) + 20,
-          averageRating: (Math.random() * 2 + 3).toFixed(1),
-          totalStudents: Math.floor(Math.random() * 20) + 10,
-          totalHours: (Math.random() * 100 + 50).toFixed(1),
-          totalProfileViews: Math.floor(Math.random() * 200) + 100,
-          earningsChange: (Math.random() * 40 - 20).toFixed(1),
-          bookingsChange: (Math.random() * 30 - 15).toFixed(1),
-          studentsChange: (Math.random() * 25 - 10).toFixed(1),
-          ratingChange: (Math.random() * 10 - 5).toFixed(1),
-          chartLabels,
-          chartData,
-          pieLabels,
-          pieData,
-          recentActivity
-        }
-      } else if (userType.value === 'student') {
-        return {
-          totalSessions: Math.floor(Math.random() * 30) + 15,
-          totalHours: (Math.random() * 50 + 25).toFixed(1),
-          totalSpent: (Math.random() * 1000 + 300).toFixed(2),
-          tutorsWorkedWith: Math.floor(Math.random() * 10) + 5,
-          sessionsChange: (Math.random() * 30 - 15).toFixed(1),
-          hoursChange: (Math.random() * 25 - 10).toFixed(1),
-          spendingChange: (Math.random() * 35 - 15).toFixed(1),
-          tutorsChange: (Math.random() * 20 - 10).toFixed(1),
-          chartLabels,
-          chartData,
-          pieLabels,
-          pieData,
-          recentActivity
-        }
-      } else if (userType.value === 'centre') {
-        return {
-          totalRevenue: (Math.random() * 5000 + 1000).toFixed(2),
-          totalStudents: Math.floor(Math.random() * 100) + 50,
-          totalTutors: Math.floor(Math.random() * 20) + 10,
-          averageRating: (Math.random() * 2 + 3).toFixed(1),
-          totalBookings: Math.floor(Math.random() * 100) + 50,
-          totalHours: (Math.random() * 200 + 100).toFixed(1),
-          revenueChange: (Math.random() * 40 - 20).toFixed(1),
-          bookingsChange: (Math.random() * 30 - 15).toFixed(1),
-          studentsChange: (Math.random() * 25 - 10).toFixed(1),
-          tutorsChange: (Math.random() * 20 - 10).toFixed(1),
-          ratingChange: (Math.random() * 10 - 5).toFixed(1),
-          chartLabels,
-          chartData,
-          pieLabels,
-          pieData,
-          recentActivity
-        }
-      }
-
-      return {}
-    }
+    // Mock data generation completely removed - only real data from API
 
     // Load analytics data
     const loadAnalytics = async () => {
@@ -486,16 +384,23 @@ export default {
         }
       } catch (err) {
         console.error('Analytics load error:', err)
+        console.error('Error details:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+          url: err.config?.url
+        })
         
-        // Fallback to mock data if real data fails
-        console.warn('Falling back to mock data due to error:', err.message)
-        const mockData = generateMockData()
-        analyticsData.value = mockData
-        await nextTick()
-        createCharts()
-        
-        // Show error but don't block the UI
-        error.value = `Using demo data: ${err.response?.data?.error || err.message}`
+        // Show specific error messages instead of falling back to mock data
+        if (err.code === 'ECONNREFUSED' || err.message.includes('Network Error')) {
+          error.value = `Analytics service is not running. Please start the analytics service on port 3008.`
+        } else if (err.response?.status === 401) {
+          error.value = `Authentication failed. Please log in again.`
+        } else if (err.response?.status === 403) {
+          error.value = `Access denied. You don't have permission to view this data.`
+        } else {
+          error.value = `Failed to load analytics data: ${err.response?.data?.error || err.message}`
+        }
       } finally {
         isLoading.value = false
       }
