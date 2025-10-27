@@ -1,0 +1,26 @@
+[phases.setup]
+nixPkgs = ["nodejs-18_x", "npm-9_x"]
+
+[phases.install]
+cmds = [
+  "npm install",
+  "cd frontend && npm install",
+  "cd services/auth && npm install",
+  "cd services/users && npm install", 
+  "cd services/profiles && npm install",
+  "cd services/bookings && npm install",
+  "cd services/messaging && npm install",
+  "cd services/reviews && npm install",
+  "cd services/notifications && npm install",
+  "cd services/analytics && npm install",
+  "cd services/gamification && npm install",
+  "cd services/earnings && npm install",
+  "cd services/calendar && npm install",
+  "cd services/maps && npm install"
+]
+
+[phases.build]
+cmds = ["cd frontend && npm run build"]
+
+[start]
+cmd = "npm run start"
