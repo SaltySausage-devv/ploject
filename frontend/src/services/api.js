@@ -1,14 +1,21 @@
 import axios from 'axios'
 import { useAuthStore } from '../stores/auth'
+import { getApiUrl } from '../utils/api-helper'
 
 const api = axios.create({
   baseURL: '/api',
   timeout: 10000
 })
 
-// Request interceptor to add auth token
+// Request interceptor to rewrite URLs for production and add auth token
 api.interceptors.request.use(
   (config) => {
+    // Rewrite URL for production (full backend URLs)
+    if (config.url && config.url.startsWith('/api/')) {
+      config.url = getApiUrl(config.url)
+    }
+    
+    // Add auth token
     const authStore = useAuthStore()
     if (authStore.token) {
       config.headers.Authorization = `Bearer ${authStore.token}`
