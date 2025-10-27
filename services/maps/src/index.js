@@ -23,12 +23,16 @@ const GOOGLE_MAPS_BASE_URL = 'https://maps.googleapis.com/maps/api';
 
 // Middleware
 app.use(helmet());
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:5173',
+  process.env.FRONTEND_URL || 'https://tutorconnect-production.up.railway.app'
+];
+
+console.log('🔧 MAPS SERVICE: Allowed CORS origins:', allowedOrigins);
+
 app.use(cors({
-  origin: [
-    'http://localhost:3000',
-    'http://localhost:5173',
-    process.env.FRONTEND_URL || 'https://tutorconnect-production.up.railway.app'
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());
