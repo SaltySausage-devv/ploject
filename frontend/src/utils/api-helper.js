@@ -53,7 +53,7 @@ export function getApiUrl(path) {
   // Replace /api/{service} with the full service URL
   // /api/messaging/conversations -> https://messaging-xxx.railway.app/messaging/conversations
   const apiPath = path.replace('/api/', '/')
-  const finalUrl = serviceUrl + apiPath.replace(`/${serviceName}`, `/${serviceName}`)
+  const finalUrl = serviceUrl + apiPath
   console.log('🔗 Converted to:', finalUrl)
   return finalUrl
 }
