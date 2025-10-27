@@ -19,13 +19,7 @@
               <div class="profile-left-section">
                 <!-- Avatar -->
                 <div class="profile-avatar cyberpunk-avatar spring-bounce">
-                  <img
-                    v-if="user?.userType === 'tutor'"
-                    src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgdmlld0JveD0iMCAwIDIwMCAyMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjEwMCIgY3k9IjcwIiByPSIyNyIgZmlsbD0iIzlDQTNBRiIvPgo8cGF0aCBkPSJNNzAgMTIwQzcwIDEwOC45NTUgNzguOTU0NSAxMDAgOTEgMTAwSDEwOUMxMjEuMDQ2IDEwMCAxMzAgMTA4Ljk1NSAxMzAgMTIwVjE2MEg3MFYxMjBaIiBmaWxsPSIjOUNBM0FGIi8+Cjwvc3ZnPgo="
-                    :alt="`${user?.firstName} ${user?.lastName}`"
-                    class="avatar-image"
-                  />
-                  <div v-else class="avatar-placeholder">
+                  <div class="avatar-placeholder">
                     <i class="fas fa-user"></i>
                   </div>
                 </div>
@@ -63,6 +57,19 @@
       </motion.div>
 
       <div class="row">
+        <!-- Elegant Profile Warning for Tutors -->
+        <div class="col-12 mb-3" v-if="user?.userType === 'tutor' && tutorCompleteness < 70">
+          <div class="elegant-warning d-flex align-items-center justify-content-between p-3">
+            <div class="d-flex align-items-center">
+              <i class="fas fa-eye-slash me-3"></i>
+              <span><strong>Profile {{ tutorCompleteness }}%</strong> - Complete to 70% to appear in search</span>
+            </div>
+            <button v-if="!editMode" @click="editMode = true" class="btn btn-sm btn-light">
+              Complete <i class="fas fa-arrow-right ms-1"></i>
+            </button>
+          </div>
+        </div>
+
         <!-- Profile Form -->
         <div class="col-12 mb-4">
           <!-- Basic Profile Form (for Students/Parents) -->
@@ -210,6 +217,7 @@
                 :user-id="user?.id"
                 @saved="handleTutorProfileSaved"
                 @cancel="cancelEdit"
+                @completeness-updated="handleCompletenessUpdate"
               />
             </div>
           </motion.div>
@@ -245,6 +253,7 @@ export default {
     })
     const editMode = ref(false)
     const isLoading = ref(false)
+    const tutorCompleteness = ref(0)
 
     const userTypeLabels = {
       student: 'STUDENT',
@@ -398,6 +407,10 @@ export default {
       alert('Tutor profile saved successfully!')
     }
 
+    const handleCompletenessUpdate = (completeness) => {
+      tutorCompleteness.value = completeness
+    }
+
     onMounted(() => {
       console.log('🚀 Profile.vue onMounted called')
       console.log('   Auth store state:', {
@@ -423,6 +436,7 @@ export default {
       user,
       editMode,
       isLoading,
+      tutorCompleteness,
       userTypeLabels,
       profileForm,
       tutorStats,
@@ -433,7 +447,8 @@ export default {
       updateProfile,
       cancelEdit,
       logout,
-      handleTutorProfileSaved
+      handleTutorProfileSaved,
+      handleCompletenessUpdate
     }
   }
 }
@@ -446,6 +461,36 @@ export default {
   min-height: 100vh;
   position: relative;
   z-index: 10;
+}
+
+/* Elegant Warning Banner */
+.elegant-warning {
+  background: rgba(255, 193, 7, 0.15);
+  border-left: 4px solid #ffc107;
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  color: var(--cyber-text, #ffffff);
+  font-size: 0.95rem;
+}
+
+.elegant-warning i {
+  color: #ffc107;
+  font-size: 1.2rem;
+}
+
+.elegant-warning .btn-light {
+  background: rgba(50, 50, 50, 0.9) !important;
+  border: 1px solid rgba(255, 140, 66, 0.5) !important;
+  color: var(--cyber-text, #ffffff) !important;
+  font-weight: 600;
+  padding: 6px 16px;
+}
+
+.elegant-warning .btn-light:hover {
+  background: rgba(70, 70, 70, 0.95) !important;
+  border-color: var(--cyber-orange, #ff8c42) !important;
+  transform: translateX(3px);
+  transition: all 0.2s ease;
 }
 
 /* Profile Header Card */

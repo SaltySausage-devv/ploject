@@ -14,7 +14,7 @@
           ></div>
         </div>
         <small class="text-muted mt-2 d-block">
-          Complete your profile to appear in search results and attract more students
+          70% required to appear in search results
         </small>
       </div>
     </div>
@@ -50,7 +50,7 @@
             rows="5"
             placeholder="Tell students about yourself, your teaching experience, and what makes you unique..."
           ></textarea>
-          <small class="text-muted">Minimum 50 characters recommended</small>
+          <small class="text-muted">Write 50+ characters to help students know you better</small>
         </div>
 
         <div class="mb-3">
@@ -75,11 +75,11 @@
         </h6>
       </div>
       <div class="card-body p-4">
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Subjects Taught *</label>
-            <div class="subjects-selector">
-              <div v-for="subject in availableSubjects" :key="subject" class="form-check">
+        <div class="row g-4">
+          <div class="col-lg-6">
+            <label class="form-label fw-bold">Subjects Taught *</label>
+            <div class="checkbox-container full-height">
+              <div v-for="subject in availableSubjects" :key="subject" class="checkbox-item">
                 <input
                   type="checkbox"
                   class="form-check-input"
@@ -95,10 +95,10 @@
             </div>
           </div>
 
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Education Levels *</label>
-            <div class="levels-selector">
-              <div v-for="level in availableLevels" :key="level" class="form-check">
+          <div class="col-lg-6">
+            <label class="form-label fw-bold">Education Levels *</label>
+            <div class="checkbox-container half-height mb-3">
+              <div v-for="level in availableLevels" :key="level" class="checkbox-item">
                 <input
                   type="checkbox"
                   class="form-check-input"
@@ -112,37 +112,23 @@
                 </label>
               </div>
             </div>
-          </div>
-        </div>
 
-        <div class="row">
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Teaching Mode *</label>
-            <div class="teaching-mode-selector">
-              <div v-for="mode in teachingModes" :key="mode.value" class="form-check">
+            <label class="form-label fw-bold">Languages Spoken</label>
+            <div class="checkbox-container half-height">
+              <div v-for="lang in availableLanguages" :key="lang" class="checkbox-item">
                 <input
                   type="checkbox"
                   class="form-check-input"
-                  :id="'mode-' + mode.value"
-                  :value="mode.value"
-                  v-model="tutorProfile.teachingMode"
+                  :id="'lang-' + lang"
+                  :value="lang"
+                  v-model="tutorProfile.languages"
                   :disabled="!editMode"
                 />
-                <label class="form-check-label" :for="'mode-' + mode.value">
-                  {{ mode.label }}
+                <label class="form-check-label" :for="'lang-' + lang">
+                  {{ lang }}
                 </label>
               </div>
             </div>
-          </div>
-
-          <div class="col-md-6 mb-3">
-            <label class="form-label">Languages Spoken</label>
-            <select multiple v-model="tutorProfile.languages" class="form-select" :disabled="!editMode">
-              <option v-for="lang in availableLanguages" :key="lang" :value="lang">
-                {{ lang }}
-              </option>
-            </select>
-            <small class="text-muted">Hold Ctrl (Cmd on Mac) to select multiple</small>
           </div>
         </div>
       </div>
@@ -216,7 +202,7 @@
                   <button
                     v-if="editMode"
                     @click="removeQualification(index)"
-                    class="btn btn-outline-danger"
+                    class="btn btn-cyber-delete"
                     type="button"
                     title="Remove qualification"
                   >
@@ -229,7 +215,7 @@
           <button
             v-if="editMode"
             @click="addQualification"
-            class="btn btn-outline-primary btn-sm mt-2"
+            class="btn btn-cyber-add btn-sm mt-2"
             type="button"
           >
             <i class="fas fa-plus me-1"></i> Add Qualification
@@ -385,7 +371,7 @@ export default {
       required: true
     }
   },
-  emits: ['saved', 'cancel'],
+  emits: ['saved', 'cancel', 'completeness-updated'],
   setup(props, { emit }) {
     const authStore = useAuthStore()
     const isSaving = ref(false)
@@ -416,12 +402,6 @@ export default {
       'IGCSE'
     ]
 
-    const teachingModes = [
-      { value: 'online', label: 'Online' },
-      { value: 'in-person', label: 'In-Person' },
-      { value: 'both', label: 'Both' }
-    ]
-
     const availableLanguages = [
       'English',
       'Mandarin',
@@ -438,8 +418,7 @@ export default {
       teachingPhilosophy: '',
       subjects: [],
       levels: [],
-      teachingMode: [],
-      languages: ['English'],
+      languages: [],
       experienceYears: 0,
       qualifications: [],
       previousExperience: '',
@@ -455,29 +434,38 @@ export default {
     const profileCompleteness = computed(() => {
       let completeness = 0
 
-      // Basic info (30 points)
-      if (tutorProfile.bio && tutorProfile.bio.length > 50) completeness += 10
+      // Basic info (25 points)
+      if (tutorProfile.bio && tutorProfile.bio.length > 50) completeness += 16
       if (tutorProfile.headline) completeness += 5
-      if (tutorProfile.teachingPhilosophy) completeness += 5
-      if (tutorProfile.bio && tutorProfile.bio.length > 200) completeness += 10
+      if (tutorProfile.teachingPhilosophy) completeness += 4
 
       // Teaching details (25 points)
       if (tutorProfile.subjects.length > 0) completeness += 10
-      if (tutorProfile.levels.length > 0) completeness += 5
-      if (tutorProfile.teachingMode.length > 0) completeness += 5
-      if (tutorProfile.languages.length > 0) completeness += 5
+      if (tutorProfile.levels.length > 0) completeness += 8
+      if (tutorProfile.languages.length > 0) completeness += 7
 
-      // Qualifications (20 points)
-      if (tutorProfile.qualifications.length > 0) completeness += 10
+      // Qualifications & Experience (30 points)
+      const validQualifications = tutorProfile.qualifications.filter(q => 
+        q.degree && q.degree.trim() && q.institution && q.institution.trim() && q.year
+      )
+      if (validQualifications.length > 0) completeness += 15
       if (tutorProfile.experienceYears > 0) completeness += 10
+      if (tutorProfile.previousExperience && tutorProfile.previousExperience.trim()) completeness += 5
 
-      // Rates (12 points)
-      if (tutorProfile.hourlyRate) completeness += 10
-      // Location (10 points)
-      if (tutorProfile.locationAddress) completeness += 10
+      // Rates (10 points) - Allow 0 as valid rate
+      if (tutorProfile.hourlyRate !== null && tutorProfile.hourlyRate !== undefined) completeness += 10
+      
+      // Location & Additional (10 points)
+      if (tutorProfile.locationAddress && tutorProfile.locationAddress.trim()) completeness += 5
+      if (tutorProfile.specialties.length > 0) completeness += 5
 
       return Math.min(completeness, 100)
     })
+
+    // Watch for completeness changes and emit to parent
+    watch(profileCompleteness, (newVal) => {
+      emit('completeness-updated', newVal)
+    }, { immediate: true })
 
     const addQualification = () => {
       tutorProfile.qualifications.push({
@@ -539,8 +527,7 @@ export default {
             teachingPhilosophy: profile.teaching_philosophy || '',
             subjects: profile.subjects || [],
             levels: profile.levels || [],
-            teachingMode: profile.teaching_mode || [],
-            languages: profile.languages || ['English'],
+            languages: profile.languages || [],
             experienceYears: profile.experience_years || 0,
             qualifications: profile.qualifications || [],
             previousExperience: profile.previous_experience || '',
@@ -576,11 +563,10 @@ export default {
           teachingPhilosophy: tutorProfile.teachingPhilosophy,
           subjects: tutorProfile.subjects,
           levels: tutorProfile.levels,
-          teachingMode: tutorProfile.teachingMode,
           languages: tutorProfile.languages,
           experienceYears: tutorProfile.experienceYears,
           qualifications: tutorProfile.qualifications.filter(qual =>
-            qual.degree.trim() || qual.institution.trim() || qual.year
+            qual.degree.trim() && qual.institution.trim() && qual.year
           ),
           previousExperience: tutorProfile.previousExperience,
           specialties: tutorProfile.specialties,
@@ -618,7 +604,6 @@ export default {
       isSaving,
       availableSubjects,
       availableLevels,
-      teachingModes,
       availableLanguages,
       specialtiesInput,
       preferredLocationsInput,
@@ -748,5 +733,170 @@ export default {
 
 .text-muted {
   color: var(--cyber-text-muted, #cccccc) !important;
+}
+
+/* Checkbox Container - Properly Contained */
+.checkbox-container {
+  max-height: 280px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+  background: rgba(30, 30, 30, 0.6);
+  border: 1px solid rgba(255, 140, 66, 0.3);
+  border-radius: 10px;
+}
+
+.checkbox-container.full-height {
+  min-height: 400px;
+  max-height: 500px;
+}
+
+.checkbox-container.half-height {
+  min-height: 180px;
+  max-height: 230px;
+}
+
+.checkbox-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.checkbox-container::-webkit-scrollbar-track {
+  background: rgba(20, 20, 20, 0.5);
+  border-radius: 3px;
+}
+
+.checkbox-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #ff8c42, #ffd700);
+  border-radius: 3px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  background: rgba(50, 50, 50, 0.4);
+  border: 1px solid transparent;
+}
+
+.checkbox-item:last-child {
+  margin-bottom: 0;
+}
+
+.checkbox-item:hover {
+  background: rgba(255, 140, 66, 0.15);
+  border-color: rgba(255, 140, 66, 0.5);
+}
+
+.checkbox-item .form-check-input {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.checkbox-item .form-check-label {
+  margin-left: 12px;
+  margin-bottom: 0;
+  cursor: pointer;
+  color: var(--cyber-text, #ffffff) !important;
+  font-size: 0.95rem;
+  flex-grow: 1;
+}
+
+.form-check-input:disabled ~ .form-check-label {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Cyberpunk Button Styles */
+.btn-cyber-add {
+  background: transparent !important;
+  border: 2px solid var(--cyber-orange, #ff8c42) !important;
+  color: var(--cyber-orange, #ff8c42) !important;
+  font-weight: 600;
+  padding: 8px 16px;
+  transition: all 0.3s ease;
+}
+
+.btn-cyber-add:hover {
+  background: linear-gradient(45deg, var(--cyber-orange, #ff8c42), var(--cyber-yellow, #ffd23f)) !important;
+  border-color: var(--cyber-yellow, #ffd23f) !important;
+  color: #000 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(255, 140, 66, 0.4);
+}
+
+.btn-cyber-delete {
+  background: transparent !important;
+  border: 2px solid rgba(255, 140, 66, 0.5) !important;
+  border-left: none !important;
+  color: var(--cyber-orange, #ff8c42) !important;
+  transition: all 0.3s ease;
+}
+
+.btn-cyber-delete:hover {
+  background: rgba(255, 140, 66, 0.15) !important;
+  border-color: var(--cyber-orange, #ff8c42) !important;
+  color: var(--cyber-yellow, #ffd23f) !important;
+  transform: scale(1.05);
+}
+
+/* Qualifications list styling */
+.list-group-item {
+  background: rgba(42, 42, 42, 0.6) !important;
+  border: 1px solid var(--cyber-grey-light, #4a4a4a) !important;
+  color: var(--cyber-text, #ffffff) !important;
+  margin-bottom: 8px;
+  border-radius: 8px !important;
+}
+
+.list-group-item:hover {
+  background: rgba(255, 140, 66, 0.1) !important;
+  border-color: var(--cyber-orange, #ff8c42) !important;
+}
+
+/* Badge styling for specialties and locations */
+.badge {
+  margin: 4px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+
+.btn-outline-secondary {
+  border-color: var(--cyber-grey-light, #4a4a4a) !important;
+  color: var(--cyber-text-muted, #cccccc) !important;
+}
+
+.btn-outline-secondary:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: var(--cyber-orange, #ff8c42) !important;
+  color: var(--cyber-text, #ffffff) !important;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+  .checkbox-container {
+    max-height: 200px;
+  }
+  
+  .checkbox-container.full-height {
+    min-height: 250px;
+    max-height: 300px;
+  }
+  
+  .checkbox-container.half-height {
+    min-height: 150px;
+    max-height: 200px;
+  }
+  
+  .card-body {
+    padding: 1rem !important;
+  }
 }
 </style>

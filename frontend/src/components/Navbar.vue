@@ -606,10 +606,10 @@ export default {
       // Clear auth state and wait for Supabase to sign out
       await authStore.logout();
 
-      console.log("🚪 Navbar: Logout completed, redirecting...");
+      console.log("🚪 Navbar: Logout completed, redirecting to home...");
 
-      // Force hard navigation to home page (clears all state)
-      window.location.href = "/";
+      // Navigate to home page with full page reload
+      window.location.assign('/');
     };
 
     // Custom toggle function as fallback

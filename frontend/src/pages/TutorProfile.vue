@@ -530,7 +530,7 @@ export default {
           level: profile.levels?.[0] || "N/A",
           avatar:
             "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==",
-          rating: profile.average_rating || 5,
+          rating: profile.average_rating || 0,
           bio:
             profile.bio ||
             profile.headline ||

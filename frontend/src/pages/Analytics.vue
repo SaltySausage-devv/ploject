@@ -698,10 +698,28 @@ export default {
 }
 
 .cyberpunk-select {
-  background: rgba(42, 42, 42, 0.8) !important;
-  border: 2px solid var(--cyber-grey-light) !important;
+  background: rgba(42, 42, 42, 0.95) !important;
+  border: 2px solid var(--cyber-orange) !important;
   color: var(--cyber-text) !important;
   border-radius: 8px;
+  padding: 0.5rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.cyberpunk-select:hover {
+  background: rgba(255, 140, 66, 0.1) !important;
+  border-color: var(--cyber-yellow) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.3);
+}
+
+.cyberpunk-select option {
+  background: rgba(26, 26, 26, 0.98) !important;
+  color: var(--cyber-text) !important;
+  padding: 0.5rem;
 }
 
 /* Table styling to match dark theme */

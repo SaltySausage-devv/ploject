@@ -91,7 +91,6 @@ const tutorProfileSchema = Joi.object({
   teachingPhilosophy: Joi.string().max(1000).allow('').optional(),
   subjects: Joi.array().items(Joi.string()).optional(),
   levels: Joi.array().items(Joi.string().valid('Primary', 'Secondary', 'JC', 'IB', 'IGCSE')).optional(),
-  teachingMode: Joi.array().items(Joi.string().valid('online', 'in-person', 'both')).optional(),
   languages: Joi.array().items(Joi.string()).optional(),
   qualifications: Joi.array().items(Joi.object({
     degree: Joi.string().required(),
@@ -272,7 +271,6 @@ app.post('/profiles/tutor', verifyToken, async (req, res) => {
       teaching_philosophy: value.teachingPhilosophy,
       subjects: value.subjects,
       levels: value.levels,
-      teaching_mode: value.teachingMode,
       languages: value.languages,
       qualifications: value.qualifications,
       certifications: value.certifications,
@@ -463,8 +461,7 @@ app.get('/profiles/search', async (req, res) => {
       level, 
       location, 
       minRate, 
-      maxRate, 
-      teachingMode,
+      maxRate,
       page = 1,
       limit = 20
     } = req.query;
@@ -488,13 +485,15 @@ app.get('/profiles/search', async (req, res) => {
       query = query.contains('levels', [level]);
     }
     if (minRate) {
-      query = query.gte('hourly_rate', minRate);
+      // Only filter by minimum rate if it's greater than 0
+      // This ensures we don't exclude NULL/0 rates when minRate is 0
+      if (parseFloat(minRate) > 0) {
+        query = query.gte('hourly_rate', minRate);
+      }
     }
     if (maxRate) {
-      query = query.lte('hourly_rate', maxRate);
-    }
-    if (teachingMode && type === 'tutor') {
-      query = query.contains('teaching_mode', [teachingMode]);
+      // Include tutors with hourly_rate <= maxRate OR NULL (treating NULL as $0/hr)
+      query = query.or(`hourly_rate.lte.${maxRate},hourly_rate.is.null`);
     }
 
     // Pagination
@@ -507,7 +506,40 @@ app.get('/profiles/search', async (req, res) => {
       throw error;
     }
 
-    res.json({ profiles });
+    // Filter out incomplete tutor profiles (require minimum 70% completeness)
+    // Only show tutors who have completed essential profile information
+    let filteredProfiles = profiles;
+    
+    console.log(`🔍 Total profiles before filtering: ${profiles.length}`);
+    
+    // Filter tutor profiles by completeness (only if querying tutor_profiles table)
+    if (type === 'tutor' || !type) {
+      filteredProfiles = profiles.filter(profile => {
+        // Calculate minimum requirements for 70% profile completeness
+        // Required: bio (50+ chars), headline, subjects, levels, languages, qualifications, experience
+        const hasBio = profile.bio && profile.bio.length > 50;
+        const hasHeadline = profile.headline && profile.headline.trim().length > 0;
+        const hasSubjects = profile.subjects && profile.subjects.length > 0;
+        const hasLevels = profile.levels && profile.levels.length > 0;
+        const hasLanguages = profile.languages && profile.languages.length > 0;
+        const hasQualifications = profile.qualifications && profile.qualifications.length > 0;
+        const hasExperience = profile.experience_years && profile.experience_years > 0;
+        
+        // Tutor must meet these minimum requirements to appear in search (71% = 70%+ threshold)
+        const isComplete = hasBio && hasHeadline && hasSubjects && hasLevels && hasLanguages && hasQualifications && hasExperience;
+        
+        if (!isComplete) {
+          const tutorName = profile.headline || (profile.users ? `${profile.users.first_name} ${profile.users.last_name}` : 'Unknown');
+          console.log(`❌ Filtering out tutor: ${tutorName}`);
+          console.log(`   Requirements: bio(${hasBio}) headline(${hasHeadline}) subjects(${hasSubjects}) levels(${hasLevels}) languages(${hasLanguages}) qualifications(${hasQualifications}) experience(${hasExperience})`);
+        }
+        
+        return isComplete;
+      });
+    }
+
+    console.log(`✅ Returning ${filteredProfiles.length} profiles after filtering`);
+    res.json({ profiles: filteredProfiles });
   } catch (error) {
     console.error('Profile search error:', error);
     res.status(500).json({ error: 'Internal server error' });
