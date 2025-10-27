@@ -5,6 +5,17 @@ import { MotionPlugin } from '@vueuse/motion'
 import App from './App.vue'
 import './style.css'
 import { useAuthStore } from './stores/auth'
+import { getApiUrl } from './utils/api-helper'
+
+// Global fetch wrapper for production backend URLs
+const originalFetch = window.fetch
+window.fetch = function(url, options) {
+  // Rewrite /api/ URLs to full backend URLs in production
+  if (typeof url === 'string' && url.startsWith('/api/')) {
+    url = getApiUrl(url)
+  }
+  return originalFetch(url, options)
+}
 
 // Import pages
 import Home from './pages/Home.vue'
