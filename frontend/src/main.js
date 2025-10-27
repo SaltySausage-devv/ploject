@@ -18,6 +18,7 @@ import TutorProfile from './pages/TutorProfile.vue'
 import Messages from './pages/Messages.vue'
 import Calendar from './pages/Calendar.vue'
 import Profile from './pages/Profile.vue'
+import Analytics from './pages/Analytics.vue'
 
 // Import components
 import Navbar from './components/Navbar.vue'
@@ -35,6 +36,7 @@ const routes = [
   { path: '/messages', name: 'Messages', component: Messages, meta: { requiresAuth: true } },
   { path: '/calendar', name: 'Calendar', component: Calendar, meta: { requiresAuth: true } },
   { path: '/profile', name: 'Profile', component: Profile, meta: { requiresAuth: true } },
+  { path: '/analytics', name: 'Analytics', component: Analytics, meta: { requiresAuth: true } },
 ]
 
 const router = createRouter({

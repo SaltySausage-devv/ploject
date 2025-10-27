@@ -404,6 +404,31 @@ section {
   color: var(--cyber-text);
 }
 
+/* Center modals in viewport (vertical + horizontal) and constrain height for scrolling */
+.modal.show {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem; /* breathing room on small screens */
+}
+
+.modal-dialog {
+  margin: 0; /* remove default top margin so flex centering controls position */
+  max-width: 920px;
+  width: 100%;
+}
+
+.modal-content {
+  max-height: calc(100vh - 4rem);
+  overflow: auto;
+  border-radius: 10px;
+}
+
+/* Slightly nudge the modal up when inside the calendar container if needed */
+main:has(.calendar-page) .modal.show {
+  align-items: center; /* keep centered but allow overriding if needed */
+}
+
 /* Cyberpunk Navbar */
 .navbar {
   background: rgba(10, 10, 10, 0.4) !important;

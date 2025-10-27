@@ -132,6 +132,10 @@
                   <i class="fas fa-envelope me-2"></i>
                   Messages
                 </router-link>
+                  <router-link to="/analytics" class="btn btn-outline-primary" v-if="userType">
+                    <i class="fas fa-chart-line me-2"></i>
+                    Analytics
+                  </router-link>
                 <router-link to="/profile" class="btn btn-outline-primary">
                   <i class="fas fa-user me-2"></i>
                   Update Profile
