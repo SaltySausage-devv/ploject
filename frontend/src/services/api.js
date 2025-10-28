@@ -13,9 +13,18 @@ api.interceptors.request.use(
     // Construct full path (baseURL + url)
     const fullPath = config.baseURL && config.url ? config.baseURL + config.url : config.url
     
+    console.log('🔧 API INTERCEPTOR:', {
+      originalUrl: config.url,
+      baseURL: config.baseURL,
+      fullPath: fullPath,
+      startsWithApi: fullPath && fullPath.startsWith('/api/')
+    })
+    
     // Rewrite URL for production (full backend URLs)
     if (fullPath && fullPath.startsWith('/api/')) {
-      config.url = getApiUrl(fullPath)
+      const newUrl = getApiUrl(fullPath)
+      console.log('🔧 API INTERCEPTOR: Converting URL:', { from: fullPath, to: newUrl })
+      config.url = newUrl
       config.baseURL = '' // Clear baseURL since we now have full URL
     }
     
@@ -24,6 +33,13 @@ api.interceptors.request.use(
     if (authStore.token) {
       config.headers.Authorization = `Bearer ${authStore.token}`
     }
+    
+    console.log('🔧 API INTERCEPTOR: Final config:', {
+      url: config.url,
+      baseURL: config.baseURL,
+      hasAuth: !!config.headers.Authorization
+    })
+    
     return config
   },
   (error) => {
