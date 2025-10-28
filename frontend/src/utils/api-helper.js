@@ -45,6 +45,8 @@ export function getApiUrl(path) {
   const serviceName = match[1]
   const serviceUrl = API_SERVICES[serviceName]
   
+  console.log('🔗 Service lookup:', { serviceName, serviceUrl, allServices: Object.keys(API_SERVICES) })
+  
   if (!serviceUrl) {
     console.warn('❌ Unknown service:', serviceName)
     return path
