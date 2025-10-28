@@ -1722,7 +1722,7 @@ import messagingService from "../services/messaging.js";
 import { useNotifications } from "../composables/useNotifications";
 import { useCreditService } from "../services/creditService";
 import { useGoogleMapsProxy } from "../composables/useGoogleMapsProxy";
-import axios from "axios";
+import messagingApi from "../services/messaging";
 import MarkAttendanceModal from "../components/calendar/MarkAttendanceModal.vue";
 import SessionEndModal from "../components/calendar/SessionEndModal.vue";
 import ToastNotifications from "../components/ToastNotifications.vue";
@@ -2673,14 +2673,13 @@ export default {
           `/api/messaging/conversations/${selectedConversation.value.id}/upload`
         );
 
-        const response = await axios.post(
-          `/api/messaging/conversations/${selectedConversation.value.id}/upload`,
+        const response = await messagingApi.post(
+          `/messaging/conversations/${selectedConversation.value.id}/upload`,
           formData,
           {
             headers: {
-              "Content-Type": "multipart/form-data",
-              Authorization: `Bearer ${authStore.token}`,
-            },
+              "Content-Type": "multipart/form-data"
+            }
           }
         );
 

@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import axios from 'axios';
+import api from '../services/api';
 
 export function usePhoneVerification() {
   const otpSent = ref(false);
@@ -49,7 +49,7 @@ export function usePhoneVerification() {
     sendingOTP.value = true;
 
     try {
-      const response = await axios.post('/api/auth/send-otp', {
+      const response = await api.post('/auth/send-otp', {
         phone: phone.replace(/\D/g, '')
       });
 
@@ -82,7 +82,7 @@ export function usePhoneVerification() {
     verifyingOTP.value = true;
 
     try {
-      const response = await axios.post('/api/auth/verify-otp', {
+      const response = await api.post('/auth/verify-otp', {
         phone: phone.replace(/\D/g, ''),
         code
       });

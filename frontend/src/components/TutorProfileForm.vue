@@ -356,7 +356,7 @@
 
 <script>
 import { ref, reactive, computed, watch, onMounted } from 'vue'
-import axios from 'axios'
+import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
 
 export default {
@@ -515,9 +515,7 @@ export default {
     const loadTutorProfile = async () => {
       try {
         const token = authStore.token
-        const response = await axios.get(`/api/profiles/tutor/${props.userId}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        const response = await api.get(`/profiles/tutor/${props.userId}`)
 
         if (response.data.profile) {
           const profile = response.data.profile
@@ -577,9 +575,7 @@ export default {
           preferredLocations: tutorProfile.preferredLocations
         }
 
-        await axios.post('/api/profiles/tutor', payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        await api.post('/profiles/tutor', payload)
 
         emit('saved')
       } catch (error) {
