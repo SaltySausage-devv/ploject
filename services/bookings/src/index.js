@@ -26,9 +26,14 @@ console.log('✅ Express app created, PORT:', PORT);
 
 // Initialize Supabase client
 console.log('🔗 Initializing Supabase client...');
+// Initialize Supabase client
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
+  console.error('❌ Missing Supabase environment variables');
+  process.exit(1);
+}
 const supabase = createClient(
-  process.env.SUPABASE_URL || 'https://placeholder.supabase.co',
-  process.env.SUPABASE_ANON_KEY || 'placeholder-key'
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_ANON_KEY
 );
 console.log('✅ Supabase client initialized');
 
