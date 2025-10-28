@@ -47,6 +47,8 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // JWT verification middleware - following the same pattern as other services
+const jwt = require('jsonwebtoken');
+
 const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   
@@ -61,31 +63,23 @@ const verifyToken = async (req, res, next) => {
   }
 
   try {
-    // Verify token with Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token);
+    // Verify custom JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
-    console.log('🔐 Supabase auth result:', {
-      hasUser: !!user,
-      userId: user?.id,
-      email: user?.email,
-      error: error?.message
+    console.log('🔐 JWT decoded:', {
+      userId: decoded.userId,
+      email: decoded.email,
+      userType: decoded.userType
     });
     
-    if (error || !user) {
-      return res.status(401).json({ error: 'Invalid token' });
+    if (!decoded.userId) {
+      return res.status(401).json({ error: 'Invalid token - no user ID' });
     }
 
-    // Get user profile from database
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', user.id)
-      .single();
-
     req.user = {
-      userId: user.id,
-      email: user.email,
-      userType: userProfile?.user_type || 'student'
+      userId: decoded.userId,
+      email: decoded.email,
+      userType: decoded.userType || 'student'
     };
     
     console.log('🔐 User info added to request:', req.user);
