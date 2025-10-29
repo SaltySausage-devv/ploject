@@ -1778,7 +1778,7 @@ export default {
     const route = useRoute();
     const authStore = useAuthStore();
     const creditService = useCreditService();
-    const { showMessageNotification, showNotification } = useNotifications();
+    const { showMessageNotification, showNotification, clearAllNotifications } = useNotifications();
 
     const currentUserId = computed(() => authStore.user?.id);
 
@@ -4083,6 +4083,9 @@ export default {
     };
 
     onMounted(async () => {
+      // Clear any persisted notifications from previous page loads
+      clearAllNotifications();
+      
       // Initialize auth store first
       await authStore.initializeAuth();
 

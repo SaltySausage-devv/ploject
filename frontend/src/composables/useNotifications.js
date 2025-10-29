@@ -4,6 +4,11 @@ import { useRouter } from 'vue-router'
 const notifications = ref([])
 let notificationId = 0
 
+// Clear notifications on page load to prevent persistence across refreshes
+if (typeof window !== 'undefined') {
+  notifications.value = []
+}
+
 export function useNotifications() {
   const router = useRouter()
 
@@ -40,6 +45,10 @@ export function useNotifications() {
     }
   }
 
+  const clearAllNotifications = () => {
+    notifications.value = []
+  }
+
   const handleNotificationClick = (notification) => {
     if (notification.onClick) {
       notification.onClick()
@@ -66,6 +75,7 @@ export function useNotifications() {
     notifications,
     showNotification,
     removeNotification,
+    clearAllNotifications,
     handleNotificationClick,
     showMessageNotification
   }
