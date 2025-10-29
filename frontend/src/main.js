@@ -36,6 +36,7 @@ import Analytics from './pages/Analytics.vue'
 import FAQ from './pages/FAQ.vue'
 import TermsOfService from './pages/TermsOfService.vue'
 import BlogPost from './pages/BlogPost.vue'
+import BlogIndex from './pages/BlogIndex.vue'
 
 // Import components
 import Navbar from './components/Navbar.vue'
@@ -57,6 +58,7 @@ const routes = [
   { path: '/SuccessStories', name: 'SuccessStories', component: SuccessStories},
   { path: '/faq', name: 'FAQ', component: FAQ },
   { path: '/terms', name: 'TermsOfService', component: TermsOfService },
+  { path: '/blog', name: 'BlogIndex', component: BlogIndex },
   { path: '/blog/:slug', name: 'BlogPost', component: BlogPost }
 ]
 
