@@ -149,11 +149,15 @@ export default {
             message.message_type === "reschedule_accepted" ||
             message.message_type === "reschedule_rejected";
 
-          // For booking cancellations, only show notification to the receiver (not the sender)
-          const isBookingCancellation =
-            message.message_type === "booking_cancelled";
-          const shouldShowNotification = isBookingCancellation
-            ? message.sender_id !== authStore.user?.id // Only show to receiver for cancellations
+          // For booking-related messages, only show notification to the receiver (not the sender)
+          const isBookingMessage =
+            message.message_type === "booking_cancelled" ||
+            message.message_type === "booking_proposal" ||
+            message.message_type === "booking_confirmation" ||
+            message.message_type === "booking_offer";
+          
+          const shouldShowNotification = isBookingMessage
+            ? message.sender_id !== authStore.user?.id // Only show to receiver for booking messages
             : message.sender_id !== authStore.user?.id || isSystemMessage; // Normal logic for other messages
 
           if (shouldShowNotification && message.sender) {

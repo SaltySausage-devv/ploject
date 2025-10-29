@@ -369,9 +369,11 @@
                                 "
                                 class="btn btn-success btn-sm me-2"
                                 @click="confirmBooking(message)"
+                                :disabled="isConfirmingBooking"
                               >
                                 <i class="fas fa-check me-1"></i>
-                                Accept & Book
+                                <span v-if="isConfirmingBooking">Confirming...</span>
+                                <span v-else>Accept & Book</span>
                               </button>
                               <span
                                 :class="[
@@ -1939,6 +1941,7 @@ export default {
     const isCreatingBooking = ref(false);
     const isCreatingProposal = ref(false);
     const isSendingProposal = ref(false);
+    const isConfirmingBooking = ref(false); // Track if booking confirmation is in progress
     const selectedBookingOffer = ref(null);
     const showBookingRequestSuccess = ref(false);
     const showPastDateError = ref(false);
@@ -3794,6 +3797,12 @@ export default {
     };
 
     const confirmBooking = async (message) => {
+      // Prevent double-clicks
+      if (isConfirmingBooking.value) {
+        console.log("⚠️ Booking confirmation already in progress, ignoring duplicate click");
+        return;
+      }
+
       const bookingData = getBookingData(message);
       if (!bookingData) return;
 
@@ -3806,6 +3815,7 @@ export default {
         }
       }
 
+      isConfirmingBooking.value = true;
       try {
         const requestPayload = {
           bookingOfferId: bookingData.bookingOfferId,
@@ -3876,6 +3886,8 @@ export default {
       } catch (error) {
         console.error("Error confirming booking:", error);
         showNotification('Error', 'Failed to confirm booking. Please try again.', 'error');
+      } finally {
+        isConfirmingBooking.value = false;
       }
     };
 
