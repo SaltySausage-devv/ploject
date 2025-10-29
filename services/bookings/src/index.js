@@ -100,25 +100,40 @@ async function sendMessageViaMessagingService(conversationId, content, messageTy
   }
 }
 
-// JWT verification middleware
-const verifyToken = (req, res, next) => {
+// JWT verification middleware - using Supabase token
+const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
-  
-  console.log('🔐 JWT Debug Info:');
-  console.log('  - Authorization header:', req.headers.authorization);
-  console.log('  - Extracted token:', token ? 'Present' : 'Missing');
-  console.log('  - JWT_SECRET available:', !!process.env.JWT_SECRET);
-  
+
   if (!token) {
     return res.status(401).json({ error: 'No token provided' });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('  - Decoded user:', decoded);
-    req.user = decoded;
+    // Verify token with Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+      console.error('❌ Token verification failed:', error);
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+
+    // Get user profile from database
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    req.user = {
+      userId: user.id, // Use user.id from Supabase (UUID format)
+      email: user.email,
+      userType: userProfile?.user_type || 'student'
+    };
+
+    console.log('✅ Token verified successfully, userId:', req.user.userId);
     next();
   } catch (error) {
+    console.error('❌ Token verification error:', error);
     return res.status(401).json({ error: 'Invalid token' });
   }
 };
