@@ -1872,6 +1872,7 @@ import { useNotifications } from "../composables/useNotifications";
 import { useCreditService } from "../services/creditService";
 import { useGoogleMapsProxy } from "../composables/useGoogleMapsProxy";
 import { messagingApi } from "../services/messaging";
+import { useAlertModal } from "../composables/useAlertModal";
 import MarkAttendanceModal from "../components/calendar/MarkAttendanceModal.vue";
 import SessionEndModal from "../components/calendar/SessionEndModal.vue";
 import ToastNotifications from "../components/ToastNotifications.vue";
@@ -1883,6 +1884,7 @@ export default {
     const authStore = useAuthStore();
     const creditService = useCreditService();
     const { showMessageNotification, showNotification, clearAllNotifications } = useNotifications();
+    const { showError, showWarning, showInfo } = useAlertModal();
 
     const currentUserId = computed(() => authStore.user?.id);
 
@@ -2526,13 +2528,11 @@ export default {
 
         // Handle different error types
         if (error.response?.status === 429) {
-          alert("Too many requests. Please wait a moment and try again.");
+          showWarning("Too Many Requests", "Please wait a moment and try again.");
         } else if (error.response?.status === 401) {
-          alert("Authentication error. Please log in again.");
+          showError("Authentication Error", "Please log in again.");
         } else {
-          alert(
-            "Failed to load conversations. Please refresh the page and try again."
-          );
+          showError("Error", "Failed to load conversations. Please refresh the page and try again.");
         }
       } finally {
         isLoading.value = false;
@@ -2617,7 +2617,7 @@ export default {
         console.error("Error loading messages:", error);
         messages.value = [];
         resetBookingStatusState();
-        alert("Failed to load messages. Please try again.");
+        showError("Error", "Failed to load messages. Please try again.");
       } finally {
         isLoading.value = false;
       }
@@ -2757,7 +2757,7 @@ export default {
         showParticipantSelection.value = true;
       } catch (error) {
         console.error("Error loading participants:", error);
-        alert("Failed to load available participants: " + error.message);
+        showError("Error", "Failed to load available participants: " + error.message);
       }
     };
 
@@ -3029,11 +3029,11 @@ export default {
         });
 
         if (error.response?.data?.message) {
-          alert(error.response.data.message);
+          showError("Upload Error", error.response.data.message);
         } else if (error.response?.data?.error) {
-          alert(error.response.data.error);
+          showError("Upload Error", error.response.data.error);
         } else {
-          alert("Failed to upload image. Please try again.");
+          showError("Upload Error", "Failed to upload image. Please try again.");
         }
       } finally {
         isLoading.value = false;
@@ -3063,7 +3063,7 @@ export default {
       // Validate image URL
       if (!imageUrl || typeof imageUrl !== "string") {
         console.error("❌ Invalid image URL:", imageUrl);
-        alert("Invalid image URL");
+        showError("Invalid URL", "Invalid image URL");
         return;
       }
 
@@ -3371,7 +3371,7 @@ export default {
           : bookingProposal.value.duration;
 
       if (!effectiveDuration || effectiveDuration < 15) {
-        alert("Please select a valid duration (minimum 15 minutes)");
+        showWarning("Invalid Duration", "Please select a valid duration (minimum 15 minutes)");
         return;
       }
 
@@ -3421,7 +3421,7 @@ export default {
         } else {
           finalLocation = bookingProposal.value.tutorLocation;
           if (!finalLocation) {
-            alert("Please enter a location for the session");
+            showWarning("Location Required", "Please enter a location for the session");
             isCreatingProposal.value = false;
             return;
           }
@@ -4275,7 +4275,7 @@ export default {
         // Handle message errors
         messageHandlers.messageError = (error) => {
           console.error("Message error:", error);
-          alert(`Failed to send message: ${error.error || "Unknown error"}`);
+          showError("Send Error", `Failed to send message: ${error.error || "Unknown error"}`);
         };
         messagingService.on("message_error", messageHandlers.messageError);
 

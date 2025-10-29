@@ -233,6 +233,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import TutorProfileForm from '../components/TutorProfileForm.vue'
+import { useAlertModal } from '../composables/useAlertModal'
 
 export default {
   name: 'Profile',
@@ -242,6 +243,7 @@ export default {
   setup() {
     const router = useRouter()
     const authStore = useAuthStore()
+    const { showSuccess, showError } = useAlertModal()
 
     const user = computed(() => {
       console.log('🔍 Profile.vue computed user called:', {
@@ -377,15 +379,15 @@ export default {
           loadProfile()
 
           // Show success message
-          alert('Profile updated successfully!')
+          showSuccess('Success', 'Profile updated successfully!')
         } else {
           console.error('❌ Profile save failed:', result.error)
           // Show error message
-          alert(`Error: ${result.error || 'Failed to update profile'}`)
+          showError('Error', `Error: ${result.error || 'Failed to update profile'}`)
         }
       } catch (error) {
         console.error('❌ Profile update error:', error)
-        alert('An unexpected error occurred while saving your profile.')
+        showError('Error', 'An unexpected error occurred while saving your profile.')
       } finally {
         isLoading.value = false
       }
@@ -404,7 +406,7 @@ export default {
     const handleTutorProfileSaved = () => {
       editMode.value = false
       // Optionally show a success message
-      alert('Tutor profile saved successfully!')
+      showSuccess('Success', 'Tutor profile saved successfully!')
     }
 
     const handleCompletenessUpdate = (completeness) => {

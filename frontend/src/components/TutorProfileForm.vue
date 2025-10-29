@@ -374,6 +374,7 @@
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import api from '../services/api'
 import { useAuthStore } from '../stores/auth'
+import { useAlertModal } from '../composables/useAlertModal'
 
 export default {
   name: 'TutorProfileForm',
@@ -390,6 +391,7 @@ export default {
   emits: ['saved', 'cancel', 'completeness-updated'],
   setup(props, { emit }) {
     const authStore = useAuthStore()
+    const { showError } = useAlertModal()
     const isSaving = ref(false)
 
     const availableSubjects = [
@@ -686,7 +688,7 @@ export default {
         emit('saved')
       } catch (error) {
         console.error('Failed to save tutor profile:', error)
-        alert('Failed to save tutor profile. Please try again.')
+        showError('Save Failed', 'Failed to save tutor profile. Please try again.')
       } finally {
         isSaving.value = false
       }
