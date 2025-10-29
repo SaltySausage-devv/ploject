@@ -484,13 +484,15 @@ export default {
       // Main chart (line chart)
       if (mainChart.value) {
         const ctx = mainChart.value.getContext('2d')
+        // Ensure all chart data values are non-negative
+        const chartData = (analyticsData.value.chartData || []).map(val => Math.max(0, parseFloat(val) || 0))
         mainChartInstance = new Chart(ctx, {
           type: 'line',
           data: {
             labels: analyticsData.value.chartLabels || [],
             datasets: [{
               label: getMainChartTitle(),
-              data: analyticsData.value.chartData || [],
+              data: chartData,
               borderColor: '#ff8c42',
               backgroundColor: 'rgba(255, 140, 66, 0.1)',
               tension: 0.4,
@@ -513,6 +515,8 @@ export default {
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
               },
               y: {
+                beginAtZero: true,
+                min: 0,
                 ticks: { color: '#ffffff' },
                 grid: { color: 'rgba(255, 255, 255, 0.1)' }
               }
@@ -582,13 +586,15 @@ export default {
       if (spendingChart.value) {
         try {
           const ctx = spendingChart.value.getContext('2d')
+          // Ensure all spending data values are non-negative
+          const spendingData = (analyticsData.value.spendingData || []).map(val => Math.max(0, parseFloat(val) || 0))
           spendingChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
               labels: analyticsData.value.chartLabels || [],
               datasets: [{
                 label: getSpendingChartTitle(),
-                data: analyticsData.value.spendingData || [],
+                data: spendingData,
                 borderColor: '#10b981',
                 backgroundColor: 'rgba(16, 185, 129, 0.1)',
                 tension: 0.4,
@@ -611,10 +617,12 @@ export default {
                   grid: { color: 'rgba(255, 255, 255, 0.1)' }
                 },
                 y: {
+                  beginAtZero: true,
+                  min: 0,
                   ticks: { 
                     color: '#ffffff',
                     callback: function(value) {
-                      return '$' + value.toFixed(2)
+                      return '$' + Math.max(0, value).toFixed(2)
                     }
                   },
                   grid: { color: 'rgba(255, 255, 255, 0.1)' }

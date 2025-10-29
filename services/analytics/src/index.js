@@ -519,7 +519,11 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
     const pendingBookings = bookings?.filter(b => b.status === 'pending').length || 0;
 
     const totalEarnings = allConfirmedBookings
-      ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+      ?.reduce((sum, b) => {
+        const amount = parseFloat(b.total_amount) || 0;
+        // Ensure earnings is never negative
+        return sum + Math.max(0, amount);
+      }, 0) || 0;
 
     const totalHours = bookings
       ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
@@ -527,7 +531,9 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
         if (b.start_time && b.end_time) {
           const start = new Date(b.start_time);
           const end = new Date(b.end_time);
-          return sum + (end - start) / (1000 * 60 * 60);
+          const hours = (end - start) / (1000 * 60 * 60);
+          // Ensure hours is never negative
+          return sum + Math.max(0, hours);
         }
         return sum;
       }, 0) || 0;
@@ -546,12 +552,17 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
       ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
       ?.forEach(booking => {
         const subject = booking.subject || 'General Tutoring';
-        const duration = (new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60);
+        const duration = booking.start_time && booking.end_time ? 
+          (new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60) : 0;
         const amount = parseFloat(booking.total_amount) || 0;
         
+        // Ensure duration and amount are never negative
+        const safeDuration = Math.max(0, duration);
+        const safeAmount = Math.max(0, amount);
+        
         subjectCounts[subject] = (subjectCounts[subject] || 0) + 1;
-        subjectHours[subject] = (subjectHours[subject] || 0) + duration;
-        subjectSpending[subject] = (subjectSpending[subject] || 0) + amount;
+        subjectHours[subject] = (subjectHours[subject] || 0) + safeDuration;
+        subjectSpending[subject] = (subjectSpending[subject] || 0) + safeAmount;
       });
 
     const subjectDistribution = Object.entries(subjectCounts)
@@ -581,7 +592,11 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
 
     const prevEarnings = prevBookings
       ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
-      ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+      ?.reduce((sum, b) => {
+        const amount = parseFloat(b.total_amount) || 0;
+        // Ensure earnings is never negative
+        return sum + Math.max(0, amount);
+      }, 0) || 0;
 
     const earningsChange = calculateGrowth(totalEarnings, prevEarnings);
     const bookingsChange = calculateGrowth(totalBookings, prevBookings?.length || 0);
@@ -616,9 +631,14 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
           const bookingDate = new Date(booking.start_time);
           return bookingDate >= dayStart && bookingDate <= dayEnd;
         })
-        ?.reduce((sum, booking) => sum + (parseFloat(booking.total_amount) || 0), 0) || 0;
+        ?.reduce((sum, booking) => {
+          const amount = parseFloat(booking.total_amount) || 0;
+          // Ensure earnings is never negative
+          return sum + Math.max(0, amount);
+        }, 0) || 0;
       
-      earningsData.push(parseFloat(dayEarnings.toFixed(2)));
+      // Ensure final earnings value is non-negative
+      earningsData.push(Math.max(0, parseFloat(dayEarnings.toFixed(2))));
     }
     
     console.log('📊 TUTOR ANALYTICS: Simple earnings data generated:', {
@@ -641,7 +661,7 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
         studentName: `${booking.student?.first_name || ''} ${booking.student?.last_name || ''}`.trim() || 'Student',
         duration: booking.start_time && booking.end_time ? 
           Math.round(((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60))) + 'h' : 'N/A',
-        earnings: parseFloat(booking.total_amount || 0),
+        earnings: Math.max(0, parseFloat(booking.total_amount || 0)),
         status: booking.status
       })) || [];
 
@@ -724,7 +744,11 @@ app.get('/analytics/centre/:centreId', verifyToken, async (req, res) => {
 
     const totalRevenue = bookings
       ?.filter(b => b.status === 'completed')
-      ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+      ?.reduce((sum, b) => {
+        const amount = parseFloat(b.total_amount) || 0;
+        // Ensure revenue is never negative
+        return sum + Math.max(0, amount);
+      }, 0) || 0;
 
     const totalHours = bookings
       ?.filter(b => b.status === 'completed')
@@ -732,7 +756,9 @@ app.get('/analytics/centre/:centreId', verifyToken, async (req, res) => {
         if (b.start_time && b.end_time) {
           const start = new Date(b.start_time);
           const end = new Date(b.end_time);
-          return sum + (end - start) / (1000 * 60 * 60);
+          const hours = (end - start) / (1000 * 60 * 60);
+          // Ensure hours is never negative
+          return sum + Math.max(0, hours);
         }
         return sum;
       }, 0) || 0;
@@ -767,7 +793,11 @@ app.get('/analytics/centre/:centreId', verifyToken, async (req, res) => {
 
     const prevRevenue = prevBookings
       ?.filter(b => b.status === 'completed')
-      ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+      ?.reduce((sum, b) => {
+        const amount = parseFloat(b.total_amount) || 0;
+        // Ensure revenue is never negative
+        return sum + Math.max(0, amount);
+      }, 0) || 0;
 
     const revenueChange = calculateGrowth(totalRevenue, prevRevenue);
     const bookingsChange = calculateGrowth(totalBookings, prevBookings?.length || 0);
@@ -787,7 +817,7 @@ app.get('/analytics/centre/:centreId', verifyToken, async (req, res) => {
           tutorName: `${tutor?.first_name || ''} ${tutor?.last_name || ''}`.trim() || 'Tutor',
           subject: booking.subject || 'General',
           students: 1,
-          revenue: parseFloat(booking.total_amount || 0),
+          revenue: Math.max(0, parseFloat(booking.total_amount || 0)),
           status: booking.status
         };
       }) || [];

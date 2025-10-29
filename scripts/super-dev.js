@@ -24,10 +24,14 @@ function log(message, color = 'reset') {
 }
 
 function getServiceDirectories() {
+  // Services to exclude from auto-starting
+  const excludedServices = ['gamification', 'earnings'];
+  
   return fs
     .readdirSync(servicesDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
+    .filter((name) => !excludedServices.includes(name))
     .sort();
 }
 
