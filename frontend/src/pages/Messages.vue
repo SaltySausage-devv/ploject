@@ -925,7 +925,86 @@
                           v-else-if="message.messageType === 'text'"
                           class="message-content"
                         >
-                          {{ message.content || "Empty message" }}
+                          <!-- Check if it's actually a booking message disguised as text -->
+                          <div
+                            v-if="isBookingConfirmationContent(message.content)"
+                            class="message-content booking-message booking-confirmation"
+                          >
+                            <div class="booking-header">
+                              <i class="fas fa-check-circle me-2"></i>
+                              <span class="booking-title">Booking Confirmed!</span>
+                            </div>
+                            <div class="booking-details">
+                              <div v-if="getBookingData(message)">
+                                <p class="mb-2">
+                                  <strong>Time:</strong>
+                                  {{
+                                    formatDateTime(
+                                      getBookingData(message).confirmedTime
+                                    )
+                                  }}
+                                </p>
+                                <p
+                                  v-if="getBookingData(message).location"
+                                  class="mb-2"
+                                >
+                                  <strong>Location:</strong>
+                                  {{ getBookingData(message).location }}
+                                </p>
+                                <p class="mb-2">
+                                  <strong>Status:</strong>
+                                  <span class="text-success">Confirmed</span>
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <!-- Check if it's a booking offer disguised as text -->
+                          <div
+                            v-else-if="isBookingOfferContent(message.content)"
+                            class="message-content booking-message booking-offer"
+                          >
+                            <div class="booking-header">
+                              <i class="fas fa-calendar-plus me-2"></i>
+                              <span class="booking-title">Booking Request</span>
+                            </div>
+                            <div class="booking-details">
+                              <div v-if="getBookingData(message)">
+                                <p class="mb-2">
+                                  <strong>Session Type:</strong>
+                                  {{
+                                    getBookingData(message).isOnline
+                                      ? "Online Session"
+                                      : "On-site Session"
+                                  }}
+                                </p>
+                                <p
+                                  v-if="
+                                    !getBookingData(message).isOnline &&
+                                    getBookingData(message).tuteeLocation
+                                  "
+                                  class="mb-2"
+                                >
+                                  <strong>Location:</strong>
+                                  {{ getBookingData(message).tuteeLocation }}
+                                </p>
+                                <p
+                                  v-if="getBookingData(message).notes"
+                                  class="mb-2"
+                                >
+                                  <strong>Notes:</strong>
+                                  {{ getBookingData(message).notes }}
+                                </p>
+                                <p class="mb-0 text-warning">
+                                  <i class="fas fa-clock me-1"></i>
+                                  Awaiting response
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <!-- Regular text content -->
+                          <div v-else>
+                            {{ message.content || "Empty message" }}
+                          </div>
                         </div>
                         <div
                           v-else-if="message.messageType === 'image'"
@@ -1756,6 +1835,29 @@
 
     <!-- Toast Notifications -->
     <ToastNotifications />
+
+    <!-- Booking Request Success Popup -->
+    <div
+      v-if="showBookingRequestSuccess"
+      class="booking-success-popup"
+      @click.self="showBookingRequestSuccess = false"
+    >
+      <div class="popup-content">
+        <div class="popup-header">
+          <i class="fas fa-check-circle text-success me-2"></i>
+          <h5 class="mb-0">Booking Request Sent!</h5>
+          <button
+            type="button"
+            class="btn-close"
+            @click="showBookingRequestSuccess = false"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="popup-body">
+          <p class="mb-0">Your booking request has been sent successfully.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1821,6 +1923,7 @@ export default {
     const isCreatingProposal = ref(false);
     const isSendingProposal = ref(false);
     const selectedBookingOffer = ref(null);
+    const showBookingRequestSuccess = ref(false);
     const confirmedBookings = ref(new Set()); // Track confirmed booking IDs
     const bookingOfferStatuses = ref(new Map()); // Track booking proposal statuses
 
@@ -3130,7 +3233,13 @@ export default {
         };
         showBookingOfferModal.value = false;
 
-        // Booking request sent - no notification needed
+        // Show booking request success popup
+        showBookingRequestSuccess.value = true;
+        
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+          showBookingRequestSuccess.value = false;
+        }, 3000);
       } catch (error) {
         console.error("Error creating booking offer:", error);
         showNotification('Error', 'Failed to send booking request. Please try again.', 'error');
@@ -3341,7 +3450,19 @@ export default {
     const isBookingConfirmationContent = (content) => {
       try {
         const parsed = JSON.parse(content);
+        // Check for booking confirmation patterns
         return parsed && parsed.bookingOfferId && parsed.confirmedTime;
+      } catch (error) {
+        return false;
+      }
+    };
+
+    // Check if content looks like booking offer JSON
+    const isBookingOfferContent = (content) => {
+      try {
+        const parsed = JSON.parse(content);
+        // Check for booking offer patterns
+        return parsed && parsed.bookingOfferId && (parsed.tuteeLocation || parsed.isOnline !== undefined);
       } catch (error) {
         return false;
       }
@@ -3739,11 +3860,23 @@ export default {
 
             console.log("🔔 RECEIVER: Creating new message with type:", message.message_type);
             
-            // Fix message type if it's undefined but content looks like booking confirmation
+            // Fix message type if it's undefined but content looks like booking data
             let messageType = message.message_type;
-            if (!messageType && isBookingConfirmationContent(message.content)) {
-              messageType = 'booking_confirmation';
-              console.log("🔔 RECEIVER: Fixed message type to booking_confirmation based on content");
+            if (!messageType) {
+              try {
+                const parsed = JSON.parse(message.content);
+                if (parsed.bookingOfferId) {
+                  if (parsed.confirmedTime) {
+                    messageType = 'booking_confirmation';
+                    console.log("🔔 RECEIVER: Fixed message type to booking_confirmation based on content");
+                  } else if (parsed.tuteeLocation || parsed.isOnline !== undefined) {
+                    messageType = 'booking_offer';
+                    console.log("🔔 RECEIVER: Fixed message type to booking_offer based on content");
+                  }
+                }
+              } catch (error) {
+                // Not JSON, keep original type
+              }
             }
             
             const newMessage = {
@@ -4800,6 +4933,7 @@ export default {
       isCreatingProposal,
       isSendingProposal,
       selectedBookingOffer,
+      showBookingRequestSuccess,
       confirmedBookings,
       tuteeLocationInput,
       tutorLocationInput,
@@ -4834,6 +4968,7 @@ export default {
       // Booking message helpers
       getBookingData,
       isBookingConfirmationContent,
+      isBookingOfferContent,
       getBookingStatusValue,
       isBookingConfirmed,
       getBookingStatusText,
@@ -6784,6 +6919,75 @@ i.text-primary {
 
   .booking-actions .btn {
     width: 100%;
+  }
+}
+
+/* Booking Request Success Popup */
+.booking-success-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+}
+
+.popup-content {
+  background: #2d2d44;
+  border: 2px solid #ff8c42;
+  border-radius: 12px;
+  box-shadow: 0 0 30px rgba(255, 140, 66, 0.5);
+  min-width: 400px;
+  max-width: 500px;
+  animation: popupSlideIn 0.3s ease-out;
+}
+
+.popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 140, 66, 0.3);
+  background: rgba(255, 140, 66, 0.1);
+  border-radius: 12px 12px 0 0;
+}
+
+.popup-header h5 {
+  color: #ffffff;
+  font-weight: 700;
+  margin: 0;
+}
+
+.popup-body {
+  padding: 20px;
+  color: #ffffff;
+}
+
+.btn-close {
+  filter: invert(1);
+  opacity: 0.7;
+}
+
+.btn-close:hover {
+  opacity: 1;
+}
+
+.text-success {
+  color: #4ecdc4 !important;
+}
+
+@keyframes popupSlideIn {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 </style>
