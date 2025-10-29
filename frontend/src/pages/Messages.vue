@@ -5277,7 +5277,6 @@ export default {
     };
   },
   components: {
-    MarkAttendanceModal,
     SessionEndModal,
   },
 };
