@@ -1198,8 +1198,8 @@ app.post('/booking-confirmations', verifyToken, async (req, res) => {
   }
 });
 
-// Mark attendance endpoint (temporarily without auth for testing)
-app.post('/bookings/:bookingId/mark-attendance', async (req, res) => {
+// Mark attendance endpoint
+app.post('/bookings/:bookingId/mark-attendance', verifyToken, async (req, res) => {
   try {
     console.log('📝 Mark attendance endpoint called');
     console.log('  - Request headers:', req.headers);
@@ -1208,7 +1208,7 @@ app.post('/bookings/:bookingId/mark-attendance', async (req, res) => {
     
     const { bookingId } = req.params;
     const { attendance_status, session_notes } = req.body;
-    const currentUserId = req.user?.userId || '4eda6f38-ac36-4918-8ac5-de272c76eb50'; // Use the actual tutor ID for testing
+    const currentUserId = req.user.userId; // Get user ID from verified token
 
     // Validate input
     if (!attendance_status || !['attended', 'no_show'].includes(attendance_status)) {
