@@ -4827,7 +4827,7 @@ export default {
     };
 
     // Handle attendance marked event - REMOVED: No longer used in messages
-    const handleAttendanceMark گفته = async (attendanceData) => {
+    const handleAttendanceMarked = async (attendanceData) => {
       // Function kept for compatibility but no longer used
       // Attendance marking now only available in calendar
       console.log('handleAttendanceMarked called but attendance marking removed from messages');
