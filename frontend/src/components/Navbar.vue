@@ -13,10 +13,38 @@
 
       <!-- Mobile Navigation Items Container -->
       <div class="mobile-nav-items d-lg-none">
+        <!-- Penalty Points for Tutors - Mobile: Visible in top bar (left of credits) -->
+        <div
+          class="navbar-penalty-container"
+          v-if="isAuthenticated && userType === 'tutor'"
+        >
+          <a
+            class="nav-link d-flex align-items-center"
+            href="#"
+            role="button"
+            data-bs-toggle="tooltip"
+            data-bs-placement="bottom"
+            :title="`Penalty Points: ${penaltyPoints}`"
+          >
+            <i class="fas fa-exclamation-triangle fs-5 text-warning"></i>
+            <span class="penalty-points-text text-warning ms-1">
+              {{ penaltyPoints }}
+            </span>
+          </a>
+        </div>
+
         <!-- Credits Icon for Students - Mobile: Visible, Desktop: In navbar collapse -->
         <div
           class="navbar-credits-container"
           v-if="isAuthenticated && userType === 'student'"
+        >
+          <CreditsIcon />
+        </div>
+
+        <!-- Credits Icon for Tutors - Mobile: Visible in top bar -->
+        <div
+          class="navbar-credits-container"
+          v-if="isAuthenticated && userType === 'tutor'"
         >
           <CreditsIcon />
         </div>
@@ -162,8 +190,11 @@
             </router-link>
           </li>
 
-          <!-- Penalty Points (Tutors Only) -->
-          <li class="nav-item" v-if="isAuthenticated && userType === 'tutor'">
+          <!-- Penalty Points (Tutors Only) - Desktop only (mobile shows in top bar) -->
+          <li
+            class="nav-item d-none d-lg-block"
+            v-if="isAuthenticated && userType === 'tutor'"
+          >
             <a
               class="nav-link d-flex align-items-center"
               href="#"
@@ -177,6 +208,14 @@
                 {{ penaltyPoints }}
               </span>
             </a>
+          </li>
+
+          <!-- Credits Icon for Tutors - Desktop view (between penalty points and notifications) -->
+          <li
+            class="nav-item d-none d-lg-block"
+            v-if="isAuthenticated && userType === 'tutor'"
+          >
+            <CreditsIcon />
           </li>
 
           <!-- Notifications Dropdown - Desktop only -->
@@ -848,6 +887,31 @@ export default {
   height: 40px;
 }
 
+/* Penalty points container - visible on mobile, hidden on desktop */
+.navbar-penalty-container {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  height: 40px;
+}
+
+.navbar-penalty-container .nav-link {
+  padding: 0;
+  color: var(--cyber-text) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.navbar-penalty-container .nav-link i {
+  font-size: 1.2rem !important;
+  line-height: 1 !important;
+  margin: 0;
+  padding: 0;
+}
+
 /* Notification container - visible on mobile, hidden on desktop */
 .navbar-notification-container {
   margin: 0;
@@ -1479,6 +1543,18 @@ export default {
 
   .navbar-credits-container {
     transform: scale(0.9);
+  }
+
+  .navbar-penalty-container {
+    transform: scale(0.9);
+  }
+
+  .navbar-penalty-container .nav-link i {
+    font-size: 1rem !important;
+  }
+
+  .navbar-penalty-container .penalty-points-text {
+    font-size: 0.75rem;
   }
 
   .navbar-notification-container .nav-link {
