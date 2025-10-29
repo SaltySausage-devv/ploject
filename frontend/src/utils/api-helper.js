@@ -56,8 +56,15 @@ export function getApiUrl(path) {
 
   // Replace /api/{service} with the full service URL
   // /api/messaging/conversations -> https://messaging-xxx.railway.app/messaging/conversations
-  // Preserve query string if it exists
-  const apiPath = pathname.replace('/api/', '/')
+  // For calendar service, strip /calendar prefix from paths that start with /calendar/bookings
+  // /api/calendar/bookings/123/reschedule -> https://calendar-service.com/bookings/123/reschedule
+  let apiPath = pathname.replace('/api/', '/')
+  
+  // Special case: calendar service routes under /bookings don't use /calendar prefix
+  if (serviceName === 'calendar' && apiPath.startsWith('/calendar/bookings')) {
+    apiPath = apiPath.replace('/calendar', '')
+  }
+  
   const finalUrl = serviceUrl + apiPath + (queryString ? '?' + queryString : '')
   console.log('🔗 Converted to:', finalUrl)
   return finalUrl
