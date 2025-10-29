@@ -684,18 +684,46 @@
                               </p>
                             </div>
                             <div class="booking-actions">
-                              <button
-                                v-if="message.senderId !== currentUserId"
-                                class="btn btn-primary btn-sm me-2"
-                                @click="$router.push('/calendar')"
-                              >
-                                <i class="fas fa-calendar-check me-1"></i>
-                                View in Calendar
-                              </button>
-                              <span v-else class="booking-status text-warning">
-                                <i class="fas fa-clock me-1"></i>
-                                Awaiting response
-                              </span>
+                              <template v-if="message.senderId !== currentUserId">
+                                <!-- Recipient can accept/reject -->
+                                <button
+                                  class="btn btn-success btn-sm me-2"
+                                  :disabled="isProcessingReschedule"
+                                  @click="handleAcceptReschedule(message)"
+                                >
+                                  <i class="fas fa-check me-1"></i>
+                                  Accept
+                                </button>
+                                <button
+                                  class="btn btn-danger btn-sm me-2"
+                                  :disabled="isProcessingReschedule"
+                                  @click="handleRejectReschedule(message)"
+                                >
+                                  <i class="fas fa-times me-1"></i>
+                                  Decline
+                                </button>
+                                <button
+                                  class="btn btn-outline-primary btn-sm"
+                                  @click="$router.push('/calendar')"
+                                >
+                                  <i class="fas fa-calendar-check me-1"></i>
+                                  View in Calendar
+                                </button>
+                              </template>
+                              <template v-else>
+                                <!-- Sender sees awaiting response -->
+                                <span class="booking-status text-warning">
+                                  <i class="fas fa-clock me-1"></i>
+                                  Awaiting response
+                                </span>
+                                <button
+                                  class="btn btn-outline-primary btn-sm ms-2"
+                                  @click="$router.push('/calendar')"
+                                >
+                                  <i class="fas fa-calendar-check me-1"></i>
+                                  View in Calendar
+                                </button>
+                              </template>
                             </div>
                           </div>
                         </div>
@@ -1942,6 +1970,7 @@ export default {
     const isCreatingProposal = ref(false);
     const isSendingProposal = ref(false);
     const isConfirmingBooking = ref(false); // Track if booking confirmation is in progress
+    const isProcessingReschedule = ref(false); // Track if reschedule accept/reject is in progress
     const selectedBookingOffer = ref(null);
     const showBookingRequestSuccess = ref(false);
     const showPastDateError = ref(false);
@@ -3555,6 +3584,124 @@ export default {
       }
     };
 
+    // Reschedule handlers
+    const handleAcceptReschedule = async (message) => {
+      if (isProcessingReschedule.value) {
+        console.log("⚠️ Reschedule processing already in progress, ignoring duplicate click");
+        return;
+      }
+
+      const bookingData = getBookingData(message);
+      if (!bookingData || !bookingData.bookingId) {
+        showError("Error", "Invalid reschedule request data");
+        return;
+      }
+
+      isProcessingReschedule.value = true;
+      try {
+        const response = await fetch(
+          `/api/calendar/bookings/${bookingData.bookingId}/reschedule/accept`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authStore.token}`,
+            },
+            body: JSON.stringify({
+              response_message: "Accepted via messages",
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          const errorMsg = errorData.error || "Failed to accept reschedule request";
+          
+          // Check for insufficient credits error
+          if (errorData.error && errorData.error.includes("Insufficient credits")) {
+            if (errorData.details && errorData.details.shortfall) {
+              creditService.showInsufficientCreditsNotification(
+                errorData.details.requiredCredits,
+                errorData.details.currentCredits,
+                "reschedule"
+              );
+            } else {
+              showError("Insufficient Credits", errorMsg);
+            }
+          } else {
+            showError("Error", errorMsg);
+          }
+          return;
+        }
+
+        const result = await response.json();
+        
+        // Refresh credit balance after successful reschedule acceptance
+        await creditService.refreshCredits();
+        
+        // Reload messages to show the updated reschedule_accepted message
+        if (selectedConversation.value) {
+          await loadMessages(selectedConversation.value.id);
+        }
+        
+        showNotification('Success', result.message || 'Reschedule request accepted successfully', 'success');
+      } catch (error) {
+        console.error("Error accepting reschedule request:", error);
+        showError("Error", error.message || "Failed to accept reschedule request");
+      } finally {
+        isProcessingReschedule.value = false;
+      }
+    };
+
+    const handleRejectReschedule = async (message) => {
+      if (isProcessingReschedule.value) {
+        console.log("⚠️ Reschedule processing already in progress, ignoring duplicate click");
+        return;
+      }
+
+      const bookingData = getBookingData(message);
+      if (!bookingData || !bookingData.bookingId) {
+        showError("Error", "Invalid reschedule request data");
+        return;
+      }
+
+      isProcessingReschedule.value = true;
+      try {
+        const response = await fetch(
+          `/api/calendar/bookings/${bookingData.bookingId}/reschedule/reject`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${authStore.token}`,
+            },
+            body: JSON.stringify({
+              response_message: "Declined via messages",
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || "Failed to reject reschedule request");
+        }
+
+        const result = await response.json();
+        
+        // Reload messages to show the updated reschedule_rejected message
+        if (selectedConversation.value) {
+          await loadMessages(selectedConversation.value.id);
+        }
+        
+        showNotification('Info', result.message || 'Reschedule request declined', 'info');
+      } catch (error) {
+        console.error("Error rejecting reschedule request:", error);
+        showError("Error", error.message || "Failed to reject reschedule request");
+      } finally {
+        isProcessingReschedule.value = false;
+      }
+    };
+
     // Helper methods for booking messages
     const getBookingData = (message) => {
       try {
@@ -4119,11 +4266,14 @@ export default {
               message.message_type === "reschedule_rejected" ||
               message.message_type === "attendance_notification";
 
-            // For booking cancellations, only show notification to the receiver (not the sender)
-            const isBookingCancellation =
-              message.message_type === "booking_cancelled";
-            const shouldShowNotification = isBookingCancellation
-              ? message.sender_id !== currentUserId.value // Only show to receiver for cancellations
+            // For booking-related messages (proposal, confirmation, cancellation, offer), only show notification to the receiver (not the sender)
+            const isBookingMessage =
+              message.message_type === "booking_cancelled" ||
+              message.message_type === "booking_proposal" ||
+              message.message_type === "booking_confirmation" ||
+              message.message_type === "booking_offer";
+            const shouldShowNotification = isBookingMessage
+              ? message.sender_id !== currentUserId.value // Only show to receiver for booking messages
               : message.sender_id !== currentUserId.value || isSystemMessage; // Normal logic for other messages
 
             console.log("🔔 NOTIFICATION CHECK:", {
@@ -4132,7 +4282,7 @@ export default {
               senderId: message.sender_id,
               currentUserId: currentUserId.value,
               isSystemMessage,
-              isBookingCancellation,
+              isBookingMessage,
               shouldShowNotification,
               hasSender: !!message.sender,
             });
@@ -5125,6 +5275,9 @@ export default {
       formatTimeOnly,
       handleBookingOffer,
       confirmBooking,
+      handleAcceptReschedule,
+      handleRejectReschedule,
+      isProcessingReschedule,
       // Tutor earnings
       tutorProfile,
       calculatedEarnings,
