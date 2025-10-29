@@ -1863,7 +1863,8 @@ export default {
     watch(
       () => route.params.id,
       async (tutorId) => {
-        if (tutorId && authStore.user) {
+        console.log('🔗 Route watcher triggered:', { tutorId, hasUser: !!authStore.user, isAuthenticated: authStore.isAuthenticated });
+        if (tutorId && authStore.user && authStore.isAuthenticated) {
           console.log('🔗 Chat route detected with tutor ID:', tutorId);
           await handleChatRoute(tutorId);
         }
@@ -1876,7 +1877,7 @@ export default {
       try {
         console.log('🔄 Handling chat route for tutor:', tutorId);
         
-        // First, load conversations to see if one already exists
+        // Load conversations first
         await loadConversations();
         
         // Check if conversation already exists with this tutor
@@ -1903,36 +1904,19 @@ export default {
     // Create conversation with specific tutor
     const createConversationWithTutor = async (tutorId) => {
       try {
-        // Check if user is authenticated
-        if (!authStore.session?.access_token) {
-          throw new Error('User not authenticated');
-        }
-
-        const response = await fetch('/api/messaging/conversations', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authStore.session.access_token}`
-          },
-          body: JSON.stringify({
-            participantId: tutorId
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.error || 'Failed to create conversation');
-        }
-
-        const data = await response.json();
-        console.log('✅ Conversation created:', data.conversation);
+        console.log('🔄 Creating conversation with tutor:', tutorId);
+        
+        // Use the messaging service to create conversation
+        const response = await messagingService.createConversation(tutorId);
+        console.log('✅ Conversation created:', response.conversation);
         
         // Reload conversations to include the new one
         await loadConversations();
         
         // Find and select the new conversation
-        const newConversation = conversations.value.find(conv => conv.id === data.conversation.id);
+        const newConversation = conversations.value.find(conv => conv.id === response.conversation.id);
         if (newConversation) {
+          console.log('✅ Found new conversation, selecting it');
           await selectConversationWithRoom(newConversation);
         } else {
           console.warn('⚠️ New conversation not found in conversations list');
@@ -1940,6 +1924,7 @@ export default {
         
       } catch (error) {
         console.error('❌ Error creating conversation:', error);
+        showNotification('Error', `Failed to create conversation: ${error.message}`, 'error');
         throw error;
       }
     };
@@ -4055,6 +4040,13 @@ export default {
             conversationIdFromQuery
           );
         }
+      }
+
+      // Check if we're on a chat route with a specific tutor ID
+      const tutorIdFromRoute = route.params.id;
+      if (tutorIdFromRoute) {
+        console.log("🔗 Messages: Chat route detected on mount with tutor ID:", tutorIdFromRoute);
+        await handleChatRoute(tutorIdFromRoute);
       }
 
       // Don't show offline notifications on Messages page - user can see unread badges
