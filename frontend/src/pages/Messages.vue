@@ -4788,62 +4788,18 @@ export default {
       return isMarked;
     };
 
-    // Show mark attendance modal
+    // Show mark attendance modal - REMOVED: Attendance marking only available in calendar
     const showMarkAttendanceModal = (message) => {
-      const bookingData = getBookingData(message);
-      if (!bookingData || !bookingData.bookingId) {
-        return;
-      }
-
-      // Check if attendance is already marked
-      console.log(
-        "🔍 showMarkAttendanceModal: Checking attendance for booking:",
-        bookingData.bookingId
-      );
-      console.log("🔍 showMarkAttendanceModal: Booking data:", bookingData);
-      console.log("🔍 showMarkAttendanceModal: Message data:", {
-        senderId: message.senderId,
-        sender: message.sender,
-        content: message.content,
-      });
-
-      if (isAttendanceMarked(message)) {
-        console.log(
-          "🚫 Attendance already marked, preventing modal from opening"
-        );
-        return;
-      }
-
-      // Create a booking object for the modal
-      selectedBookingForAttendance.value = {
-        id: bookingData.bookingId,
-        start_time: bookingData.confirmedTime,
-        end_time: new Date(
-          new Date(bookingData.confirmedTime).getTime() +
-            (bookingData.duration || 60) * 60000
-        ).toISOString(),
-        subject: bookingData.subject || "Tutoring Session",
-        student: {
-          id: message.senderId || bookingData.student_id, // Include student ID
-          first_name: message.sender?.first_name || "Student",
-          last_name: message.sender?.last_name || "",
-        },
-        student_id: message.senderId || bookingData.student_id, // Also include as direct property
-        tutor_id: authStore.user.id,
-      };
-
-      markAttendanceModal.value = true;
+      // Redirect to calendar page for attendance marking
+      window.location.href = '/calendar';
     };
 
     // Handle attendance marked event - REMOVED: No longer used in messages
-    const handleAttendanceMarked = async (attendanceData) => {
+    const handleAttendanceMark گفته = async (attendanceData) => {
       // Function kept for compatibility but no longer used
       // Attendance marking now only available in calendar
       console.log('handleAttendanceMarked called but attendance marking removed from messages');
-        console.log(
-          "🔄 Looking for booking confirmation message with ID:",
-          bookingId
-        );
+    };
 
         const updatedMessages = messages.value.map((msg) => {
           if (msg.messageType === "booking_confirmation") {
