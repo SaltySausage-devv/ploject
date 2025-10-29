@@ -4833,7 +4833,7 @@ export default {
       console.log('handleAttendanceMarked called but attendance marking removed from messages');
     };
 
-        const updatedMessages = messages.value.map((msg) => {
+    // Session end functionality
           if (msg.messageType === "booking_confirmation") {
             const bookingData = getBookingData(msg);
             console.log(
