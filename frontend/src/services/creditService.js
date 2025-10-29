@@ -50,7 +50,9 @@ export function useCreditService() {
    */
   const calculateCreditsNeeded = (hourlyRate, durationMinutes) => {
     const durationHours = durationMinutes / 60
-    return hourlyRate * durationHours
+    const total = hourlyRate * durationHours
+    // Always round to 2 decimal places to prevent values like 213.166666666667
+    return parseFloat(total.toFixed(2))
   }
 
   /**

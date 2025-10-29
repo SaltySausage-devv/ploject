@@ -466,6 +466,31 @@ export default {
     };
 
     const handleNotificationClick = (notification) => {
+      // For reschedule_request notifications, navigate to calendar with booking
+      if (notification.bookingId) {
+        console.log(
+          "🔔 NAVBAR: Clicked reschedule_request notification, navigating to calendar with bookingId:",
+          notification.bookingId
+        );
+
+        // Remove this notification
+        notifications.value = notifications.value.filter(
+          (n) => n.id !== notification.id
+        );
+
+        // Save updated state to localStorage
+        saveNotificationsToStorage();
+
+        // Close dropdown
+        const dropdowns = document.querySelectorAll(".dropdown-menu.show");
+        dropdowns.forEach((dropdown) => dropdown.classList.remove("show"));
+
+        // Navigate to calendar page with bookingId and reschedule=true to open reschedule modal
+        router.push(`/calendar?bookingId=${notification.bookingId}&reschedule=true`);
+        return;
+      }
+
+      // For other notifications, navigate to messages
       if (notification.conversationId) {
         console.log(
           "🔔 NAVBAR: Clicked notification for conversation:",
@@ -682,6 +707,17 @@ export default {
             title = `New message from ${senderName}`;
           }
 
+          // Extract bookingId from reschedule_request messages for calendar navigation
+          let bookingId = null;
+          if (message.message_type === 'reschedule_request' && message.content) {
+            try {
+              const messageData = JSON.parse(message.content);
+              bookingId = messageData.bookingId || null;
+            } catch (error) {
+              console.error('Failed to parse reschedule_request message content:', error);
+            }
+          }
+
           // Add to notifications list
           const notification = {
             id: message.id,
@@ -691,6 +727,7 @@ export default {
             time: formatTime(message.created_at),
             timestamp: message.created_at,
             conversationId: message.conversation_id,
+            bookingId: bookingId, // Store bookingId for reschedule_request notifications
             unread: true,
           };
 

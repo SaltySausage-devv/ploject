@@ -23,15 +23,17 @@
     <BookingDetailsModal
       v-if="selectedBooking"
       :booking="selectedBooking"
-      @close="selectedBooking = null"
+      :show-reschedule-request="showRescheduleRequestModal"
+      @close="handleBookingModalClose"
       @updated="handleBookingUpdated"
     />
   </div>
 </template>
 
 <script>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from "vue";
 import { useAuthStore } from "../stores/auth";
+import { useRoute } from "vue-router";
 import FullCalendar from "@fullcalendar/vue3";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
@@ -49,6 +51,7 @@ export default {
   setup() {
     const authStore = useAuthStore();
     const { showToast } = useToast();
+    const route = useRoute();
 
     // Reactive data
     const loading = ref(true);
@@ -56,6 +59,7 @@ export default {
     const selectedBooking = ref(null);
     const calendarRef = ref(null);
     const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024);
+    const showRescheduleRequestModal = ref(false); // Track if reschedule modal should be shown
 
     // Track window width for responsive moreLinkText
     const updateWindowWidth = () => {
@@ -310,14 +314,53 @@ export default {
       showToast("Booking updated successfully", "success");
     }
 
+    // Handle query params to open booking and reschedule modal
+    async function handleQueryParams() {
+      const bookingId = route.query.bookingId;
+      const reschedule = route.query.reschedule === 'true';
+
+      if (bookingId && reschedule) {
+        // Wait for bookings to load
+        await nextTick();
+        
+        // Find the booking
+        const booking = bookings.value.find((b) => b.id === bookingId);
+        if (booking) {
+          console.log('📅 Opening booking and reschedule modal from query params:', bookingId);
+          selectedBooking.value = booking;
+          showRescheduleRequestModal.value = true;
+          
+          // Clean up URL
+          window.history.replaceState({}, '', '/calendar');
+        } else {
+          console.warn('📅 Booking not found for bookingId:', bookingId);
+        }
+      }
+    }
+
+    // Watch for route changes (e.g., when navigating from notifications)
+    watch(() => route.query, async (newQuery) => {
+      if (newQuery.bookingId && newQuery.reschedule === 'true') {
+        await handleQueryParams();
+      }
+    }, { immediate: false });
+
+    function handleBookingModalClose() {
+      selectedBooking.value = null;
+      showRescheduleRequestModal.value = false;
+    }
+
     // Lifecycle
-    onMounted(() => {
-      fetchCalendarData();
+    onMounted(async () => {
+      await fetchCalendarData();
       // Add window resize listener for responsive moreLinkText
       if (typeof window !== 'undefined') {
         window.addEventListener('resize', updateWindowWidth);
         updateWindowWidth(); // Set initial width
       }
+      
+      // Handle query params after data loads
+      await handleQueryParams();
     });
 
     onUnmounted(() => {
@@ -333,6 +376,7 @@ export default {
       calendarRef,
       bookings,
       selectedBooking,
+      showRescheduleRequestModal,
       userType,
       handleEventClick,
       handleDateSelect,
@@ -340,6 +384,7 @@ export default {
       handleEventResize,
       handleEventDidMount,
       handleBookingUpdated,
+      handleBookingModalClose,
     };
   },
 };

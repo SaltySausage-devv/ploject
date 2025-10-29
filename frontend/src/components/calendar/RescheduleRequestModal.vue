@@ -335,15 +335,16 @@ export default {
       const start = new Date(props.booking.pending_reschedule_start_time);
       const end = new Date(props.booking.pending_reschedule_end_time);
       const durationMs = end.getTime() - start.getTime();
-      return durationMs / (1000 * 60 * 60); // Convert to hours
+      const hours = durationMs / (1000 * 60 * 60); // Convert to hours
+      return parseFloat(hours.toFixed(2)); // Round to 2 decimal places
     });
 
     // Calculate credits based on hourly rate and duration
     const calculatedCredits = computed(() => {
       if (tutorHourlyRate.value > 0 && sessionDurationInHours.value > 0) {
-        return (tutorHourlyRate.value * sessionDurationInHours.value).toFixed(
-          2
-        );
+        const total = tutorHourlyRate.value * sessionDurationInHours.value;
+        // Always format to 2 decimal places (e.g., 213.17, 3.00, 0.50)
+        return parseFloat(total.toFixed(2)).toFixed(2);
       }
       return "0.00";
     });
@@ -356,15 +357,16 @@ export default {
       const start = new Date(props.booking.start_time);
       const end = new Date(props.booking.end_time);
       const durationMs = end.getTime() - start.getTime();
-      return durationMs / (1000 * 60 * 60); // Convert to hours
+      const hours = durationMs / (1000 * 60 * 60); // Convert to hours
+      return parseFloat(hours.toFixed(2)); // Round to 2 decimal places
     });
 
     // Calculate current session credits
     const currentCredits = computed(() => {
       if (tutorHourlyRate.value > 0 && currentDurationInHours.value > 0) {
-        return (tutorHourlyRate.value * currentDurationInHours.value).toFixed(
-          2
-        );
+        const total = tutorHourlyRate.value * currentDurationInHours.value;
+        // Always format to 2 decimal places (e.g., 213.17, 3.00, 0.50)
+        return parseFloat(total.toFixed(2)).toFixed(2);
       }
       return "0.00";
     });
@@ -526,10 +528,9 @@ export default {
             new Date(props.booking.pending_reschedule_start_time)) /
           (1000 * 60 * 60);
 
-        const originalCredits =
-          props.booking.hourly_rate * originalDurationHours;
-        const newCredits = tutorHourlyRate.value * newDurationHours;
-        const creditDifference = newCredits - originalCredits;
+        const originalCredits = parseFloat((props.booking.hourly_rate * originalDurationHours).toFixed(2));
+        const newCredits = parseFloat((tutorHourlyRate.value * newDurationHours).toFixed(2));
+        const creditDifference = parseFloat((newCredits - originalCredits).toFixed(2));
 
         console.log("🔍 Credit check for reschedule:", {
           originalCredits,

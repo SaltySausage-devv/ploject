@@ -120,11 +120,11 @@
               <h6 class="text-muted">Payment</h6>
               <p class="mb-2">
                 <strong>Hourly Rate:</strong>
-                {{ booking.hourly_rate || "N/A" }} Credits/hour
+                {{ booking.hourly_rate ? parseFloat(booking.hourly_rate).toFixed(2) : "N/A" }} Credits/hour
               </p>
               <p class="mb-2">
                 <strong>Total Amount:</strong>
-                {{ booking.total_amount || "N/A" }} Credits
+                {{ booking.total_amount ? parseFloat(booking.total_amount).toFixed(2) : "N/A" }} Credits
               </p>
               <span
                 :class="getPaymentStatusClass(booking.payment_status)"
@@ -280,7 +280,7 @@
 </template>
 
 <script>
-import { ref, computed } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { useAuthStore } from "../../stores/auth";
 import { useToast } from "../../composables/useToast";
 import RescheduleModal from "./RescheduleModal.vue";
@@ -300,6 +300,10 @@ export default {
     booking: {
       type: Object,
       required: true,
+    },
+    showRescheduleRequest: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ["close", "updated"],
@@ -575,6 +579,21 @@ export default {
       showMarkAttendanceModal.value = false;
       emit("updated");
     }
+
+    // Watch for showRescheduleRequest prop to open modal
+    watch(() => props.showRescheduleRequest, (shouldShow) => {
+      if (shouldShow && props.booking.reschedule_status === 'pending') {
+        showRescheduleRequestModal.value = true;
+      }
+    }, { immediate: true });
+
+    // Lifecycle
+    onMounted(() => {
+      // If prop says to show reschedule request, open it
+      if (props.showRescheduleRequest && props.booking.reschedule_status === 'pending') {
+        showRescheduleRequestModal.value = true;
+      }
+    });
 
     return {
       loading,
