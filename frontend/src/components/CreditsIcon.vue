@@ -1,8 +1,5 @@
 <template>
-  <div
-    class="credits-icon"
-    v-if="userType === 'student' || userType === 'tutor'"
-  >
+  <div class="credits-icon" v-if="userType === 'student'">
     <div class="credits-display">
       <i class="fas fa-coins credits-icon-symbol"></i>
       <span class="credits-amount">{{ credits }}</span>
