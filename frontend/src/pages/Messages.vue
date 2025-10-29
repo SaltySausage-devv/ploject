@@ -4834,7 +4834,7 @@ export default {
     };
 
     // Session end functionality
-          if (msg.messageType === "booking_confirmation") {
+    const canShowSessionEndModal = (message) => {
             const bookingData = getBookingData(msg);
             console.log(
               "🔄 Checking message with booking ID:",
