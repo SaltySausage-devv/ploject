@@ -1859,19 +1859,6 @@ export default {
 
     // Location choice watcher removed - no longer needed with backend proxy
 
-    // Watch for route changes to handle chat/:id
-    watch(
-      () => route.params.id,
-      async (tutorId) => {
-        console.log('🔗 Route watcher triggered:', { tutorId, hasUser: !!authStore.user, isAuthenticated: authStore.isAuthenticated });
-        if (tutorId && authStore.user && authStore.isAuthenticated) {
-          console.log('🔗 Chat route detected with tutor ID:', tutorId);
-          await handleChatRoute(tutorId);
-        }
-      },
-      { immediate: true }
-    );
-
     // Handle chat route with specific tutor ID
     const handleChatRoute = async (tutorId) => {
       try {
@@ -1942,6 +1929,19 @@ export default {
         throw error;
       }
     };
+
+    // Watch for route changes to handle chat/:id
+    watch(
+      () => route.params.id,
+      async (tutorId) => {
+        console.log('🔗 Route watcher triggered:', { tutorId, hasUser: !!authStore.user, isAuthenticated: authStore.isAuthenticated });
+        if (tutorId && authStore.user && authStore.isAuthenticated) {
+          console.log('🔗 Chat route detected with tutor ID:', tutorId);
+          await handleChatRoute(tutorId);
+        }
+      },
+      { immediate: true }
+    );
 
     // Handle input changes and fetch predictions using backend proxy
     const handleLocationInput = async (type, event) => {
