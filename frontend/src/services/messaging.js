@@ -394,4 +394,5 @@ class MessagingService {
 
 // Create and export a singleton instance
 export const messagingService = new MessagingService()
+export { messagingApi } // Export the axios instance for direct use if needed
 export default messagingService

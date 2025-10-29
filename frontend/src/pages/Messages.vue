@@ -1871,7 +1871,7 @@ import messagingService from "../services/messaging.js";
 import { useNotifications } from "../composables/useNotifications";
 import { useCreditService } from "../services/creditService";
 import { useGoogleMapsProxy } from "../composables/useGoogleMapsProxy";
-import messagingApi from "../services/messaging";
+import { messagingApi } from "../services/messaging";
 import MarkAttendanceModal from "../components/calendar/MarkAttendanceModal.vue";
 import SessionEndModal from "../components/calendar/SessionEndModal.vue";
 import ToastNotifications from "../components/ToastNotifications.vue";
