@@ -1511,9 +1511,27 @@ select.cyberpunk-input {
 }
 
 select.cyberpunk-input option {
-  background: #2a2a2a;
-  color: var(--cyber-text);
+  background: #2a2a2a !important;
+  color: var(--cyber-text) !important;
   padding: 0.5rem;
+}
+
+select.cyberpunk-input option:hover,
+select.cyberpunk-input option:focus,
+select.cyberpunk-input option:checked,
+select.cyberpunk-input option:active {
+  background: var(--cyber-orange) !important;
+  color: #1a1a1a !important;
+}
+
+/* Additional styling for dropdown options to ensure visibility */
+select.cyberpunk-input {
+  color: var(--cyber-text) !important;
+}
+
+select.cyberpunk-input option {
+  background-color: #2a2a2a !important;
+  color: #ffffff !important;
 }
 
 /* Filters Grid Layout - Side by side on PHONE view */

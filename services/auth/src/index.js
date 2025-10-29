@@ -410,6 +410,7 @@ app.post('/auth/register', async (req, res) => {
         user_type: userType,
         phone,
         phone_verified: true,
+        credits: 250,
         created_at: new Date().toISOString()
       })
       .select()

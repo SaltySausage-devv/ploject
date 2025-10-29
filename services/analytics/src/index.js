@@ -158,7 +158,8 @@ const generateChartData = (data, startDate, endDate, period) => {
           const start = new Date(item.start_time);
           const end = new Date(item.end_time);
           const hours = (end - start) / (1000 * 60 * 60); // Convert to hours
-          return sum + hours;
+          // Ensure hours is never negative
+          return sum + Math.max(0, hours);
         }
         return sum;
       }, 0);
@@ -167,11 +168,14 @@ const generateChartData = (data, startDate, endDate, period) => {
     const totalSpending = dayData
       .filter(item => item.status === 'completed' || item.status === 'confirmed')
       .reduce((sum, item) => {
-        return sum + (parseFloat(item.total_amount) || 0);
+        const amount = parseFloat(item.total_amount) || 0;
+        // Ensure spending is never negative
+        return sum + Math.max(0, amount);
       }, 0);
     
-    hoursData.push(parseFloat(totalHours.toFixed(1)));
-    spendingData.push(parseFloat(totalSpending.toFixed(2)));
+    // Ensure final values are non-negative
+    hoursData.push(Math.max(0, parseFloat(totalHours.toFixed(1))));
+    spendingData.push(Math.max(0, parseFloat(totalSpending.toFixed(2))));
   }
   
   return { 
@@ -271,14 +275,20 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
         if (b.start_time && b.end_time) {
           const start = new Date(b.start_time);
           const end = new Date(b.end_time);
-          return sum + (end - start) / (1000 * 60 * 60);
+          const hours = (end - start) / (1000 * 60 * 60);
+          // Ensure hours is never negative
+          return sum + Math.max(0, hours);
         }
         return sum;
       }, 0) || 0;
 
     const totalSpent = allBookings
       ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
-      ?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
+      ?.reduce((sum, b) => {
+        const amount = parseFloat(b.total_amount) || 0;
+        // Ensure spending is never negative
+        return sum + Math.max(0, amount);
+      }, 0) || 0;
     const tutorsWorkedWith = new Set(
       allBookings
         ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
@@ -335,7 +345,9 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
       if (b.start_time && b.end_time) {
         const start = new Date(b.start_time);
         const end = new Date(b.end_time);
-        return sum + (end - start) / (1000 * 60 * 60);
+        const hours = (end - start) / (1000 * 60 * 60);
+        // Ensure hours is never negative
+        return sum + Math.max(0, hours);
       }
       return sum;
     }, 0) || 0;

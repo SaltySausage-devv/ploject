@@ -124,7 +124,6 @@
                     >
                       <option value="">Select your role</option>
                       <option value="student">Student</option>
-                      <option value="parent">Parent</option>
                       <option value="tutor">Tutor</option>
                     </select>
                   </div>

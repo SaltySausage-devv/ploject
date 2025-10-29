@@ -36,3 +36,6 @@ Thumbs.db
 *.tmp
 .cache/
 /.claude/settings.local.json
+
+# Database schema (security - contains sensitive structure information)
+dbschema.sql
