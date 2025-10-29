@@ -352,13 +352,13 @@ export default {
     });
 
     const canMarkAttendance = computed(() => {
-      // Tutors can mark attendance for confirmed bookings that are in the past
+      // Tutors can mark attendance for confirmed bookings AFTER the session starts
       // Only show if attendance hasn't been marked yet (sequential requirement)
       // Cannot mark attendance if booking is already completed
       return (
         props.booking.status === "confirmed" &&
         isTutor.value &&
-        isPastBooking() &&
+        isSessionStarted() && // Session has started (changed from isPastBooking)
         !props.booking.attendance_status && // Attendance not yet marked
         props.booking.status !== "completed" // Not already completed
       );
@@ -481,6 +481,10 @@ export default {
 
     function isPastBooking() {
       return new Date(props.booking.end || props.booking.end_time) < new Date();
+    }
+
+    function isSessionStarted() {
+      return new Date(props.booking.start || props.booking.start_time) <= new Date();
     }
 
     function isWithinMeetingWindow() {
