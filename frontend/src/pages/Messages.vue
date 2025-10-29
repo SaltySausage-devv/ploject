@@ -1836,13 +1836,6 @@
       </div>
     </div>
 
-    <!-- Mark Attendance Modal -->
-    <MarkAttendanceModal
-      v-if="markAttendanceModal && selectedBookingForAttendance"
-      :booking="selectedBookingForAttendance"
-      @close="markAttendanceModal = false"
-      @attendance-marked="handleAttendanceMarked"
-    />
 
     <!-- Session End Modal -->
     <SessionEndModal
@@ -1913,7 +1906,6 @@ import { useCreditService } from "../services/creditService";
 import { useGoogleMapsProxy } from "../composables/useGoogleMapsProxy";
 import { messagingApi } from "../services/messaging";
 import { useAlertModal } from "../composables/useAlertModal.js";
-import MarkAttendanceModal from "../components/calendar/MarkAttendanceModal.vue";
 import SessionEndModal from "../components/calendar/SessionEndModal.vue";
 // ToastNotifications REMOVED - User requested no popups
 
