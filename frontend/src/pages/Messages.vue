@@ -4835,6 +4835,23 @@ export default {
 
     // Session end functionality
     const canShowSessionEndModal = (message) => {
+      if (!authStore.user || authStore.user.user_type !== "student") {
+        return false;
+      }
+
+      const bookingData = getBookingData(message);
+      if (!bookingData || !bookingData.bookingId) {
+        return false;
+      }
+
+      // Check if session has ended (current time is after end time)
+      const now = new Date();
+      const endTime = new Date(bookingData.confirmedTime);
+      endTime.setMinutes(endTime.getMinutes() + (bookingData.duration || 60));
+
+      return now > endTime;
+    };
+
             const bookingData = getBookingData(msg);
             console.log(
               "🔄 Checking message with booking ID:",
