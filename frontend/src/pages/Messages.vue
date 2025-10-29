@@ -3452,6 +3452,34 @@ export default {
       }
     };
 
+    // Format message content for previews (conversation list, notifications, etc.)
+    const formatMessagePreview = (content, messageType) => {
+      if (messageType === "image") {
+        return "📷 Sent an image";
+      } else if (messageType === "reschedule_request") {
+        return "📅 Reschedule booking request";
+      } else if (messageType === "reschedule_accepted") {
+        return "✅ Reschedule request accepted";
+      } else if (messageType === "reschedule_rejected") {
+        return "❌ Reschedule request rejected";
+      } else if (messageType === "booking_offer") {
+        return "Booking offer sent";
+      } else if (messageType === "booking_proposal") {
+        return "📝 Booking proposal";
+      } else if (messageType === "booking_confirmation") {
+        return "✅ Booking confirmed";
+      } else if (messageType === "booking_cancelled") {
+        return "❌ Booking cancelled";
+      } else if (messageType === "attendance_notification") {
+        return "📋 Attendance marked";
+      } else if (content && content.includes('bookingOfferId')) {
+        // Handle raw booking JSON that wasn't properly typed
+        return "Booking offer sent";
+      } else {
+        return content || "No messages yet";
+      }
+    };
+
     // Helper methods for booking cancellation messages
     const getBookingCancellationData = (message) => {
       try {
@@ -3973,28 +4001,7 @@ export default {
                   : `${message.sender.first_name} ${message.sender.last_name}`;
 
               // Generate user-friendly message preview based on message type
-              let messagePreview;
-              if (message.message_type === "image") {
-                messagePreview = "📷 Sent an image";
-              } else if (message.message_type === "reschedule_request") {
-                messagePreview = "📅 Reschedule booking request";
-              } else if (message.message_type === "reschedule_accepted") {
-                messagePreview = "✅ Reschedule request accepted";
-              } else if (message.message_type === "reschedule_rejected") {
-                messagePreview = "❌ Reschedule request rejected";
-              } else if (message.message_type === "booking_offer") {
-                messagePreview = "📋 Booking offer";
-              } else if (message.message_type === "booking_proposal") {
-                messagePreview = "📝 Booking proposal";
-              } else if (message.message_type === "booking_confirmation") {
-                messagePreview = "✅ Booking confirmed";
-              } else if (message.message_type === "booking_cancelled") {
-                messagePreview = "❌ Booking cancelled";
-              } else if (message.message_type === "attendance_notification") {
-                messagePreview = "📋 Attendance marked";
-              } else {
-                messagePreview = message.content;
-              }
+              const messagePreview = formatMessagePreview(message.content, message.message_type);
 
               console.log("🔔 SHOWING NOTIFICATION:", {
                 senderName,
@@ -4038,7 +4045,7 @@ export default {
             const conversation = updatedConversations[conversationIndex];
 
             // Update conversation properties
-            conversation.lastMessage = message.content;
+            conversation.lastMessage = formatMessagePreview(message.content, message.message_type);
             conversation.lastMessageAt = message.created_at;
 
             // If message is from someone else and not in current conversation, increment unread count
@@ -4078,7 +4085,7 @@ export default {
                 name: `${otherParticipant.first_name} ${otherParticipant.last_name}`,
                 type: otherParticipant.user_type,
               },
-              lastMessage: message.content,
+              lastMessage: formatMessagePreview(message.content, message.message_type),
               lastMessageAt: message.created_at,
               unreadCount: message.sender_id !== currentUserId.value ? 1 : 0,
             };
@@ -4953,6 +4960,7 @@ export default {
       getBookingData,
       isBookingConfirmationContent,
       isBookingOfferContent,
+      formatMessagePreview,
       getBookingStatusValue,
       isBookingConfirmed,
       getBookingStatusText,
