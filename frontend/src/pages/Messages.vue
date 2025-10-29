@@ -1546,6 +1546,7 @@
                     type="date"
                     class="form-control"
                     v-model="bookingProposal.proposedDate"
+                    :min="today"
                     required
                   />
                 </div>
@@ -1554,6 +1555,7 @@
                     type="time"
                     class="form-control"
                     v-model="bookingProposal.proposedTime"
+                    :min="bookingProposal.proposedDate === today ? minTimeForToday : undefined"
                     required
                   />
                 </div>
@@ -1835,6 +1837,29 @@
         </div>
       </div>
     </div>
+
+    <!-- Past Date Error Popup -->
+    <div
+      v-if="showPastDateError"
+      class="booking-success-popup"
+      @click.self="showPastDateError = false"
+    >
+      <div class="popup-content">
+        <div class="popup-header">
+          <i class="fas fa-exclamation-circle text-warning me-2"></i>
+          <h5 class="mb-0">Unable to Pick Past Dates</h5>
+          <button
+            type="button"
+            class="btn-close"
+            @click="showPastDateError = false"
+            aria-label="Close"
+          ></button>
+        </div>
+        <div class="popup-body">
+          <p class="mb-0">Please select the current date or a future date to book a session.</p>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1860,6 +1885,19 @@ export default {
     const { showMessageNotification, showNotification, clearAllNotifications } = useNotifications();
 
     const currentUserId = computed(() => authStore.user?.id);
+
+    // Get today's date in YYYY-MM-DD format for date input min attribute
+    const today = computed(() => {
+      const today = new Date();
+      return today.toISOString().split('T')[0];
+    });
+
+    // Get minimum time for today (current time + 1 hour buffer)
+    const minTimeForToday = computed(() => {
+      const now = new Date();
+      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // Add 1 hour buffer
+      return oneHourFromNow.toTimeString().slice(0, 5); // HH:MM format
+    });
 
     // Computed property to calculate earnings based on duration and hourly rate
     const calculatedEarnings = computed(() => {
@@ -1901,6 +1939,7 @@ export default {
     const isSendingProposal = ref(false);
     const selectedBookingOffer = ref(null);
     const showBookingRequestSuccess = ref(false);
+    const showPastDateError = ref(false);
     const confirmedBookings = ref(new Set()); // Track confirmed booking IDs
     const bookingOfferStatuses = ref(new Map()); // Track booking proposal statuses
 
@@ -2066,6 +2105,45 @@ export default {
         }
       },
       { immediate: true }
+    );
+
+    // Watch for date changes to validate time selection
+    watch(
+      () => bookingProposal.value.proposedDate,
+      (newDate) => {
+        if (!newDate) return;
+
+        // Check if the selected date is in the past
+        const selectedDate = new Date(newDate);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Reset time to midnight for date comparison
+        
+        if (selectedDate < today) {
+          // Past date detected - clear it and show error popup
+          bookingProposal.value.proposedDate = "";
+          bookingProposal.value.proposedTime = "";
+          showPastDateError.value = true;
+          
+          // Auto-hide after 3 seconds
+          setTimeout(() => {
+            showPastDateError.value = false;
+          }, 3000);
+          return;
+        }
+
+        // If user selected today's date, check if the selected time is valid
+        if (newDate === today.value && bookingProposal.value.proposedTime) {
+          // If user selected today's date, check if the selected time is valid
+          const selectedTime = bookingProposal.value.proposedTime;
+          const minTime = minTimeForToday.value;
+          
+          if (selectedTime < minTime) {
+            // Reset time to minimum allowed time for today
+            bookingProposal.value.proposedTime = minTime;
+            showNotification('Info', `Time adjusted to ${minTime} (minimum 1 hour from now)`, 'info');
+          }
+        }
+      }
     );
 
     // Handle input changes and fetch predictions using backend proxy
@@ -3238,6 +3316,21 @@ export default {
         return;
       }
 
+      // Check if the selected date is in the past
+      const selectedDate = new Date(bookingProposal.value.proposedDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to midnight for date comparison
+      
+      if (selectedDate < today) {
+        showPastDateError.value = true;
+        bookingProposal.value.proposedDate = "";
+        bookingProposal.value.proposedTime = "";
+        setTimeout(() => {
+          showPastDateError.value = false;
+        }, 3000);
+        return;
+      }
+
       // Validate duration
       const effectiveDuration =
         bookingProposal.value.customDuration !== ""
@@ -3267,6 +3360,19 @@ export default {
         // Check if the date is valid
         if (isNaN(proposedDateTime.getTime())) {
           throw new Error("Invalid date or time selected");
+        }
+
+        // Check if the proposed date/time is in the past
+        const now = new Date();
+        if (proposedDateTime <= now) {
+          showPastDateError.value = true;
+          bookingProposal.value.proposedDate = "";
+          bookingProposal.value.proposedTime = "";
+          setTimeout(() => {
+            showPastDateError.value = false;
+          }, 3000);
+          isCreatingProposal.value = false;
+          return;
         }
 
         // Calculate end time
@@ -4928,6 +5034,7 @@ export default {
       isSendingProposal,
       selectedBookingOffer,
       showBookingRequestSuccess,
+      showPastDateError,
       confirmedBookings,
       tuteeLocationInput,
       tutorLocationInput,
