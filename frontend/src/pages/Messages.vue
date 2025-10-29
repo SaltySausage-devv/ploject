@@ -961,44 +961,21 @@
                           <!-- Check if it's a booking offer disguised as text -->
                           <div
                             v-else-if="isBookingOfferContent(message.content)"
-                            class="message-content booking-message booking-offer"
+                            class="message-content"
                           >
-                            <div class="booking-header">
-                              <i class="fas fa-calendar-plus me-2"></i>
-                              <span class="booking-title">Booking Request</span>
+                            <div class="booking-simple-message">
+                              <i class="fas fa-calendar-plus me-2 text-warning"></i>
+                              <span>Booking offer sent</span>
                             </div>
-                            <div class="booking-details">
-                              <div v-if="getBookingData(message)">
-                                <p class="mb-2">
-                                  <strong>Session Type:</strong>
-                                  {{
-                                    getBookingData(message).isOnline
-                                      ? "Online Session"
-                                      : "On-site Session"
-                                  }}
-                                </p>
-                                <p
-                                  v-if="
-                                    !getBookingData(message).isOnline &&
-                                    getBookingData(message).tuteeLocation
-                                  "
-                                  class="mb-2"
-                                >
-                                  <strong>Location:</strong>
-                                  {{ getBookingData(message).tuteeLocation }}
-                                </p>
-                                <p
-                                  v-if="getBookingData(message).notes"
-                                  class="mb-2"
-                                >
-                                  <strong>Notes:</strong>
-                                  {{ getBookingData(message).notes }}
-                                </p>
-                                <p class="mb-0 text-warning">
-                                  <i class="fas fa-clock me-1"></i>
-                                  Awaiting response
-                                </p>
-                              </div>
+                          </div>
+                          <!-- Check if it's raw booking JSON that failed detection -->
+                          <div
+                            v-else-if="message.content && message.content.includes('bookingOfferId')"
+                            class="message-content"
+                          >
+                            <div class="booking-simple-message">
+                              <i class="fas fa-calendar-plus me-2 text-warning"></i>
+                              <span>Booking offer sent</span>
                             </div>
                           </div>
                           <!-- Regular text content -->
@@ -3460,11 +3437,18 @@ export default {
     // Check if content looks like booking offer JSON
     const isBookingOfferContent = (content) => {
       try {
-        const parsed = JSON.parse(content);
-        // Check for booking offer patterns
-        return parsed && parsed.bookingOfferId && (parsed.tuteeLocation || parsed.isOnline !== undefined);
-      } catch (error) {
+        // Check if content starts with booking JSON pattern
+        if (content && typeof content === 'string' && content.includes('"bookingOfferId"')) {
+          // Try to parse the JSON
+          const parsed = JSON.parse(content);
+          return parsed && parsed.bookingOfferId && (parsed.tuteeLocation || parsed.isOnline !== undefined);
+        }
         return false;
+      } catch (error) {
+        // If JSON parsing fails, check if it looks like booking data
+        return content && typeof content === 'string' && 
+               content.includes('"bookingOfferId"') && 
+               (content.includes('"tuteeLocation"') || content.includes('"isOnline"'));
       }
     };
 
@@ -6989,6 +6973,18 @@ i.text-primary {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+/* Simple booking message styling */
+.booking-simple-message {
+  display: flex;
+  align-items: center;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.booking-simple-message .text-warning {
+  color: #ff8c42 !important;
 }
 </style>
 
