@@ -149,18 +149,43 @@ export default {
             message.message_type === "reschedule_accepted" ||
             message.message_type === "reschedule_rejected";
 
-          // For booking-related messages, only show notification to the receiver (not the sender)
+          // For booking-related messages (proposal, confirmation, offer), only show notification to the receiver (not the sender)
+          // Use String() conversion to handle UUID type mismatches
           const isBookingMessage =
             message.message_type === "booking_cancelled" ||
             message.message_type === "booking_proposal" ||
             message.message_type === "booking_confirmation" ||
             message.message_type === "booking_offer";
           
-          const shouldShowNotification = isBookingMessage
-            ? message.sender_id !== authStore.user?.id // Only show to receiver for booking messages
-            : message.sender_id !== authStore.user?.id || isSystemMessage; // Normal logic for other messages
+          // For reschedule requests, only notify the RECEIVER (not the requester/sender)
+          const isRescheduleMessage = 
+            message.message_type === "reschedule_request" ||
+            message.message_type === "reschedule_accepted" ||
+            message.message_type === "reschedule_rejected";
+          
+          // Check if current user is the sender (using String() to handle UUID type mismatches)
+          const isSender = String(message.sender_id) === String(authStore.user?.id);
+          
+          let shouldShowNotification = false;
+          if (isBookingMessage) {
+            // Booking messages: only show to receiver (not sender)
+            shouldShowNotification = !isSender;
+          } else if (isRescheduleMessage) {
+            // Reschedule messages: only show to receiver (not the requester/sender)
+            shouldShowNotification = !isSender;
+          } else if (isSystemMessage) {
+            // Other system messages: show to receiver
+            shouldShowNotification = !isSender;
+          } else {
+            // Regular messages: show if not from yourself
+            shouldShowNotification = !isSender;
+          }
 
-          if (shouldShowNotification && message.sender) {
+          // For system messages (like reschedule_request), we still want to show notification even if sender is missing
+          // The sender check is primarily for regular text messages
+          const shouldShow = shouldShowNotification && (message.sender || isSystemMessage || isRescheduleMessage);
+          
+          if (shouldShow) {
             console.log(
               "🌐 APP: Message is from another user or system message"
             );

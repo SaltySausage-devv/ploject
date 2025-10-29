@@ -1232,18 +1232,21 @@ app.post('/bookings/:bookingId/mark-attendance', verifyToken, async (req, res) =
     console.log('  - Booking Tutor ID:', booking.tutor_id, '(type:', typeof booking.tutor_id, ')');
     console.log('  - Booking ID:', bookingId);
     console.log('  - Full booking object:', JSON.stringify(booking, null, 2));
-    console.log('  - IDs Match:', booking.tutor_id === currentUserId);
+    console.log('  - IDs Match:', String(booking.tutor_id) === String(currentUserId));
     console.log('  - Strict equality:', booking.tutor_id === currentUserId);
     console.log('  - Loose equality:', booking.tutor_id == currentUserId);
 
     // Verify current user is the tutor for this booking
-    if (booking.tutor_id !== currentUserId) {
+    // Use String() conversion to handle potential UUID type mismatches
+    if (String(booking.tutor_id) !== String(currentUserId)) {
       return res.status(403).json({ 
         error: 'Only the tutor can mark attendance',
         debug: {
           currentUserId,
           bookingTutorId: booking.tutor_id,
-          bookingId
+          bookingId,
+          currentUserIdString: String(currentUserId),
+          bookingTutorIdString: String(booking.tutor_id)
         }
       });
     }

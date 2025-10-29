@@ -221,6 +221,14 @@
             >
               <i class="fas fa-video me-2"></i>Join Meeting
             </button>
+
+            <button
+              v-if="canMarkAttendance"
+              class="btn btn-cyberpunk"
+              @click="showMarkAttendanceModal = true"
+            >
+              <i class="fas fa-check-circle me-2"></i>Mark Attendance
+            </button>
           </div>
         </div>
         <div class="modal-footer">
@@ -260,6 +268,14 @@
       @close="showRescheduleRequestModal = false"
       @responded="handleRescheduleRequestResponded"
     />
+
+    <!-- Mark Attendance Modal -->
+    <MarkAttendanceModal
+      v-if="showMarkAttendanceModal"
+      :booking="booking"
+      @close="showMarkAttendanceModal = false"
+      @attendance-marked="handleAttendanceMarked"
+    />
   </div>
 </template>
 
@@ -270,6 +286,7 @@ import { useToast } from "../../composables/useToast";
 import RescheduleModal from "./RescheduleModal.vue";
 import CancelModal from "./CancelModal.vue";
 import RescheduleRequestModal from "./RescheduleRequestModal.vue";
+import MarkAttendanceModal from "./MarkAttendanceModal.vue";
 
 export default {
   name: "BookingDetailsModal",
@@ -277,6 +294,7 @@ export default {
     RescheduleModal,
     CancelModal,
     RescheduleRequestModal,
+    MarkAttendanceModal,
   },
   props: {
     booking: {
@@ -294,6 +312,7 @@ export default {
     const showRescheduleModal = ref(false);
     const showCancelModal = ref(false);
     const showRescheduleRequestModal = ref(false);
+    const showMarkAttendanceModal = ref(false);
 
     // Computed properties
     const isTutor = computed(() => {
@@ -331,6 +350,15 @@ export default {
     const canComplete = computed(() => {
       return (
         props.booking.status === "confirmed" && isTutor.value && isPastBooking()
+      );
+    });
+
+    const canMarkAttendance = computed(() => {
+      // Tutors can mark attendance for confirmed/completed bookings that are in the past
+      return (
+        (props.booking.status === "confirmed" || props.booking.status === "completed") &&
+        isTutor.value &&
+        isPastBooking()
       );
     });
 
@@ -529,11 +557,19 @@ export default {
       emit("updated");
     }
 
+    function handleAttendanceMarked() {
+      showMarkAttendanceModal.value = false;
+      emit("updated");
+    }
+
     return {
       loading,
       showRescheduleModal,
       showCancelModal,
       showRescheduleRequestModal,
+      showMarkAttendanceModal,
+      canMarkAttendance,
+      handleAttendanceMarked,
       isTutor,
       isStudent,
       canReschedule,
