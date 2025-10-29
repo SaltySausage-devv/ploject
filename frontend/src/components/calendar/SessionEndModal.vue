@@ -2,8 +2,11 @@
   <div
     class="modal fade show"
     style="display: block; background-color: rgba(0, 0, 0, 0.5)"
+    @click.self="$emit('close')"
   >
-    <div class="modal-dialog modal-lg">
+    <div
+      class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable"
+    >
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title">
@@ -588,11 +591,166 @@ export default {
 
 <style scoped>
 .modal {
-  z-index: 1060;
+  /* High z-index to appear above Messages page elements (which use up to 99999) */
+  z-index: 100000 !important;
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .modal-dialog {
+  /* Fluid width that scales dynamically with viewport */
+  width: min(90vw, 700px);
   max-width: 700px;
+  margin: clamp(0.5rem, 2vw, 1rem) auto;
+  position: relative;
+  display: block;
+}
+
+/* Ensure modal-lg class scales fluidly */
+.modal-dialog.modal-lg {
+  width: min(90vw, 700px);
+  max-width: 700px;
+}
+
+/* Fluid scaling for smaller screens - dynamically adapts */
+@media (max-width: 991px) {
+  .modal-dialog,
+  .modal-dialog.modal-lg {
+    /* Use viewport width directly - ensures modal always appears at any width */
+    width: 95vw !important;
+    max-width: 95vw !important;
+    margin: clamp(0.5rem, 2vw, 1rem) auto !important;
+    /* No min-width constraint - let it scale down to very small viewports */
+  }
+
+  .modal-content {
+    /* Dynamically scale height based on viewport */
+    max-height: calc(100vh - clamp(1rem, 4vw, 2rem));
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-body {
+    overflow-y: auto;
+    flex: 1;
+    /* Fluid padding that scales with viewport */
+    padding: clamp(1rem, 3vw, 1.5rem);
+    max-height: calc(100vh - clamp(180px, 25vh, 220px));
+  }
+
+  .modal-header {
+    flex-shrink: 0;
+    padding: clamp(0.75rem, 2vw, 1rem);
+  }
+
+  .modal-header .modal-title {
+    font-size: clamp(1rem, 2.5vw, 1.25rem);
+  }
+
+  .modal-footer {
+    flex-shrink: 0;
+    padding: clamp(0.75rem, 2vw, 1rem);
+  }
+
+  .action-btn {
+    /* Fluid button sizing */
+    min-width: 100%;
+    width: 100%;
+    padding: clamp(1rem, 3vw, 1.5rem);
+    font-size: clamp(0.9rem, 2vw, 1rem);
+  }
+
+  .aspects-grid {
+    /* Fluid grid that adapts to width */
+    grid-template-columns: repeat(auto-fit, minmax(min(150px, 100%), 1fr));
+    gap: clamp(0.75rem, 2vw, 1rem);
+  }
+
+  .session-info {
+    padding: clamp(0.75rem, 2vw, 1rem);
+  }
+
+  .session-info p {
+    font-size: clamp(0.85rem, 2vw, 0.95rem);
+    margin-bottom: clamp(0.4rem, 1vw, 0.5rem);
+  }
+}
+
+/* Ensure modal is visible for SM breakpoint range (576px - 767px) */
+@media (min-width: 576px) and (max-width: 767px) {
+  .modal-dialog,
+  .modal-dialog.modal-lg {
+    width: 96vw !important;
+    max-width: 96vw !important;
+    margin: clamp(0.5rem, 2vw, 1rem) auto !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+    transform: none !important;
+  }
+
+  .modal-content {
+    visibility: visible !important;
+    opacity: 1 !important;
+    max-height: calc(100vh - 1rem) !important;
+  }
+}
+
+/* XS screens - ensure modal appears even at very small widths (100px+) */
+@media (max-width: 575px) {
+  .modal-dialog,
+  .modal-dialog.modal-lg {
+    /* Use viewport width directly - scales from 100px up */
+    width: 98vw !important;
+    max-width: 98vw !important;
+    margin: clamp(0.25rem, 1vw, 0.5rem) auto !important;
+    /* No min-width - allows modal to scale down to very small viewports */
+  }
+
+  .modal-content {
+    max-height: calc(100vh - clamp(0.5rem, 2vw, 1rem));
+  }
+
+  .modal-header {
+    padding: clamp(0.5rem, 2vw, 0.75rem);
+  }
+
+  .modal-title {
+    font-size: clamp(0.9rem, 2.5vw, 1rem);
+  }
+
+  .modal-body {
+    padding: clamp(0.75rem, 2vw, 1rem);
+    max-height: calc(100vh - clamp(160px, 25vh, 180px));
+  }
+
+  .modal-footer {
+    padding: clamp(0.5rem, 2vw, 0.75rem);
+    flex-wrap: wrap;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    margin-bottom: clamp(0.25rem, 1vw, 0.5rem);
+    font-size: clamp(0.85rem, 2vw, 0.9rem);
+  }
+
+  .star-rating {
+    gap: clamp(0.2rem, 1vw, 0.25rem);
+  }
+
+  .star {
+    font-size: clamp(1.25rem, 4vw, 1.5rem);
+  }
+
+  .action-selection {
+    padding: clamp(0.75rem, 2vw, 1rem) 0;
+  }
 }
 
 .modal-content {
@@ -677,32 +835,36 @@ strong {
   color: #ffffff;
 }
 
-/* Session Info Styling */
+/* Session Info Styling - Fluid padding */
 .session-info {
   background: #3a3a52;
   border: 1px solid rgba(255, 107, 53, 0.2);
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: clamp(6px, 1vw, 8px);
+  padding: clamp(0.75rem, 2vw, 1rem);
 }
 
-/* Action Selection Styling */
+/* Action Selection Styling - Fluid padding */
 .action-selection {
   text-align: center;
-  padding: 2rem 0;
+  padding: clamp(1rem, 4vw, 2rem) 0;
 }
 
 .action-buttons {
   display: flex;
-  gap: 1.5rem;
+  /* Fluid gap that scales with viewport */
+  gap: clamp(1rem, 3vw, 1.5rem);
   justify-content: center;
   flex-wrap: wrap;
 }
 
 .action-btn {
-  min-width: 200px;
-  padding: 1.5rem;
-  border-radius: 12px;
+  /* Fluid button sizing - scales with viewport */
+  min-width: min(200px, 100%);
+  max-width: 100%;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  border-radius: clamp(8px, 1.5vw, 12px);
   font-weight: 600;
+  font-size: clamp(0.9rem, 2vw, 1rem);
   transition: all 0.3s ease;
 }
 
@@ -726,12 +888,14 @@ strong {
 .star-rating {
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  /* Fluid gap for star rating */
+  gap: clamp(0.4rem, 1.5vw, 0.5rem);
+  margin-bottom: clamp(0.75rem, 2vw, 1rem);
 }
 
 .star {
-  font-size: 2rem;
+  /* Fluid star size */
+  font-size: clamp(1.5rem, 4vw, 2rem);
   color: #aaaaaa;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -749,15 +913,16 @@ strong {
   font-size: 1.1rem;
 }
 
-/* Aspects Grid */
+/* Aspects Grid - Fluid responsive grid */
 .aspects-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
+  /* Dynamically adapts column count based on available width */
+  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
+  gap: clamp(0.75rem, 2vw, 1rem);
   background: #3a3a52;
   border: 1px solid rgba(255, 107, 53, 0.2);
-  border-radius: 8px;
-  padding: 1rem;
+  border-radius: clamp(6px, 1vw, 8px);
+  padding: clamp(0.75rem, 2vw, 1rem);
 }
 
 .form-check {
@@ -986,20 +1151,47 @@ strong {
   display: block;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .action-buttons {
-    flex-direction: column;
-    align-items: center;
+/* Ensure modal is always visible and scrollable on all screen sizes up to SM */
+@media (max-width: 991px) {
+  .modal {
+    /* Ensure modal is above all other elements on mobile */
+    z-index: 100000 !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: flex-start;
+    justify-content: center;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
   }
 
-  .action-btn {
-    min-width: 100%;
-    max-width: 300px;
+  .modal.show {
+    z-index: 100000 !important;
+    display: flex !important;
+    align-items: flex-start;
+    justify-content: center;
+    position: fixed !important;
   }
 
-  .aspects-grid {
-    grid-template-columns: 1fr;
+  /* Prevent modal from being hidden on any screen size */
+  .modal-dialog {
+    visibility: visible !important;
+    opacity: 1 !important;
+    display: block !important;
+    transform: none !important;
+    position: relative !important;
+    z-index: 100001 !important;
+  }
+
+  .modal-content {
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: relative !important;
+    z-index: 100002 !important;
   }
 }
+
+/* Ensure fluid scaling works smoothly - all sizes scale dynamically */
 </style>
