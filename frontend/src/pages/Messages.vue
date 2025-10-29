@@ -1892,11 +1892,11 @@ export default {
       return today.toISOString().split('T')[0];
     });
 
-    // Get minimum time for today (current time + 1 hour buffer)
+    // Get minimum time for today (current time + 15 minutes buffer)
     const minTimeForToday = computed(() => {
       const now = new Date();
-      const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // Add 1 hour buffer
-      return oneHourFromNow.toTimeString().slice(0, 5); // HH:MM format
+      const fifteenMinutesFromNow = new Date(now.getTime() + 15 * 60 * 1000); // Add 15 minutes buffer
+      return fifteenMinutesFromNow.toTimeString().slice(0, 5); // HH:MM format
     });
 
     // Computed property to calculate earnings based on duration and hourly rate
@@ -2133,14 +2133,47 @@ export default {
 
         // If user selected today's date, check if the selected time is valid
         if (newDate === today.value && bookingProposal.value.proposedTime) {
-          // If user selected today's date, check if the selected time is valid
-          const selectedTime = bookingProposal.value.proposedTime;
-          const minTime = minTimeForToday.value;
+          // Check if the selected time is in the past
+          const selectedDateTime = new Date(`${newDate}T${bookingProposal.value.proposedTime}`);
+          const now = new Date();
           
-          if (selectedTime < minTime) {
-            // Reset time to minimum allowed time for today
-            bookingProposal.value.proposedTime = minTime;
-            showNotification('Info', `Time adjusted to ${minTime} (minimum 1 hour from now)`, 'info');
+          if (selectedDateTime <= now) {
+            // Past time detected - clear fields and show error popup
+            bookingProposal.value.proposedDate = "";
+            bookingProposal.value.proposedTime = "";
+            showPastDateError.value = true;
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+              showPastDateError.value = false;
+            }, 3000);
+            return;
+          }
+        }
+      }
+    );
+
+    // Watch for time changes to validate past time selection
+    watch(
+      () => bookingProposal.value.proposedTime,
+      (newTime) => {
+        if (!newTime || !bookingProposal.value.proposedDate) return;
+
+        // Only check if today's date is selected
+        if (bookingProposal.value.proposedDate === today.value) {
+          const selectedDateTime = new Date(`${bookingProposal.value.proposedDate}T${newTime}`);
+          const now = new Date();
+          
+          if (selectedDateTime <= now) {
+            // Past time detected - clear fields and show error popup
+            bookingProposal.value.proposedDate = "";
+            bookingProposal.value.proposedTime = "";
+            showPastDateError.value = true;
+            
+            // Auto-hide after 3 seconds
+            setTimeout(() => {
+              showPastDateError.value = false;
+            }, 3000);
           }
         }
       }
