@@ -448,6 +448,5 @@ export default {
 
 main {
   flex: 1;
-  padding-top: 80px; /* Account for fixed navbar */
 }
 </style>

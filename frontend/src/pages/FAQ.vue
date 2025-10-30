@@ -76,9 +76,9 @@ export default {
 }
 
 .faq-item {
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--cyber-orange);
   border-radius: 8px;
-  background: #ffffff;
+  background: var(--cyber-grey-light);
   margin-bottom: 12px;
   overflow: hidden;
 }
@@ -86,7 +86,7 @@ export default {
 .faq-question {
   width: 100%;
   text-align: left;
-  background: #f9fafb;
+  background: var(--cyber-grey-light);
   border: 0;
   padding: 16px;
   font-size: 16px;
@@ -98,8 +98,8 @@ export default {
 
 .faq-answer {
   padding: 16px;
-  color: #4b5563;
-  background: #ffffff;
+  color: #ffffff;
+  background: var(--cyber-grey);
 }
 
 .chevron {

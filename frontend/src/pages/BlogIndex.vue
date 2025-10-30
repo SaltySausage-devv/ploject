@@ -30,8 +30,8 @@ export default {
       posts: [
         {
           slug: 'hello-world',
-          title: 'Hello World',
-          excerpt: 'Welcome to our new blog. Here is what to expect... ',
+          title: 'Number of "A"-Level pass increases!',
+          excerpt: 'Thanks to our efforts, we have more As then ever...',
           author: 'Admin',
           date: new Date().toLocaleDateString(),
           readingTime: '3 min read',
