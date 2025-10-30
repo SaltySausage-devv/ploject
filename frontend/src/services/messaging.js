@@ -65,6 +65,25 @@ class MessagingService {
     this.socket.on('connect', () => {
       console.log('🔌 MESSAGING SERVICE: Socket.io connected successfully')
       this.isConnected = true
+      // After a successful connection, (re)join all conversation rooms
+      // so we can receive room-scoped events like reschedule_request
+      ;(async () => {
+        try {
+          console.log('🔌 MESSAGING SERVICE: Fetching conversations to join rooms...')
+          const { conversations } = await this.getConversations()
+          if (conversations && conversations.length > 0) {
+            conversations.forEach((conv) => {
+              console.log('Joining conversation room:', conv.id)
+              // Use the same event as joinConversation()
+              this.socket.emit('join_conversation', { conversationId: conv.id })
+            })
+          } else {
+            console.log('🔌 MESSAGING SERVICE: No conversations to join')
+          }
+        } catch (error) {
+          console.error('🔌 MESSAGING SERVICE: Failed to join rooms after connect:', error)
+        }
+      })()
     })
 
     this.socket.on('disconnect', () => {
@@ -83,6 +102,18 @@ class MessagingService {
 
           this.socket.on('reconnect', () => {
             this.isConnected = true
+            // On reconnect, re-join all rooms
+            ;(async () => {
+              try {
+                console.log('🔌 MESSAGING SERVICE: Reconnected – rejoining rooms')
+                const { conversations } = await this.getConversations()
+                conversations?.forEach((conv) => {
+                  this.socket.emit('join_conversation', { conversationId: conv.id })
+                })
+              } catch (error) {
+                console.error('🔌 MESSAGING SERVICE: Failed to rejoin rooms after reconnect:', error)
+              }
+            })()
           })
 
           this.socket.on('reconnect_attempt', () => {
