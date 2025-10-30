@@ -187,8 +187,8 @@ export default {
             console.log("🌐 APP: isSystemMessage:", isSystemMessage);
             console.log("🌐 APP: message.message_type:", message.message_type);
             console.log(
-              "🌐 APP: isBookingCancellation:",
-              isBookingCancellation
+              "🌐 APP: isBookingMessage:",
+              isBookingMessage
             );
             console.log(
               "🌐 APP: shouldShowNotification:",

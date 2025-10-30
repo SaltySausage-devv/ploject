@@ -685,10 +685,14 @@ export default {
 
       // Create new handler for navbar notifications
       messageHandler = (message) => {
-        console.log("🔔 NAVBAR: ✨ Received new message:", message);
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+        console.log("🔔 NAVBAR: 📨 SOCKET.IO MESSAGE RECEIVED!");
+        console.log("🔔 NAVBAR: Message ID:", message.id);
+        console.log("🔔 NAVBAR: Message type:", message.message_type);
         console.log("🔔 NAVBAR: Message sender_id:", message.sender_id);
         console.log("🔔 NAVBAR: Current user_id:", currentUserId.value);
-        console.log("🔔 NAVBAR: Message type:", message.message_type);
+        console.log("🔔 NAVBAR: Full message:", message);
+        console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
 
         // Check if this is a system message (reschedule_request, booking_cancelled, etc.)
         const isSystemMessage = 
@@ -893,8 +897,10 @@ export default {
       };
 
       // Register the new_message handler
+      console.log("🔔 NAVBAR: 🎯 Registering new_message handler...");
       messagingService.on("new_message", messageHandler);
       console.log("🔔 NAVBAR: ✅ Message handler registered successfully");
+      console.log("🔔 NAVBAR: Handler function:", messageHandler ? "EXISTS" : "NULL");
 
       // Also listen for messages_read event to clear notifications when user opens conversation
       messagingService.on("messages_read", (data) => {
