@@ -25,8 +25,15 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST']
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:5173',
+      'https://tutorconnect-production.up.railway.app',
+      'https://beautiful-celebration-production.up.railway.app',
+      process.env.FRONTEND_URL
+    ].filter(Boolean),
+    methods: ['GET', 'POST'],
+    credentials: true
   },
   pingTimeout: 60000,
   pingInterval: 25000,
