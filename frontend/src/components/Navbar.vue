@@ -585,6 +585,9 @@ export default {
 
         if (!response.conversations || response.conversations.length === 0) {
           console.log("🔔 NAVBAR: No conversations found");
+          // Clear all notifications if no conversations exist
+          notifications.value = [];
+          saveNotificationsToStorage();
           return;
         }
 
@@ -592,16 +595,77 @@ export default {
           `🔔 NAVBAR: Found ${response.conversations.length} conversations`
         );
 
-        // Find conversations with unread messages
+        // Track message IDs that are currently read on the server
+        const readMessageIds = new Set();
+        // Cache messages by conversation ID to avoid duplicate API calls
+        const messagesCache = new Map();
+        let removedCount = 0;
+        let addedCount = 0;
+
+        // Find conversations with unread messages OR conversations that have existing notifications
         const conversationsWithUnread = response.conversations.filter(
           (conv) => conv.unreadCount > 0
         );
+        
+        // Get conversation IDs that have existing notifications (to check their read status)
+        const conversationIdsWithNotifications = new Set(
+          notifications.value
+            .map(n => n.conversationId)
+            .filter(Boolean)
+        );
+
+        // Check conversations that have existing notifications OR unread messages to verify read status
+        const conversationsToCheck = response.conversations.filter(conv => 
+          conversationIdsWithNotifications.has(conv.id) || conversationsWithUnread.find(c => c.id === conv.id)
+        );
+
+        for (const conv of conversationsToCheck) {
+          try {
+            // Fetch messages for this conversation to check read status
+            const messagesResponse = await messagingService.getMessages(conv.id, 1, 50);
+            
+            // Cache messages for this conversation
+            if (messagesResponse.messages && messagesResponse.messages.length > 0) {
+              messagesCache.set(conv.id, messagesResponse.messages);
+              
+              // Find all messages that are read by current user
+              messagesResponse.messages.forEach(msg => {
+                const isRead = msg.read_at && (
+                  msg.read_by?.includes(currentUserId.value) || 
+                  (Array.isArray(msg.read_by) && msg.read_by.some(id => String(id) === String(currentUserId.value)))
+                );
+                if (isRead) {
+                  readMessageIds.add(msg.id);
+                }
+              });
+            }
+          } catch (msgError) {
+            console.error(
+              `🔔 NAVBAR: ❌ Error fetching messages for conversation ${conv.id}:`,
+              msgError
+            );
+            // Continue with next conversation even if one fails
+          }
+        }
+
+        // Remove notifications for messages that are now read
+        if (readMessageIds.size > 0) {
+          const beforeCount = notifications.value.length;
+          notifications.value = notifications.value.filter(
+            (n) => !readMessageIds.has(n.id)
+          );
+          removedCount = beforeCount - notifications.value.length;
+          
+          if (removedCount > 0) {
+            console.log(
+              `🔔 NAVBAR: 🗑️ Removed ${removedCount} notification(s) for read messages`
+            );
+          }
+        }
 
         console.log(
           `🔔 NAVBAR: ${conversationsWithUnread.length} conversations have unread messages`
         );
-
-        let addedCount = 0;
         
         // Fetch individual messages for each conversation with unread messages
         for (const conv of conversationsWithUnread) {
@@ -617,12 +681,17 @@ export default {
           );
 
           try {
-            // Fetch messages for this conversation
-            const messagesResponse = await messagingService.getMessages(conv.id, 1, 50);
+            // Use cached messages if available, otherwise fetch
+            let messages = messagesCache.get(conv.id);
+            if (!messages) {
+              const messagesResponse = await messagingService.getMessages(conv.id, 1, 50);
+              messages = messagesResponse.messages || [];
+              messagesCache.set(conv.id, messages);
+            }
             
-            if (messagesResponse.messages && messagesResponse.messages.length > 0) {
+            if (messages && messages.length > 0) {
               // Filter for unread messages (messages not sent by current user and not read yet)
-              const unreadMessages = messagesResponse.messages.filter(msg => {
+              const unreadMessages = messages.filter(msg => {
                 const isFromOtherUser = String(msg.sender_id) !== String(currentUserId.value);
                 const isUnread = !msg.read_at || !msg.read_by?.includes(currentUserId.value);
                 return isFromOtherUser && isUnread;
@@ -704,7 +773,8 @@ export default {
         // Sort notifications by timestamp (most recent first)
         notifications.value.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
-        console.log("🔔 NAVBAR: Current notifications count AFTER adding unread:", notifications.value.length);
+        console.log("🔔 NAVBAR: Current notifications count AFTER sync:", notifications.value.length);
+        console.log("🔔 NAVBAR: Removed", removedCount, "read notifications");
         console.log("🔔 NAVBAR: Added", addedCount, "new unread notifications");
 
         // Limit to last 20 notifications
@@ -713,12 +783,12 @@ export default {
           notifications.value = notifications.value.slice(0, 20);
         }
 
-        // Save to localStorage
-        if (addedCount > 0) {
-          console.log("🔔 NAVBAR: 💾 Saving notifications after adding unread messages");
+        // Save to localStorage if there were any changes
+        if (removedCount > 0 || addedCount > 0) {
+          console.log("🔔 NAVBAR: 💾 Saving notifications after sync");
           saveNotificationsToStorage();
           console.log(
-            `🔔 NAVBAR: ✅ Added ${addedCount} notification(s) for unread messages`
+            `🔔 NAVBAR: ✅ Sync complete - ${removedCount} removed, ${addedCount} added`
           );
         }
       } catch (error) {
