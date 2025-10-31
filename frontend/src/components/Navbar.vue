@@ -817,6 +817,20 @@ export default {
         }
 
         if (shouldShow) {
+          // Check if message has already been read by current user
+          const isAlreadyRead = message.read_at && (
+            message.read_by?.includes(currentUserId.value) || 
+            (Array.isArray(message.read_by) && message.read_by.some(id => String(id) === String(currentUserId.value)))
+          );
+
+          if (isAlreadyRead) {
+            console.log(
+              "🔔 NAVBAR: ⏭️ Skipping notification - message already read by current user:",
+              message.id
+            );
+            return; // Don't add notification if message is already read
+          }
+
           console.log("🔔 NAVBAR: Message is from another user or system message, creating notification");
 
           // Format sender name
