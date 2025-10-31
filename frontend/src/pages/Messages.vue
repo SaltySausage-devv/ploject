@@ -1939,7 +1939,7 @@ export default {
     const authStore = useAuthStore();
     const creditService = useCreditService();
     const { clearAllNotifications } = useNotifications();
-    const { showError, showWarning, showInfo } = useAlertModal();
+    const { showError, showWarning, showInfo, showSuccess } = useAlertModal();
 
     const currentUserId = computed(() => authStore.user?.id);
 
@@ -2110,11 +2110,7 @@ export default {
         await createConversationWithTutor(tutorId);
       } catch (error) {
         console.error("❌ Error handling chat route:", error);
-        showNotification(
-          "Error",
-          "Failed to start conversation with tutor",
-          "error"
-        );
+        showError("Error", "Failed to start conversation with tutor");
       }
     };
 
@@ -2161,11 +2157,7 @@ export default {
         await selectConversationWithRoom(mappedConversation);
       } catch (error) {
         console.error("❌ Error creating conversation:", error);
-        showNotification(
-          "Error",
-          `Failed to create conversation: ${error.message}`,
-          "error"
-        );
+        showError("Error", `Failed to create conversation: ${error.message}`);
         throw error;
       }
     };
@@ -2822,11 +2814,7 @@ export default {
         messages.value = messages.value.filter(
           (msg) => msg.id !== `temp_${Date.now()}`
         );
-        showNotification(
-          "Error",
-          "Failed to send message. Please try again.",
-          "error"
-        );
+        showError("Error", "Failed to send message. Please try again.");
       } finally {
         isLoading.value = false;
       }
@@ -2950,11 +2938,7 @@ export default {
         }
       } catch (error) {
         console.error("Error creating conversation:", error);
-        showNotification(
-          "Error",
-          "Failed to create conversation: " + error.message,
-          "error"
-        );
+        showError("Error", "Failed to create conversation: " + error.message);
       }
     };
 
@@ -2989,11 +2973,7 @@ export default {
 
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        showNotification(
-          "Warning",
-          "Image is too large. Maximum size is 5MB.",
-          "warning"
-        );
+        showWarning("Warning", "Image is too large. Maximum size is 5MB.");
         event.target.value = "";
         return;
       }
@@ -3365,7 +3345,7 @@ export default {
         messageToDelete.value = null;
       } catch (error) {
         console.error("Error deleting message:", error);
-        showNotification("Error", "Failed to delete message", "error");
+        showError("Error", "Failed to delete message");
       } finally {
         isDeleting.value = false;
       }
@@ -3443,11 +3423,7 @@ export default {
         }, 3000);
       } catch (error) {
         console.error("Error creating booking offer:", error);
-        showNotification(
-          "Error",
-          "Failed to send booking request. Please try again.",
-          "error"
-        );
+        showError("Error", "Failed to send booking request. Please try again.");
       } finally {
         isCreatingBooking.value = false;
       }
@@ -3458,19 +3434,11 @@ export default {
 
       // Validate required fields
       if (!bookingProposal.value.proposedDate) {
-        showNotification(
-          "Warning",
-          "Please select a date for the booking",
-          "warning"
-        );
+        showWarning("Warning", "Please select a date for the booking");
         return;
       }
       if (!bookingProposal.value.proposedTime) {
-        showNotification(
-          "Warning",
-          "Please select a time for the booking",
-          "warning"
-        );
+        showWarning("Warning", "Please select a time for the booking");
         return;
       }
 
@@ -3599,17 +3567,12 @@ export default {
         selectedBookingOffer.value = null;
 
         // Show success message
-        showNotification(
-          "Success",
-          "Booking proposal sent successfully!",
-          "success"
-        );
+        showSuccess("Success", "Booking proposal sent successfully!");
       } catch (error) {
         console.error("Error creating booking proposal:", error);
-        showNotification(
+        showError(
           "Error",
-          "Failed to send booking proposal. Please try again.",
-          "error"
+          "Failed to send booking proposal. Please try again."
         );
       } finally {
         isCreatingProposal.value = false;
@@ -3682,17 +3645,12 @@ export default {
         selectedDate.value = null;
         selectedTimeSlot.value = null;
 
-        showNotification(
-          "Success",
-          "Booking proposal sent successfully!",
-          "success"
-        );
+        showSuccess("Success", "Booking proposal sent successfully!");
       } catch (error) {
         console.error("Error sending booking proposal:", error);
-        showNotification(
+        showError(
           "Error",
-          "Failed to send booking proposal. Please try again.",
-          "error"
+          "Failed to send booking proposal. Please try again."
         );
       } finally {
         isSendingProposal.value = false;
@@ -3765,10 +3723,9 @@ export default {
           await loadMessages(selectedConversation.value.id);
         }
 
-        showNotification(
+        showSuccess(
           "Success",
-          result.message || "Reschedule request accepted successfully",
-          "success"
+          result.message || "Reschedule request accepted successfully"
         );
       } catch (error) {
         console.error("Error accepting reschedule request:", error);
@@ -3825,11 +3782,7 @@ export default {
           await loadMessages(selectedConversation.value.id);
         }
 
-        showNotification(
-          "Info",
-          result.message || "Reschedule request declined",
-          "info"
-        );
+        showInfo("Info", result.message || "Reschedule request declined");
       } catch (error) {
         console.error("Error rejecting reschedule request:", error);
         showError(
@@ -4270,18 +4223,13 @@ export default {
         await creditService.refreshCredits();
 
         // Show success message
-        showNotification(
+        showSuccess(
           "Success",
-          "Booking confirmed successfully! The session has been added to your calendar.",
-          "success"
+          "Booking confirmed successfully! The session has been added to your calendar."
         );
       } catch (error) {
         console.error("Error confirming booking:", error);
-        showNotification(
-          "Error",
-          "Failed to confirm booking. Please try again.",
-          "error"
-        );
+        showError("Error", "Failed to confirm booking. Please try again.");
       } finally {
         isConfirmingBooking.value = false;
       }
