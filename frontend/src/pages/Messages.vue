@@ -2203,8 +2203,20 @@ export default {
       (newDate) => {
         if (!newDate) return;
 
-        // Check if the selected date is in the past
+        // Check if the selected date is valid before comparing
         const selectedDate = new Date(newDate);
+
+        // Skip validation if date is invalid (user might still be typing)
+        if (isNaN(selectedDate.getTime())) {
+          return;
+        }
+
+        // Check if the date string matches a complete date format (YYYY-MM-DD)
+        // This ensures we only validate when user has finished typing a complete date
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+          return;
+        }
+
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Reset time to midnight for date comparison
 
