@@ -3708,15 +3708,19 @@ export default {
         
         if (!bookingId) return null;
         
-        // Check if there's a subsequent reschedule_accepted or reschedule_rejected message
-        // for the same booking
-        for (let i = messages.value.indexOf(rescheduleMessage) + 1; i < messages.value.length; i++) {
-          const msg = messages.value[i];
+        // Check ALL messages (both before and after) for reschedule_accepted or reschedule_rejected
+        // Messages might not be in chronological order, so search the entire array
+        for (const msg of messages.value) {
           if (msg.messageType === 'reschedule_accepted' || msg.messageType === 'reschedule_rejected') {
             try {
               const msgData = JSON.parse(msg.content);
               if (msgData.bookingId === bookingId) {
-                return msg.messageType === 'reschedule_accepted' ? 'accepted' : 'rejected';
+                // Found a matching response - check if it's after the request (chronologically)
+                const requestTime = new Date(rescheduleMessage.createdAt).getTime();
+                const responseTime = new Date(msg.createdAt).getTime();
+                if (responseTime > requestTime) {
+                  return msg.messageType === 'reschedule_accepted' ? 'accepted' : 'rejected';
+                }
               }
             } catch (e) {
               continue;
