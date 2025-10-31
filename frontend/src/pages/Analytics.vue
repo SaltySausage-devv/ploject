@@ -46,7 +46,7 @@
           >
             <div class="card cyberpunk-card h-100">
               <div class="card-body text-center">
-                <div class="kpi-icon">
+                <div class="kpi-icon" :class="userType === 'tutor' ? 'tutor-theme' : 'student-theme'">
                   <i :class="kpi.icon"></i>
                 </div>
                 <h3 class="kpi-value">{{ kpi.value }}</h3>
@@ -186,6 +186,51 @@ export default {
     // Computed properties
     const userType = computed(() => authStore.userType)
     const userId = computed(() => authStore.user?.id)
+
+    // Chart color themes based on user type
+    const chartColors = computed(() => {
+      if (userType.value === 'tutor') {
+        // Tutor theme: Blue/Cyan/Purple gradient
+        return {
+          primary: '#3b82f6',      // Blue
+          primaryLight: 'rgba(59, 130, 246, 0.1)',
+          secondary: '#06b6d4',   // Cyan
+          tertiary: '#8b5cf6',    // Purple
+          accent: '#6366f1',      // Indigo
+          gradient: ['#3b82f6', '#06b6d4', '#8b5cf6', '#6366f1', '#06b6d4', '#3b82f6'],
+          pieColors: [
+            '#3b82f6',  // Blue
+            '#06b6d4',  // Cyan
+            '#8b5cf6',  // Purple
+            '#6366f1',  // Indigo
+            '#10b981',  // Green
+            '#14b8a6'   // Teal
+          ],
+          spending: '#06b6d4',    // Cyan for earnings
+          spendingLight: 'rgba(6, 182, 212, 0.1)'
+        }
+      } else {
+        // Student theme: Orange/Yellow (original)
+        return {
+          primary: '#ff8c42',      // Orange
+          primaryLight: 'rgba(255, 140, 66, 0.1)',
+          secondary: '#ffd23f',    // Yellow
+          tertiary: '#10b981',    // Green
+          accent: '#ef4444',       // Red
+          gradient: ['#ff8c42', '#ffd23f', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444'],
+          pieColors: [
+            '#ff8c42',  // Orange
+            '#ffd23f',  // Yellow
+            '#10b981',  // Green
+            '#3b82f6',  // Blue
+            '#8b5cf6',  // Purple
+            '#ef4444'   // Red
+          ],
+          spending: '#10b981',     // Green for spending
+          spendingLight: 'rgba(16, 185, 129, 0.1)'
+        }
+      }
+    })
 
     const getPageTitle = () => {
       switch (userType.value) {
@@ -486,6 +531,7 @@ export default {
         const ctx = mainChart.value.getContext('2d')
         // Ensure all chart data values are non-negative
         const chartData = (analyticsData.value.chartData || []).map(val => Math.max(0, parseFloat(val) || 0))
+        const colors = chartColors.value
         mainChartInstance = new Chart(ctx, {
           type: 'line',
           data: {
@@ -493,10 +539,14 @@ export default {
             datasets: [{
               label: getMainChartTitle(),
               data: chartData,
-              borderColor: '#ff8c42',
-              backgroundColor: 'rgba(255, 140, 66, 0.1)',
+              borderColor: colors.primary,
+              backgroundColor: colors.primaryLight,
               tension: 0.4,
-              fill: true
+              fill: true,
+              pointBackgroundColor: colors.primary,
+              pointBorderColor: colors.primary,
+              pointHoverBackgroundColor: colors.secondary,
+              pointHoverBorderColor: colors.primary
             }]
           },
           options: {
@@ -529,21 +579,28 @@ export default {
       if (secondaryChart.value) {
         try {
           const ctx = secondaryChart.value.getContext('2d')
+          const colors = chartColors.value
           
           // Prepare chart data - handle empty data gracefully
           const hasData = analyticsData.value.pieLabels && analyticsData.value.pieLabels.length > 0
+          
+          // Generate colors for pie chart - cycle through colors if more data points than colors
+          const generatePieColors = (count) => {
+            if (count === 0) return ['#666666']
+            const result = []
+            for (let i = 0; i < count; i++) {
+              result.push(colors.pieColors[i % colors.pieColors.length])
+            }
+            return result
+          }
+          
           const chartData = {
             labels: hasData ? analyticsData.value.pieLabels : ['No Data'],
             datasets: [{
               data: hasData ? analyticsData.value.pieData : [1],
-              backgroundColor: hasData ? [
-                '#ff8c42',
-                '#ffd23f',
-                '#10b981',
-                '#3b82f6',
-                '#8b5cf6',
-                '#ef4444'
-              ] : ['#666666']
+              backgroundColor: hasData 
+                ? generatePieColors(analyticsData.value.pieData.length)
+                : ['#666666']
             }]
           }
           
@@ -586,6 +643,7 @@ export default {
       if (spendingChart.value) {
         try {
           const ctx = spendingChart.value.getContext('2d')
+          const colors = chartColors.value
           // Ensure all spending data values are non-negative
           const spendingData = (analyticsData.value.spendingData || []).map(val => Math.max(0, parseFloat(val) || 0))
           spendingChartInstance = new Chart(ctx, {
@@ -595,10 +653,14 @@ export default {
               datasets: [{
                 label: getSpendingChartTitle(),
                 data: spendingData,
-                borderColor: '#10b981',
-                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderColor: colors.spending,
+                backgroundColor: colors.spendingLight,
                 tension: 0.4,
-                fill: true
+                fill: true,
+                pointBackgroundColor: colors.spending,
+                pointBorderColor: colors.spending,
+                pointHoverBackgroundColor: userType.value === 'tutor' ? colors.primary : colors.tertiary,
+                pointHoverBorderColor: colors.spending
               }]
             },
             options: {
@@ -643,6 +705,16 @@ export default {
       }
     })
 
+    // Watch for color theme changes and recreate charts
+    watch(chartColors, () => {
+      if (mainChart.value || secondaryChart.value || spendingChart.value) {
+        // Small delay to ensure DOM is ready
+        setTimeout(() => {
+          createCharts()
+        }, 100)
+      }
+    })
+
     // Load data on mount
     onMounted(() => {
       if (userId.value) {
@@ -662,6 +734,7 @@ export default {
       secondaryChart,
       spendingChart,
       userType,
+      chartColors,
       getPageTitle,
       getMainChartTitle,
       getSecondaryChartTitle,
@@ -809,7 +882,6 @@ export default {
 .kpi-icon {
   width: 60px;
   height: 60px;
-  background: linear-gradient(45deg, var(--cyber-orange), var(--cyber-yellow));
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -817,7 +889,16 @@ export default {
   margin: 0 auto 1rem;
   font-size: 1.5rem;
   color: white;
+}
+
+.kpi-icon.student-theme {
+  background: linear-gradient(45deg, var(--cyber-orange), var(--cyber-yellow));
   box-shadow: 0 0 20px rgba(255, 140, 66, 0.5);
+}
+
+.kpi-icon.tutor-theme {
+  background: linear-gradient(45deg, #3b82f6, #06b6d4);
+  box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
 }
 
 .kpi-value {
