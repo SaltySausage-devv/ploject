@@ -62,11 +62,11 @@
                       <div class="d-flex align-items-start">
                         <div
                           class="conversation-avatar bg-primary bg-opacity-10 rounded-circle d-flex align-items-center justify-content-center me-3 spring-smooth"
-                          style="width: 45px; height: 45px"
+                          style="width: 45px; height: 45px; flex-shrink: 0; min-width: 45px; min-height: 45px;"
                         >
                           <i class="fas fa-user text-primary"></i>
                         </div>
-                        <div class="flex-grow-1 d-flex flex-column">
+                        <div class="flex-grow-1 d-flex flex-column" style="min-width: 0; overflow: hidden;">
                           <!-- Top row: Name and Time -->
                           <div
                             class="d-flex justify-content-between align-items-center"
@@ -84,7 +84,7 @@
                           >
                             <div
                               class="d-flex align-items-center"
-                              style="max-width: 70%"
+                              style="max-width: 70%; min-width: 0; flex: 1;"
                             >
                               <div
                                 v-if="isImageMessage(conversation.lastMessage)"
@@ -112,6 +112,7 @@
                               <p
                                 v-else
                                 class="text-muted mb-0 small text-truncate"
+                                style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
                                 :class="{
                                   'fw-bold': conversation.unreadCount > 0,
                                 }"
@@ -5702,6 +5703,8 @@ h6 {
   background: rgba(255, 140, 66, 0.2) !important;
   border: 2px solid var(--cyber-orange, #ff8c42);
   transition: all 0.3s ease;
+  flex-shrink: 0 !important;
+  aspect-ratio: 1 / 1 !important;
 }
 
 .conversation-avatar i,
