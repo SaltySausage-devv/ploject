@@ -1041,8 +1041,12 @@
                         </div>
                         
                         <!-- Fallback for unknown message types - try to detect booking confirmation -->
+                        <!-- Hide reschedule_accepted/reschedule_rejected when sender is current user (they accepted/declined) -->
                         <div
-                          v-else
+                          v-else-if="
+                            message.messageType !== 'reschedule_accepted' &&
+                            message.messageType !== 'reschedule_rejected'
+                          "
                           class="message-content"
                         >
                           <!-- Check if content looks like booking confirmation JSON -->
@@ -1084,6 +1088,8 @@
                             <strong>Unknown message type:</strong> {{ message.messageType || 'undefined' }}
                           </div>
                         </div>
+                        <!-- Hidden message: reschedule_accepted/rejected when sender is current user (receiver who accepted/declined) -->
+                        <div v-else style="display: none;"></div>
                         <div class="message-footer">
                           <div class="message-time">
                             {{ formatTime(message.createdAt) }}
