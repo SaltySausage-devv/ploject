@@ -90,7 +90,7 @@
                     <div class="notification-content">
                       <p class="notification-title">{{ notification.title }}</p>
                       <small class="notification-time">{{
-                        notification.time
+                        formatTime(notification.timestamp || notification.created_at)
                       }}</small>
                     </div>
                     <div
@@ -262,7 +262,7 @@
                     <div class="notification-content">
                       <p class="notification-title">{{ notification.title }}</p>
                       <small class="notification-time">{{
-                        notification.time
+                        formatTime(notification.timestamp || notification.created_at)
                       }}</small>
                     </div>
                     <div
@@ -408,8 +408,15 @@ export default {
           // Filter out notifications older than 7 days
           const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
           notifications.value = parsed.filter((n) => {
-            const notifTime = new Date(n.timestamp).getTime();
+            // Support both timestamp (from localStorage) and created_at (from API)
+            const notifTime = new Date(n.timestamp || n.created_at || 0).getTime();
             return notifTime > sevenDaysAgo;
+          });
+          
+          // Remove old 'time' field if present (migrate to dynamic timestamp formatting)
+          notifications.value = notifications.value.map(n => {
+            const { time, ...rest } = n; // Remove 'time' field
+            return rest;
           });
           
           console.log(
@@ -910,13 +917,13 @@ export default {
           }
 
           // Add to notifications list
+          // Note: Don't store 'time' field - format it dynamically in template using timestamp
           const notification = {
             id: message.id,
             icon: iconClass,
             title: title,
             message: messagePreview,
-            time: formatTime(message.created_at),
-            timestamp: message.created_at,
+            timestamp: message.created_at, // Store timestamp, format dynamically in template
             conversationId: message.conversation_id,
             bookingId: bookingId, // Store bookingId for reschedule_request notifications
             type: message.message_type, // Store message type to filter reschedule responses
