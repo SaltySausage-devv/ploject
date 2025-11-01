@@ -90,7 +90,7 @@
                     <div class="notification-content">
                       <p class="notification-title">{{ notification.title }}</p>
                       <small class="notification-time">{{
-                        formatTime(notification.timestamp || notification.created_at)
+                        formatTime(notification?.timestamp || notification?.created_at)
                       }}</small>
                     </div>
                     <div
@@ -262,7 +262,7 @@
                     <div class="notification-content">
                       <p class="notification-title">{{ notification.title }}</p>
                       <small class="notification-time">{{
-                        formatTime(notification.timestamp || notification.created_at)
+                        formatTime(notification?.timestamp || notification?.created_at)
                       }}</small>
                     </div>
                     <div
@@ -407,17 +407,22 @@ export default {
           
           // Filter out notifications older than 7 days
           const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-          notifications.value = parsed.filter((n) => {
-            // Support both timestamp (from localStorage) and created_at (from API)
-            const notifTime = new Date(n.timestamp || n.created_at || 0).getTime();
-            return notifTime > sevenDaysAgo;
-          });
-          
-          // Remove old 'time' field if present (migrate to dynamic timestamp formatting)
-          notifications.value = notifications.value.map(n => {
-            const { time, ...rest } = n; // Remove 'time' field
-            return rest;
-          });
+          notifications.value = parsed
+            .filter((n) => {
+              // Support both timestamp (from localStorage) and created_at (from API)
+              try {
+                const notifTime = new Date(n.timestamp || n.created_at || 0).getTime();
+                return notifTime > sevenDaysAgo && !isNaN(notifTime);
+              } catch (e) {
+                console.warn("🔔 NAVBAR: Invalid notification timestamp:", n);
+                return false;
+              }
+            })
+            .map((n) => {
+              // Remove old 'time' field if present (migrate to dynamic timestamp formatting)
+              const { time, ...rest } = n;
+              return rest;
+            });
           
           console.log(
             "🔔 NAVBAR: ✅ Loaded",
@@ -1154,6 +1159,7 @@ export default {
       toggleShowAllNotifications,
       handleNotificationClick,
       unreadCount,
+      formatTime, // Expose formatTime function to template
     };
   },
 };
