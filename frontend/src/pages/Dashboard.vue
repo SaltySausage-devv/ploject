@@ -187,6 +187,7 @@ export default {
     const error = ref(null);
 
     // Helper to format time ago
+    // Calculates: current time - timestamp, rounds to 2 decimal places
     const formatTimeAgo = (dateString) => {
       if (!dateString) {
         console.warn("⚠️ formatTimeAgo: Missing dateString, returning 'Just now'");
@@ -202,6 +203,7 @@ export default {
         return "Just now";
       }
       
+      // Calculate difference: current time - timestamp
       const diffMs = now - date;
       
       // If date is in the future, return "Just now" (shouldn't happen but handle gracefully)
@@ -210,19 +212,42 @@ export default {
         return "Just now";
       }
       
-      const diffMins = Math.floor(diffMs / 60000);
-      const diffHours = Math.floor(diffMs / 3600000);
-      const diffDays = Math.floor(diffMs / 86400000);
-      const diffSecs = Math.floor(diffMs / 1000);
+      // Calculate precise differences in seconds, minutes, hours, days
+      const diffSecs = diffMs / 1000;
+      const diffMins = diffMs / 60000;
+      const diffHours = diffMs / 3600000;
+      const diffDays = diffMs / 86400000;
 
-      // Show "Just now" for less than 1 minute (0-59 seconds)
-      if (diffMins < 1) {
-        if (diffSecs < 5) return "Just now";
-        return `${diffSecs} seconds ago`;
+      // Show "Just now" for less than 5 seconds
+      if (diffSecs < 5) {
+        return "Just now";
       }
-      if (diffMins < 60) return `${diffMins} ${diffMins === 1 ? "minute" : "minutes"} ago`;
-      if (diffHours < 24) return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`;
-      if (diffDays < 7) return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`;
+      
+      // For less than 1 minute: show seconds with 2 decimal places
+      if (diffMins < 1) {
+        const roundedSecs = Math.round(diffSecs * 100) / 100; // Round to 2dp
+        return `${roundedSecs.toFixed(2)} seconds ago`;
+      }
+      
+      // For less than 1 hour: show minutes with 2 decimal places
+      if (diffHours < 1) {
+        const roundedMins = Math.round(diffMins * 100) / 100; // Round to 2dp
+        return `${roundedMins.toFixed(2)} ${roundedMins === 1 ? "minute" : "minutes"} ago`;
+      }
+      
+      // For less than 24 hours: show hours with 2 decimal places
+      if (diffDays < 1) {
+        const roundedHours = Math.round(diffHours * 100) / 100; // Round to 2dp
+        return `${roundedHours.toFixed(2)} ${roundedHours === 1 ? "hour" : "hours"} ago`;
+      }
+      
+      // For less than 7 days: show days with 2 decimal places
+      if (diffDays < 7) {
+        const roundedDays = Math.round(diffDays * 100) / 100; // Round to 2dp
+        return `${roundedDays.toFixed(2)} ${roundedDays === 1 ? "day" : "days"} ago`;
+      }
+      
+      // For older than 7 days: show the actual date
       return date.toLocaleDateString();
     };
 
@@ -299,6 +324,30 @@ export default {
 
           // Process notifications (messages, booking confirmations, booking requests)
           notifications.forEach((notification) => {
+            // Use timestamp field (from localStorage) or created_at (from API)
+            const notificationTimestamp = notification.timestamp || notification.created_at;
+            
+            // Debug logging for timestamp
+            if (!notificationTimestamp) {
+              console.warn("⚠️ Dashboard: Notification missing timestamp:", {
+                id: notification.id,
+                hasTimestamp: !!notification.timestamp,
+                hasCreatedAt: !!notification.created_at,
+                notification: notification
+              });
+            } else {
+              const date = new Date(notificationTimestamp);
+              const now = new Date();
+              const diffMs = now - date;
+              const diffHours = Math.floor(diffMs / 3600000);
+              console.log("📅 Dashboard: Notification timestamp:", {
+                id: notification.id,
+                timestamp: notificationTimestamp,
+                diffHours: diffHours,
+                formatted: formatTimeAgo(notificationTimestamp)
+              });
+            }
+            
             const message = notification.message || notification.subject || "";
             const data = notification.data || {};
             
@@ -333,26 +382,32 @@ export default {
               badgeClass = "bg-success";
             }
 
+            // Use timestamp field (from localStorage) or created_at (from API)
+            const notificationTimestamp = notification.timestamp || notification.created_at;
+            
             activities.push({
               icon: icon,
               title: title,
-              time: formatTimeAgo(notification.created_at),
+              time: formatTimeAgo(notificationTimestamp),
               status: status,
               badgeClass: badgeClass,
-              timestamp: notification.created_at,
+              timestamp: notificationTimestamp,
             });
           });
 
           // Process reviews (for tutors who received reviews)
           if (userType.value === "tutor" && reviews.length > 0) {
             reviews.forEach((review) => {
+              // Use timestamp field (from localStorage) or created_at (from API)
+              const reviewTimestamp = review.timestamp || review.created_at;
+              
               activities.push({
                 icon: "fas fa-star",
                 title: `Received ${review.rating}-star review`,
-                time: formatTimeAgo(review.created_at),
+                time: formatTimeAgo(reviewTimestamp),
                 status: "Completed",
                 badgeClass: "bg-success",
-                timestamp: review.created_at,
+                timestamp: reviewTimestamp,
               });
             });
           }

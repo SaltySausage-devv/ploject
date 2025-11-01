@@ -500,6 +500,7 @@ export default {
       showAllNotifications.value = !showAllNotifications.value;
     };
 
+    // Calculates: current time - timestamp, rounds to 2 decimal places
     const formatTime = (timestamp) => {
       if (!timestamp) return "Just now";
 
@@ -509,10 +510,37 @@ export default {
       const now = new Date();
       const diff = now - date;
 
-      if (diff < 60000) return "Just now";
-      if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
-      if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-      if (diff < 172800000) return "Yesterday";
+      // Calculate precise differences
+      const diffSecs = diff / 1000;
+      const diffMins = diff / 60000;
+      const diffHours = diff / 3600000;
+      const diffDays = diff / 86400000;
+
+      // Show "Just now" for less than 5 seconds
+      if (diffSecs < 5) return "Just now";
+      
+      // For less than 1 minute: show seconds with 2 decimal places
+      if (diffMins < 1) {
+        const roundedSecs = Math.round(diffSecs * 100) / 100; // Round to 2dp
+        return `${roundedSecs.toFixed(2)}s ago`;
+      }
+      
+      // For less than 1 hour: show minutes with 2 decimal places
+      if (diffHours < 1) {
+        const roundedMins = Math.round(diffMins * 100) / 100; // Round to 2dp
+        return `${roundedMins.toFixed(2)} min ago`;
+      }
+      
+      // For less than 24 hours: show hours with 2 decimal places
+      if (diffDays < 1) {
+        const roundedHours = Math.round(diffHours * 100) / 100; // Round to 2dp
+        return `${roundedHours.toFixed(2)}h ago`;
+      }
+      
+      // For yesterday: show "Yesterday"
+      if (diffDays < 2) return "Yesterday";
+      
+      // For older: show the actual date
       return date.toLocaleDateString();
     };
 
