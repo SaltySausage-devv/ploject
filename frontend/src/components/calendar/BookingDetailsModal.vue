@@ -333,17 +333,33 @@ export default {
       );
     });
 
+    // Helper: Check if session is locked (attendance marked)
+    const isSessionLocked = computed(() => {
+      // Once attendance is marked, session becomes locked and cannot be rescheduled or cancelled
+      const hasAttendanceMarked = props.booking.attendance_status && 
+        (props.booking.attendance_status === 'attended' || props.booking.attendance_status === 'no_show');
+      return hasAttendanceMarked;
+    });
+
     const canReschedule = computed(() => {
+      // Cannot reschedule if:
+      // 1. Status is not scheduled or confirmed
+      // 2. Attendance has been marked (session is locked)
       return (
         ["scheduled", "confirmed"].includes(props.booking.status) &&
-        (isTutor.value || isStudent.value)
+        (isTutor.value || isStudent.value) &&
+        !isSessionLocked.value // Cannot reschedule after attendance is marked
       );
     });
 
     const canCancel = computed(() => {
+      // Cannot cancel if:
+      // 1. Status is not scheduled or confirmed
+      // 2. Attendance has been marked (session is locked)
       return (
         ["scheduled", "confirmed"].includes(props.booking.status) &&
-        (isTutor.value || isStudent.value)
+        (isTutor.value || isStudent.value) &&
+        !isSessionLocked.value // Cannot cancel after attendance is marked
       );
     });
 
@@ -370,11 +386,12 @@ export default {
       // Cannot complete if already completed
       const hasAttendanceMarked = props.booking.attendance_status && 
         (props.booking.attendance_status === 'attended' || props.booking.attendance_status === 'no_show');
+      const pastBooking = isPastBooking();
       
       return (
         props.booking.status === "confirmed" &&
         isTutor.value &&
-        isPastBooking() &&
+        pastBooking &&
         hasAttendanceMarked && // Must have attendance marked first (sequential flow)
         props.booking.status !== "completed" // Not already completed
       );
@@ -580,7 +597,6 @@ export default {
     }
 
     function handleAttendanceMarked() {
-      showMarkAttendanceModal.value = false;
       emit("updated");
     }
 

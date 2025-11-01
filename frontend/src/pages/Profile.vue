@@ -399,15 +399,8 @@ export default {
     }
 
     const logout = async () => {
-      console.log("🚪 Profile: Starting logout process...");
-      
-      // Clear auth state and wait for Supabase to sign out
-      await authStore.logout();
-      
-      console.log("🚪 Profile: Logout completed, redirecting to home...");
-      
-      // Navigate to home page with full page reload
-      window.location.assign("/");
+      await authStore.logout()
+      router.push('/')
     }
 
     const handleTutorProfileSaved = () => {

@@ -740,14 +740,16 @@ export default {
           message.message_type === 'reschedule_request' ||
           message.message_type === 'reschedule_accepted' ||
           message.message_type === 'reschedule_rejected' ||
-          message.message_type === 'booking_cancelled';
+          message.message_type === 'booking_cancelled' ||
+          message.message_type === 'session_completed';
 
         // For booking-related messages (proposal, confirmation, offer), only notify the receiver (not the sender)
         const isBookingMessage =
           message.message_type === 'booking_cancelled' ||
           message.message_type === 'booking_proposal' ||
           message.message_type === 'booking_confirmation' ||
-          message.message_type === 'booking_offer';
+          message.message_type === 'booking_offer' ||
+          message.message_type === 'session_completed';
 
         // For reschedule requests, only notify the RECEIVER (not the requester/sender)
         const isRescheduleMessage = 
@@ -836,6 +838,8 @@ export default {
             messagePreview = "✅ Booking confirmed";
           } else if (message.message_type === "booking_cancelled") {
             messagePreview = "❌ Booking cancelled";
+          } else if (message.message_type === "session_completed") {
+            messagePreview = "✅ Session completed";
           } else if (message.content) {
             messagePreview = message.content.substring(0, 50);
           } else {
@@ -873,6 +877,8 @@ export default {
             iconClass = "fas fa-calendar-times text-danger";
           } else if (message.message_type === 'booking_cancelled') {
             iconClass = "fas fa-ban text-danger";
+          } else if (message.message_type === 'session_completed') {
+            iconClass = "fas fa-check-double text-success";
           } else if (isSystemMessage) {
             iconClass = "fas fa-bell";
           }

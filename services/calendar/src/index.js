@@ -245,7 +245,12 @@ app.get('/calendar', verifyToken, async (req, res) => {
       reschedule_reason: booking.reschedule_reason,
       reschedule_requested_at: booking.reschedule_requested_at,
       reschedule_responded_at: booking.reschedule_responded_at,
-      reschedule_response_message: booking.reschedule_response_message
+      reschedule_response_message: booking.reschedule_response_message,
+      // Include attendance fields
+      attendance_status: booking.attendance_status,
+      attendance_marked_at: booking.attendance_marked_at,
+      session_notes: booking.session_notes,
+      proof_photo_url: booking.proof_photo_url
     }));
 
     console.log(`📤 Sending ${formattedBookings.length} formatted bookings`);
@@ -1199,7 +1204,19 @@ app.post('/bookings/:id/complete', verifyToken, async (req, res) => {
     // Get booking and verify user is involved
     const { data: booking, error: fetchError } = await supabase
       .from('bookings')
-      .select('*')
+      .select(`
+        *,
+        tutor:tutor_id (
+          id,
+          first_name,
+          last_name
+        ),
+        student:student_id (
+          id,
+          first_name,
+          last_name
+        )
+      `)
       .eq('id', id)
       .single();
 
@@ -1292,13 +1309,11 @@ app.post('/bookings/:id/complete', verifyToken, async (req, res) => {
 
     console.log('✅ Credits transferred successfully');
 
-    // Update booking status to completed and payment status to paid
+    // Update booking status to completed
     const { data: updatedBooking, error: updateError } = await supabase
       .from('bookings')
       .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        payment_status: 'paid'
+        status: 'completed'
       })
       .eq('id', id)
       .select()
@@ -1306,6 +1321,134 @@ app.post('/bookings/:id/complete', verifyToken, async (req, res) => {
 
     if (updateError) {
       throw updateError;
+    }
+
+    // Send notifications to both tutor and student
+    console.log(`📧 Sending completion notifications to both parties`);
+    try {
+      // Find or create conversation between tutor and student
+      console.log(`📧 Looking for existing conversation between tutor ${booking.tutor_id} and student ${booking.student_id}`);
+      
+      const { data: existingConversations } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`and(participant1_id.eq.${booking.tutor_id},participant2_id.eq.${booking.student_id}),and(participant1_id.eq.${booking.student_id},participant2_id.eq.${booking.tutor_id})`)
+        .limit(1);
+
+      console.log(`📧 Found existing conversations:`, existingConversations);
+
+      let conversationId;
+      if (existingConversations && existingConversations.length > 0) {
+        conversationId = existingConversations[0].id;
+        console.log(`📧 Using existing conversation: ${conversationId}`);
+      } else {
+        // Create new conversation if none exists
+        const { data: newConversation, error: conversationError } = await supabase
+          .from('conversations')
+          .insert({
+            participant1_id: booking.tutor_id,
+            participant2_id: booking.student_id,
+            created_at: new Date().toISOString()
+          })
+          .select()
+          .single();
+
+        if (conversationError) {
+          console.error('Failed to create conversation for completion notification:', conversationError);
+        } else {
+          conversationId = newConversation.id;
+        }
+      }
+
+      if (conversationId) {
+        // Format the completion message data for both parties
+        const messageData = {
+          bookingId: booking.id,
+          subject: booking.subject || 'Tutoring Session',
+          startTime: booking.start_time,
+          endTime: booking.end_time,
+          location: booking.location,
+          creditsTransfered: creditsAmount,
+          tutorId: booking.tutor_id,
+          studentId: booking.student_id
+        };
+
+        const messageContent = JSON.stringify(messageData);
+        console.log(`📧 Message content to send:`, messageContent);
+        
+        // Get auth token for messaging service
+        const authToken = req.headers.authorization?.split(' ')[1];
+        
+        // Send message via messaging service (with Socket.IO broadcast to both parties)
+        const sent = await sendMessageViaMessagingService(
+          conversationId,
+          messageContent,
+          'session_completed',
+          authToken
+        );
+
+        if (sent) {
+          console.log(`✅ Completion notification sent to both parties via messaging service`);
+        } else {
+          console.error('Failed to send completion notification via messaging service');
+        }
+
+        // Also send notifications via notifications service
+        try {
+          const notificationsServiceUrl = process.env.NOTIFICATIONS_SERVICE_URL || 'http://localhost:3007';
+          
+          // Send notification to tutor
+          await axios.post(
+            `${notificationsServiceUrl}/notifications/send`,
+            {
+              userId: booking.tutor_id,
+              type: 'push',
+              subject: 'Session Completed',
+              message: `Your session with ${booking.student?.first_name || 'Student'} has been completed. ${creditsAmount} credits have been added to your account.`,
+              data: {
+                bookingId: booking.id,
+                conversationId: conversationId,
+                notificationType: 'session_completed'
+              }
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+
+          // Send notification to student
+          await axios.post(
+            `${notificationsServiceUrl}/notifications/send`,
+            {
+              userId: booking.student_id,
+              type: 'push',
+              subject: 'Session Completed',
+              message: `Your session with ${booking.tutor?.first_name || 'Tutor'} has been completed. Please leave a review!`,
+              data: {
+                bookingId: booking.id,
+                conversationId: conversationId,
+                notificationType: 'session_completed'
+              }
+            },
+            {
+              headers: {
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          console.log(`✅ Persistent notifications created for both parties`);
+        } catch (notifServiceError) {
+          console.error('Failed to create persistent notifications:', notifServiceError.message);
+          // Don't fail the operation if notification service is down
+        }
+      }
+    } catch (notificationError) {
+      // Don't fail the whole operation if notification fails
+      console.error('Error sending completion notification:', notificationError);
     }
 
     res.json({ 

@@ -116,7 +116,7 @@
       <!-- No emojis - just pure globe and line animations -->
     </div>
 
-    <div class="container py-5">
+    <div class="container pt-4 pt-lg-5 pb-3 pb-lg-4">
       <!-- Search Header -->
       <div class="row mb-5">
         <div class="col-12">

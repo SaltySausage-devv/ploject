@@ -315,7 +315,7 @@ const createConversationSchema = Joi.object({
 const sendMessageSchema = Joi.object({
   conversationId: Joi.string().uuid().required(),
   content: Joi.string().max(1000).required(),
-  messageType: Joi.string().valid('text', 'image', 'file', 'document', 'booking_offer', 'booking_proposal', 'booking_confirmation', 'booking_rejection').default('text'),
+  messageType: Joi.string().valid('text', 'image', 'file', 'document', 'booking_offer', 'booking_proposal', 'booking_confirmation', 'booking_rejection', 'reschedule_request', 'reschedule_accepted', 'reschedule_rejected', 'booking_cancelled', 'attendance_marked', 'session_completed', 'attendance_notification').default('text'),
   bookingOfferId: Joi.string().uuid().allow(null).optional()
 });
 
@@ -323,7 +323,8 @@ const createBookingOfferSchema = Joi.object({
   conversationId: Joi.string().uuid().required(),
   isOnline: Joi.boolean().default(false),
   tuteeLocation: Joi.string().allow(null, '').optional(),
-  notes: Joi.string().max(500).allow(null, '').optional()
+  notes: Joi.string().max(500).allow(null, '').optional(),
+  subject: Joi.string().allow(null, '').optional()
 });
 
 const createBookingProposalSchema = Joi.object({
@@ -567,6 +568,8 @@ app.get('/messaging/conversations/:id/messages', verifyToken, async (req, res) =
 
     const offset = (page - 1) * limit;
 
+    console.log(`📨 Fetching messages for conversation: ${id}`);
+
       const { data: messages, error } = await supabase
         .from('messages')
         .select(`
@@ -583,9 +586,11 @@ app.get('/messaging/conversations/:id/messages', verifyToken, async (req, res) =
         .range(offset, offset + limit - 1);
 
     if (error) {
+      console.error('📨 Messages fetch error:', error);
       throw error;
     }
 
+    console.log(`📨 Fetched ${messages?.length || 0} messages`);
     res.json({ messages: messages.reverse() });
   } catch (error) {
     console.error('Messages fetch error:', error);
@@ -939,7 +944,7 @@ app.post('/messaging/booking-offers', verifyToken, async (req, res) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { conversationId, isOnline, tuteeLocation, notes } = value;
+    const { conversationId, isOnline, tuteeLocation, notes, subject } = value;
 
     // Verify user is participant in conversation
     const { data: conversation } = await supabase
@@ -969,6 +974,7 @@ app.post('/messaging/booking-offers', verifyToken, async (req, res) => {
         is_online: isOnline,
         tutee_location: tuteeLocation,
         notes: notes,
+        subject: subject,
         status: 'pending',
         created_at: new Date().toISOString()
       })
@@ -1291,14 +1297,14 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
       console.log(`💰 Booking credit calculation: ${hourlyRate} credits/hour × ${sessionDurationHours} hours = ${finalTotalAmount} credits`);
     }
 
-    // Get tutor's primary subject for the booking
+    // Get tutor's primary subject for the booking (fallback if no subject selected)
     const { data: tutorProfileData } = await supabase
       .from('tutor_profiles')
       .select('subjects')
       .eq('user_id', bookingOffer.tutor_id)
       .single();
     
-    const primarySubject = tutorProfileData?.subjects?.[0] || 'General Tutoring';
+    const primarySubject = bookingOffer.subject || tutorProfileData?.subjects?.[0] || 'General Tutoring';
     const subjectLevel = tutorProfileData?.subjects?.length > 1 ? 'Multi-Subject' : 'Single Subject';
 
     // Create booking record in bookings table
@@ -1307,8 +1313,8 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
       .insert({
         tutor_id: bookingOffer.tutor_id,
         student_id: bookingOffer.tutee_id,
-        title: `${primarySubject} Session`, // Dynamic title based on tutor's subject
-        subject: primarySubject, // Use tutor's primary subject
+        title: `${primarySubject} Session`, // Dynamic title based on selected subject
+        subject: primarySubject, // Use selected subject or tutor's primary subject
         level: subjectLevel, // Dynamic level based on tutor's subjects
         start_time: bookingOffer.proposed_time,
         end_time: bookingOffer.proposed_end_time || new Date(new Date(bookingOffer.proposed_time).getTime() + (bookingOffer.duration || 60) * 60 * 1000), // Use proposed_end_time or calculate from duration
@@ -1722,7 +1728,9 @@ app.post('/messaging/system-message', verifyToken, async (req, res) => {
     const isSystemMessage = messageType === 'booking_cancelled' || 
                            messageType === 'reschedule_request' || 
                            messageType === 'reschedule_accepted' || 
-                           messageType === 'reschedule_rejected';
+                           messageType === 'reschedule_rejected' ||
+                           messageType === 'session_completed' ||
+                           messageType === 'attendance_notification';
 
     if (!isSystemMessage && 
         (conversation.participant1_id !== req.user.userId && 
@@ -1768,6 +1776,8 @@ app.post('/messaging/system-message', verifyToken, async (req, res) => {
                               messageType === 'reschedule_accepted' ? 'Reschedule request accepted' :
                               messageType === 'reschedule_rejected' ? 'Reschedule request declined' : 
                               messageType === 'booking_cancelled' ? 'Booking cancelled' :
+                              messageType === 'session_completed' ? 'Session completed' :
+                              messageType === 'attendance_notification' ? 'Attendance marked' :
                               'New message';
 
     await supabase

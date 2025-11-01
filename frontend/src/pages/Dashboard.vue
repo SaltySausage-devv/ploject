@@ -1,6 +1,6 @@
 <template>
   <div class="dashboard-page">
-    <div class="container py-5">
+    <div class="container pt-4 pt-lg-5 pb-3 pb-lg-4">
       <!-- Welcome Section -->
       <motion.div
         :initial="{ opacity: 0, y: 30 }"

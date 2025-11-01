@@ -1,6 +1,6 @@
 <template>
   <div class="messages-page">
-    <div class="container-fluid pt-2 pb-4 px-3 px-lg-5">
+    <div class="container-fluid pt-4 pt-lg-5 pb-3 pb-lg-4 px-3 px-lg-5">
       <div class="row g-3 g-lg-4 messages-row">
         <!-- Conversations Sidebar -->
         <div
@@ -859,6 +859,93 @@
                           </div>
                         </div>
 
+                        <!-- Session Completed Message -->
+                        <div
+                          v-else-if="
+                            message.messageType === 'session_completed'
+                          "
+                          class="message-content booking-message session-completed"
+                        >
+                          <div class="booking-header">
+                            <i class="fas fa-check-double me-2"></i>
+                            <span class="booking-title">Session Completed</span>
+                          </div>
+                          <div class="booking-details">
+                            <div v-if="getBookingCompletionData(message)">
+                              <p class="mb-2 text-success">
+                                <i class="fas fa-check-circle me-1"></i>
+                                <span>Your session has been completed</span>
+                              </p>
+                              <p class="mb-2">
+                                <strong>Subject:</strong>
+                                {{ getBookingCompletionData(message)?.subject || 'N/A' }}
+                              </p>
+                              <p class="mb-2">
+                                <strong>Session Time:</strong>
+                                {{
+                                  getBookingCompletionData(message)?.startTime 
+                                    ? formatDateTime(getBookingCompletionData(message).startTime)
+                                    : 'N/A'
+                                }}
+                                -
+                                {{
+                                  getBookingCompletionData(message)?.endTime
+                                    ? formatTimeOnly(getBookingCompletionData(message).endTime)
+                                    : 'N/A'
+                                }}
+                              </p>
+                              <p class="mb-2" v-if="getBookingCompletionData(message)?.location">
+                                <strong>Location:</strong>
+                                {{ getBookingCompletionData(message).location || "Online" }}
+                              </p>
+                              <div class="completion-info" v-if="getBookingCompletionData(message)?.creditsTransfered">
+                                <p class="mb-1">
+                                  <strong>Credits:</strong>
+                                </p>
+                                <div class="text-success" v-if="isTutor">
+                                  <i class="fas fa-check-circle me-1"></i>
+                                  <span>
+                                    You received
+                                    {{
+                                      Number(
+                                        getBookingCompletionData(message).creditsTransfered.amount
+                                      ).toFixed(2)
+                                    }}
+                                    credits
+                                  </span>
+                                </div>
+                                <div class="text-info" v-else>
+                                  <i class="fas fa-info-circle me-1"></i>
+                                  Credits have been transferred to the tutor
+                                </div>
+                              </div>
+                            </div>
+                            <div v-else>
+                              <p class="mb-2 text-muted">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Session completion details could not be loaded.
+                              </p>
+                            </div>
+                            <div class="booking-actions">
+                              <button
+                                v-if="!isTutor"
+                                class="btn btn-outline-success btn-sm"
+                                @click="showSessionEndModalForCompleted(message)"
+                              >
+                                <i class="fas fa-star me-1"></i>
+                                Leave a Review
+                              </button>
+                              <button
+                                class="btn btn-outline-primary btn-sm"
+                                @click="$router.push('/calendar')"
+                              >
+                                <i class="fas fa-calendar-check me-1"></i>
+                                View in Calendar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
                         <!-- Booking Cancelled Message -->
                         <div
                           v-else-if="
@@ -1396,6 +1483,28 @@
                   <i class="fas fa-map-marker-alt me-2"></i>On-site Session
                 </label>
               </div>
+            </div>
+
+            <!-- Subject Selection -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Subject</label>
+              <select
+                class="form-select"
+                v-model="bookingOffer.subject"
+                required
+              >
+                <option value="" disabled>Please select a subject</option>
+                <option
+                  v-for="subject in tutorSubjects"
+                  :key="subject"
+                  :value="subject"
+                >
+                  {{ subject }}
+                </option>
+              </select>
+              <small v-if="tutorSubjectsLoading" class="text-muted">
+                <i class="fas fa-spinner fa-spin me-1"></i>Loading subjects...
+              </small>
             </div>
 
             <!-- Location (for on-site) -->
@@ -1962,6 +2071,9 @@ export default {
     const { showError, showWarning, showInfo, showSuccess } = useAlertModal();
 
     const currentUserId = computed(() => authStore.user?.id);
+    
+    const isTutor = computed(() => authStore.user?.user_type === 'tutor');
+    const isStudent = computed(() => authStore.user?.user_type === 'student');
 
     // Get today's date in YYYY-MM-DD format for date input min attribute
     const today = computed(() => {
@@ -2027,6 +2139,7 @@ export default {
       isOnline: true,
       tuteeLocation: "",
       notes: "",
+      subject: "",
     });
 
     // Booking proposal form data
@@ -2044,7 +2157,12 @@ export default {
     const tutorProfile = ref({
       hourlyRate: 0,
       loading: false,
+      subjects: [],
     });
+
+    // Tutor subjects for booking selection
+    const tutorSubjects = ref([]);
+    const tutorSubjectsLoading = ref(false);
 
     // Calendar variables
     const currentMonth = ref(new Date().getMonth());
@@ -2088,6 +2206,9 @@ export default {
           predictions.value.tutee = [];
           showDropdown.value.tutee = false;
           selectedIndex.value.tutee = -1;
+        } else if (modalOpen && selectedConversation.value && authStore.user?.user_type === 'student') {
+          // Load tutor subjects when opening booking modal for students
+          await loadTutorSubjects();
         }
       }
     );
@@ -2691,7 +2812,14 @@ export default {
           conversations.value[conversationIndex].unreadCount = 0;
         }
       } catch (error) {
-        console.error("Error loading messages:", error);
+        console.error("❌ Error loading messages:", error);
+        console.error("❌ Error details:", {
+          message: error.message,
+          stack: error.stack,
+          response: error.response,
+          status: error.response?.status,
+          data: error.response?.data
+        });
         messages.value = [];
         resetBookingStatusState();
         showError("Error", "Failed to load messages. Please try again.");
@@ -3386,6 +3514,7 @@ export default {
             isOnline: bookingOffer.value.isOnline,
             tuteeLocation: bookingOffer.value.tuteeLocation,
             notes: bookingOffer.value.notes,
+            subject: bookingOffer.value.subject,
           }),
         });
 
@@ -3401,6 +3530,7 @@ export default {
           isOnline: true,
           tuteeLocation: "",
           notes: "",
+          subject: "",
         };
         showBookingOfferModal.value = false;
 
@@ -3822,6 +3952,7 @@ export default {
         "reschedule_accepted",
         "reschedule_rejected",
         "attendance_notification",
+        "session_completed",
       ];
 
       // If message type is not a booking type, don't try to parse
@@ -3924,6 +4055,8 @@ export default {
         return "❌ Booking cancelled";
       } else if (messageType === "attendance_notification") {
         return "📋 Attendance marked";
+      } else if (messageType === "session_completed") {
+        return "✅ Session completed";
       } else if (content && content.includes("bookingOfferId")) {
         // Handle raw booking JSON that wasn't properly typed
         console.log('🔍 Detected booking JSON, returning "Booking offer sent"');
@@ -4114,6 +4247,40 @@ export default {
         console.error("Error loading tutor profile for earnings:", error);
       } finally {
         tutorProfile.value.loading = false;
+      }
+    };
+
+    // Function to load tutor subjects for subject selection
+    const loadTutorSubjects = async () => {
+      if (!selectedConversation.value?.participant?.id) return;
+
+      try {
+        tutorSubjectsLoading.value = true;
+        const tutorId = selectedConversation.value.participant.id;
+        const response = await fetch(
+          `/api/profiles/tutor/${tutorId}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authStore.token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const profile = data.profile;
+          tutorSubjects.value = profile.subjects || [];
+          console.log(
+            "Loaded tutor subjects for booking selection:",
+            tutorSubjects.value
+          );
+        }
+      } catch (error) {
+        console.error("Error loading tutor subjects:", error);
+        tutorSubjects.value = [];
+      } finally {
+        tutorSubjectsLoading.value = false;
       }
     };
 
@@ -4380,7 +4547,8 @@ export default {
                       message.message_type === "booking_cancelled" ||
                       message.message_type === "reschedule_request" ||
                       message.message_type === "reschedule_accepted" ||
-                      message.message_type === "reschedule_rejected"
+                      message.message_type === "reschedule_rejected" ||
+                      message.message_type === "session_completed"
                         ? "System"
                         : `${message.sender.first_name} ${message.sender.last_name}`,
                     type: message.sender.user_type || "system",
@@ -4494,7 +4662,8 @@ export default {
               message.message_type === "reschedule_request" ||
               message.message_type === "reschedule_accepted" ||
               message.message_type === "reschedule_rejected" ||
-              message.message_type === "attendance_notification";
+              message.message_type === "attendance_notification" ||
+              message.message_type === "session_completed";
 
             // For booking-related messages (proposal, confirmation, cancellation, offer), only show notification to the receiver (not the sender)
             // Use String() conversion to handle UUID type mismatches
@@ -4502,7 +4671,8 @@ export default {
               message.message_type === "booking_cancelled" ||
               message.message_type === "booking_proposal" ||
               message.message_type === "booking_confirmation" ||
-              message.message_type === "booking_offer";
+              message.message_type === "booking_offer" ||
+              message.message_type === "session_completed";
 
             // For reschedule messages, only notify the RECEIVER (not the requester/sender)
             const isRescheduleMessage =
@@ -4556,7 +4726,8 @@ export default {
                 message.message_type === "reschedule_request" ||
                 message.message_type === "reschedule_accepted" ||
                 message.message_type === "reschedule_rejected" ||
-                message.message_type === "attendance_notification"
+                message.message_type === "attendance_notification" ||
+                message.message_type === "session_completed"
                   ? "System"
                   : `${message.sender.first_name} ${message.sender.last_name}`;
 
@@ -5236,6 +5407,44 @@ export default {
       sessionEndModal.value = true;
     };
 
+    const showSessionEndModalForCompleted = (message) => {
+      const completionData = getBookingCompletionData(message);
+      if (!completionData || !completionData.bookingId) {
+        return;
+      }
+
+      // Get tutor ID from conversation participant
+      const tutorId =
+        selectedConversation.value?.participant?.type === "tutor"
+          ? selectedConversation.value.participant.id
+          : null;
+
+      if (!tutorId) {
+        console.error("Could not find tutor ID for review submission");
+        return;
+      }
+
+      // Create a booking object for the modal using session completion data
+      selectedBookingForSessionEnd.value = {
+        id: completionData.bookingId,
+        start_time: completionData.startTime,
+        end_time: completionData.endTime,
+        subject: completionData.subject || "Tutoring Session",
+        level: "N/A", // Session completed doesn't provide level
+        tutor: {
+          first_name:
+            selectedConversation.value?.participant?.name?.split(" ")[0] ||
+            "Tutor",
+          last_name:
+            selectedConversation.value?.participant?.name?.split(" ")[1] || "",
+        },
+        tutor_id: tutorId,
+        student_id: authStore.user.id,
+      };
+
+      sessionEndModal.value = true;
+    };
+
     const handleReviewSubmitted = async (reviewData) => {
       try {
         console.log("Review submitted:", reviewData);
@@ -5253,6 +5462,16 @@ export default {
         await loadMessages(selectedConversation.value.id);
       } catch (error) {
         console.error("Error handling absent report:", error);
+      }
+    };
+
+    // Get booking completion data from message
+    const getBookingCompletionData = (message) => {
+      try {
+        return JSON.parse(message.content);
+      } catch (error) {
+        console.error("Error parsing booking completion data:", error);
+        return null;
       }
     };
 
@@ -5303,6 +5522,8 @@ export default {
     return {
       authStore,
       currentUserId,
+      isTutor,
+      isStudent,
       searchQuery,
       selectedConversation,
       conversations,
@@ -5403,6 +5624,9 @@ export default {
       calculatedEarnings,
       getEffectiveDuration,
       loadTutorProfile,
+      loadTutorSubjects,
+      tutorSubjects,
+      tutorSubjectsLoading,
       // Booking cancellation helpers
       getBookingCancellationData,
       formatCancellationReason,
@@ -5417,6 +5641,7 @@ export default {
       checkingAttendanceStatus,
       checkAttendanceStatus,
       getAttendanceData,
+      getBookingCompletionData,
       getAttendanceStatusClass,
       getAttendanceStatusIcon,
       getAttendanceStatusText,
@@ -5426,6 +5651,7 @@ export default {
       selectedBookingForSessionEnd,
       canShowSessionEndModal,
       showSessionEndModal,
+      showSessionEndModalForCompleted,
       handleReviewSubmitted,
       handleAbsentReported,
       // Notification deduplication
@@ -7137,6 +7363,15 @@ i.text-primary {
 }
 
 .reschedule-accepted .booking-header i {
+  color: #28a745;
+}
+
+.session-completed .booking-header {
+  background: rgba(40, 167, 69, 0.12);
+  border-bottom: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.session-completed .booking-header i {
   color: #28a745;
 }
 

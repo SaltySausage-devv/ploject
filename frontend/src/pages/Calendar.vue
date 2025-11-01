@@ -1,7 +1,7 @@
 <template>
   <div class="calendar-page container-fluid p-0 m-0">
     <div class="row g-0">
-      <div class="col-12 px-3 pt-2">
+      <div class="col-12 px-3 pt-4 pt-lg-5 pb-4 pb-lg-5">
         <div class="d-flex justify-content-between align-items-center mb-2">
           <h1 class="h3 mb-0">My Calendar</h1>
         </div>
@@ -71,6 +71,38 @@ export default {
     const currentUserId = computed(() => authStore.user?.id);
     const isMobile = computed(() => windowWidth.value <= 768);
 
+    // Custom event renderer
+    function renderEventContent(info) {
+      const event = info.event;
+      const extendedProps = event.extendedProps || {};
+      const subject = extendedProps.subject || '';
+      const level = extendedProps.level || '';
+      const view = info.view.type;
+      
+      // For week and day views, show more details
+      if (view === 'timeGridWeek' || view === 'timeGridDay') {
+        const time = info.timeText || '';
+        return {
+          html: `
+            <div class="fc-event-content-custom">
+              <div class="fc-event-time">${time}</div>
+              <div class="fc-event-title">${subject || event.title}</div>
+              ${level ? `<div class="fc-event-level">${level}</div>` : ''}
+            </div>
+          `
+        };
+      }
+      
+      // For month view, show concise version
+      return {
+        html: `
+          <div class="fc-event-content-custom fc-event-month">
+            <div class="fc-event-title">${subject || event.title}</div>
+          </div>
+        `
+      };
+    }
+
     // Calendar configuration
     const calendarOptions = computed(() => ({
       plugins: [dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin],
@@ -93,6 +125,7 @@ export default {
       dayMaxEvents: true,
       weekends: true,
       events: bookings.value,
+      eventContent: renderEventContent,
   eventClick: handleEventClick,
   dateClick: handleDateClick,
       select: handleDateSelect,
@@ -116,9 +149,15 @@ export default {
         },
         timeGridWeek: {
           titleFormat: { year: "numeric", month: "short", day: "numeric" },
+          slotMinTime: "00:00:00",
+          slotMaxTime: "24:00:00",
+          slotLabelInterval: "01:00:00",
         },
         timeGridDay: {
           titleFormat: { year: "numeric", month: "long", day: "numeric" },
+          slotMinTime: "00:00:00",
+          slotMaxTime: "24:00:00",
+          slotLabelInterval: "01:00:00",
         },
       },
     }));
@@ -303,11 +342,12 @@ export default {
 
       // Update the selectedBooking with fresh data if it exists
       if (selectedBooking.value) {
-        const updatedBooking = bookings.value.find(
+        const updatedEvent = bookings.value.find(
           (booking) => booking.id === selectedBooking.value.id
         );
-        if (updatedBooking) {
-          selectedBooking.value = updatedBooking;
+        if (updatedEvent && updatedEvent.extendedProps) {
+          // Update with the fresh booking data from extendedProps
+          selectedBooking.value = updatedEvent.extendedProps;
         }
       }
 
@@ -394,9 +434,9 @@ export default {
 </script>
 
 <style>
-/* Override main padding for calendar page only */
+/* Override main padding for calendar page only - removed excessive padding */
 main:has(.calendar-page) {
-  padding-top: 70px !important;
+  padding-top: 0 !important;
 }
 </style>
 
@@ -447,6 +487,27 @@ h1 {
   color: #ffffff;
   font-weight: 700;
   font-size: 1.5rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Responsive title for mobile */
+@media (max-width: 768px) {
+  :deep(.fc-toolbar-title) {
+    font-size: 1.2rem;
+  }
+}
+
+@media (max-width: 576px) {
+  :deep(.fc-toolbar-title) {
+    font-size: 1rem;
+  }
+  
+  :deep(.fc-toolbar-chunk:first-child) {
+    flex-wrap: wrap;
+  }
 }
 
 :deep(.fc-button-primary) {
@@ -518,10 +579,61 @@ h1 {
   transition: all 0.2s ease;
   border: none;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  min-height: 20px;
+}
+
+/* Custom event content styling */
+:deep(.fc-event-content-custom) {
+  overflow: hidden;
+  word-break: break-word;
+}
+
+:deep(.fc-event-content-custom.fc-event-month) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:deep(.fc-event-time) {
+  font-size: 0.75em;
+  font-weight: 700;
+  margin-bottom: 2px;
+  opacity: 0.95;
 }
 
 :deep(.fc-event-title) {
+  font-size: 0.9em;
   font-weight: 600;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+:deep(.fc-event-level) {
+  font-size: 0.75em;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+/* Week/Day view specific styling */
+:deep(.fc-timegrid-event .fc-event-content-custom) {
+  padding: 2px 4px;
+}
+
+:deep(.fc-timegrid-event) {
+  font-size: 0.9rem !important;
+  padding: 4px 8px !important;
+}
+
+/* Ensure events have proper height in time grid */
+:deep(.fc-timegrid-slot-lane .fc-event) {
+  min-height: 35px;
+}
+
+/* Month view event text handling */
+:deep(.fc-daygrid-event .fc-event-content-custom) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 :deep(.fc-daygrid-day-number) {
@@ -665,10 +777,6 @@ h1 {
   .btn-group .btn {
     font-size: 0.75rem;
     padding: 0.375rem 0.75rem;
-  }
-
-  :deep(.fc-toolbar-title) {
-    font-size: 1.25rem;
   }
 
   :deep(.fc-button-primary) {
