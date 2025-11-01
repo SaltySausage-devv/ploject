@@ -529,65 +529,14 @@ app.put('/bookings/:id/cancel', verifyToken, async (req, res) => {
         }
       }
 
-      // Tutor loses credits (they were already given when booking was confirmed)
-      const { data: tutor, error: tutorError } = await supabase
-        .from('users')
-        .select('credits')
-        .eq('id', booking.tutor_id)
-        .single();
-
-      if (tutorError) {
-        console.error('❌ Error fetching tutor credits:', tutorError);
-      } else {
-        const newTutorCredits = Math.max(0, (tutor.credits || 0) - creditsToRefund);
-        console.log(`💸 Deducting ${creditsToRefund} credits from tutor. Old: ${tutor.credits}, New: ${newTutorCredits}`);
-        
-        const { error: tutorUpdateError } = await supabase
-          .from('users')
-          .update({ 
-            credits: newTutorCredits,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', booking.tutor_id);
-          
-        if (tutorUpdateError) {
-          console.error('❌ Error updating tutor credits:', tutorUpdateError);
-        } else {
-          console.log('✅ Tutor credits deducted successfully');
-        }
-      }
+      // NOTE: No tutor credit deduction needed - credits were never transferred to tutor
+      // Credits were only reserved at booking confirmation, so refunding student is all that's needed
+      console.log('ℹ️ No tutor credit action needed - credits were held, not transferred');
     } else {
       // Only happens when student cancels less than 24 hours before
-      console.log('❌ Student cancelled less than 24 hours - no refund for student, tutor still loses credits');
-      
-      // Student gets no refund (credits stay with tutor)
-      // Tutor still loses credits (they were already given when booking was confirmed)
-      const { data: tutor, error: tutorError } = await supabase
-        .from('users')
-        .select('credits')
-        .eq('id', booking.tutor_id)
-        .single();
-
-      if (tutorError) {
-        console.error('❌ Error fetching tutor credits:', tutorError);
-      } else {
-        const newTutorCredits = Math.max(0, (tutor.credits || 0) - creditsToRefund);
-        console.log(`💸 Deducting ${creditsToRefund} credits from tutor (late cancellation). Old: ${tutor.credits}, New: ${newTutorCredits}`);
-        
-        const { error: tutorUpdateError } = await supabase
-          .from('users')
-          .update({ 
-            credits: newTutorCredits,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', booking.tutor_id);
-          
-        if (tutorUpdateError) {
-          console.error('❌ Error updating tutor credits:', tutorUpdateError);
-        } else {
-          console.log('✅ Tutor credits deducted successfully (late cancellation)');
-        }
-      }
+      console.log('❌ Student cancelled less than 24 hours - no refund for student');
+      console.log('ℹ️ Credits remain deducted from student account as late cancellation penalty');
+      // NOTE: No tutor credit deduction needed since credits were never transferred
     }
 
     // Handle penalty points for tutors
@@ -680,7 +629,7 @@ app.put('/bookings/:id/cancel', verifyToken, async (req, res) => {
             isMoreThan24Hours,
             creditsToRefund,
             studentRefunded: shouldRefundStudent,
-            tutorCreditsDeducted: true,
+            tutorCreditsDeducted: false,
             isTutorCancelling: isTutorCancelling
           },
           subject: booking.subject || 'Tutoring Session',
@@ -723,7 +672,7 @@ app.put('/bookings/:id/cancel', verifyToken, async (req, res) => {
         isMoreThan24Hours,
         creditsToRefund,
         studentRefunded: shouldRefundStudent,
-        tutorCreditsDeducted: true,
+        tutorCreditsDeducted: false,
         isTutorCancelling: isTutorCancelling
       }
     });
@@ -1136,61 +1085,10 @@ app.post('/booking-confirmations', verifyToken, async (req, res) => {
       console.error('Failed to create final booking:', bookingError);
     }
 
-    // Deduct credits from student and add to tutor
-    if (student.user_type === 'student') {
-      try {
-        // Deduct credits from student
-        const newStudentCredits = Math.max(0, (student.credits || 0) - totalAmount);
-        console.log(`💸 Deducting ${totalAmount} credits from student. Old: ${student.credits}, New: ${newStudentCredits}`);
-        
-        const { error: studentUpdateError } = await supabase
-          .from('users')
-          .update({ 
-            credits: newStudentCredits,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', bookingOffer.tutee_id);
-          
-        if (studentUpdateError) {
-          console.error('❌ Error updating student credits:', studentUpdateError);
-        } else {
-          console.log('✅ Student credits updated successfully');
-        }
-
-        // Add credits to tutor
-        const { data: tutor, error: tutorError } = await supabase
-          .from('users')
-          .select('credits')
-          .eq('id', bookingOffer.tutor_id)
-          .single();
-
-        if (tutorError) {
-          console.error('❌ Error fetching tutor credits:', tutorError);
-        } else {
-          const newTutorCredits = (tutor.credits || 0) + totalAmount;
-          console.log(`💰 Adding ${totalAmount} credits to tutor. Old: ${tutor.credits}, New: ${newTutorCredits}`);
-          
-          const { error: tutorUpdateError } = await supabase
-            .from('users')
-            .update({ 
-              credits: newTutorCredits,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', bookingOffer.tutor_id);
-            
-          if (tutorUpdateError) {
-            console.error('❌ Error updating tutor credits:', tutorUpdateError);
-          } else {
-            console.log('✅ Tutor credits updated successfully');
-          }
-        }
-
-        console.log(`✅ Credits transferred: ${totalAmount} from student to tutor`);
-      } catch (creditError) {
-        console.error('Error processing credit transaction:', creditError);
-        // Don't fail the booking confirmation if credit processing fails
-      }
-    }
+    // NOTE: Credits are NOT transferred at confirmation time
+    // Credits will be held in student account and transferred to tutor only after session completion
+    // This prevents tutors from receiving payment for sessions that don't actually happen
+    console.log(`💰 Credits held: ${totalAmount} credits reserved for booking confirmation. Will transfer to tutor after session completion.`);
 
     // Create confirmation message
     const { error: messageError } = await supabase
@@ -1386,63 +1284,44 @@ app.post('/bookings/:bookingId/complete', verifyToken, async (req, res) => {
                           new Date(booking.start_time || booking.start)) / (1000 * 60 * 60);
     const creditsAmount = parseFloat((booking.hourly_rate * durationHours).toFixed(2));
 
-    console.log(`💰 Completing booking: ${creditsAmount} credits to transfer`);
+    console.log(`💰 Completing booking: ${creditsAmount} credits to release to tutor`);
     console.log(`   - Hourly rate: ${booking.hourly_rate}`);
     console.log(`   - Duration: ${durationHours.toFixed(2)} hours`);
+    console.log(`   - NOTE: Student credits were already deducted at booking confirmation`);
 
-    // Transfer credits from student to tutor
-    // Get current credit balances
-    const { data: student, error: studentError } = await supabase
-      .from('users')
-      .select('credits')
-      .eq('id', booking.student_id)
-      .single();
-
+    // Transfer held credits to tutor (student was already charged at confirmation)
     const { data: tutor, error: tutorError } = await supabase
       .from('users')
       .select('credits')
       .eq('id', booking.tutor_id)
       .single();
 
-    if (studentError || tutorError) {
-      console.error('❌ Error fetching credit balances:', { studentError, tutorError });
-      return res.status(500).json({ error: 'Failed to fetch credit balances' });
+    if (tutorError) {
+      console.error('❌ Error fetching tutor credit balance:', tutorError);
+      return res.status(500).json({ error: 'Failed to fetch tutor credits' });
     }
 
-    // Calculate new credit balances
-    const currentStudentCredits = student.credits || 0;
+    // Calculate new tutor credit balance
     const currentTutorCredits = tutor.credits || 0;
-    
-    const newStudentCredits = parseFloat(Math.max(0, currentStudentCredits - creditsAmount).toFixed(2));
     const newTutorCredits = parseFloat((currentTutorCredits + creditsAmount).toFixed(2));
 
-    console.log(`💸 Credit transfer: Student ${currentStudentCredits} → ${newStudentCredits}`);
-    console.log(`💰 Credit transfer: Tutor ${currentTutorCredits} → ${newTutorCredits}`);
+    console.log(`💰 Credit transfer: Tutor ${currentTutorCredits} → ${newTutorCredits} (releasing held credits)`);
 
-    // Update credits for both student and tutor
-    const [studentUpdate, tutorUpdate] = await Promise.all([
-      supabase
-        .from('users')
-        .update({ 
-          credits: newStudentCredits,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', booking.student_id),
-      supabase
-        .from('users')
-        .update({ 
-          credits: newTutorCredits,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', booking.tutor_id)
-    ]);
+    // Update tutor credits only
+    const { error: tutorUpdateError } = await supabase
+      .from('users')
+      .update({ 
+        credits: newTutorCredits,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', booking.tutor_id);
 
-    if (studentUpdate.error || tutorUpdate.error) {
-      console.error('❌ Error updating credits:', { studentUpdate: studentUpdate.error, tutorUpdate: tutorUpdate.error });
-      return res.status(500).json({ error: 'Failed to transfer credits' });
+    if (tutorUpdateError) {
+      console.error('❌ Error updating tutor credits:', tutorUpdateError);
+      return res.status(500).json({ error: 'Failed to transfer credits to tutor' });
     }
 
-    console.log('✅ Credits transferred successfully');
+    console.log('✅ Credits released to tutor successfully');
 
     // Update booking status to completed
     const { data: updatedBooking, error: updateError } = await supabase
@@ -1598,7 +1477,6 @@ app.post('/bookings/:bookingId/complete', verifyToken, async (req, res) => {
       data: updatedBooking,
       creditsTransfered: {
         amount: creditsAmount,
-        studentCredits: newStudentCredits,
         tutorCredits: newTutorCredits
       }
     });

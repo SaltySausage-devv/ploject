@@ -1433,9 +1433,11 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
           }
         }
 
-        // Deduct credits from student
+        // NOTE: Credits are deducted from student but NOT transferred to tutor yet
+        // Credits will be held in student account and transferred to tutor only after session completion
+        // This prevents tutors from receiving payment for sessions that don't actually happen
         const newStudentCredits = Math.max(0, (student.credits || 0) - creditsUsed);
-        console.log(`💸 Deducting ${creditsUsed} credits from student. Old: ${student.credits}, New: ${newStudentCredits}`);
+        console.log(`💸 Reserving ${creditsUsed} credits from student. Old: ${student.credits}, New: ${newStudentCredits}`);
         
         const { error: studentUpdateError } = await supabase
           .from('users')
@@ -1448,40 +1450,10 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
         if (studentUpdateError) {
           console.error('❌ Error updating student credits:', studentUpdateError);
         } else {
-          console.log('✅ Student credits updated successfully');
+          console.log('✅ Student credits reserved successfully');
         }
 
-        // Add credits to tutor
-        const { data: tutor, error: tutorError } = await supabase
-          .from('users')
-          .select('credits')
-          .eq('id', bookingOffer.tutor_id)
-          .maybeSingle();
-
-        if (tutorError) {
-          console.error('❌ BOOKING CONFIRMATION: Error fetching tutor credits:', tutorError);
-        } else if (!tutor) {
-          console.error('❌ BOOKING CONFIRMATION: Tutor not found');
-        } else {
-          const newTutorCredits = (tutor.credits || 0) + creditsUsed;
-          console.log(`💰 Adding ${creditsUsed} credits to tutor. Old: ${tutor.credits}, New: ${newTutorCredits}`);
-          
-          const { error: tutorUpdateError } = await supabase
-            .from('users')
-            .update({ 
-              credits: newTutorCredits,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', bookingOffer.tutor_id);
-            
-          if (tutorUpdateError) {
-            console.error('❌ Error updating tutor credits:', tutorUpdateError);
-          } else {
-            console.log('✅ Tutor credits updated successfully');
-          }
-        }
-
-        console.log(`✅ Credits transferred: ${creditsUsed} from student to tutor`);
+        console.log(`💰 Credits reserved: ${creditsUsed} credits held until session completion`);
       } catch (creditError) {
         console.error('Error processing credit transaction:', creditError);
         // Don't fail the booking confirmation if credit processing fails
