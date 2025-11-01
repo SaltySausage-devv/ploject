@@ -90,7 +90,7 @@
                     <div class="notification-content">
                       <p class="notification-title">{{ notification.title }}</p>
                       <small class="notification-time">{{
-                        formatTime(notification?.timestamp || notification?.created_at)
+                        notification.time
                       }}</small>
                     </div>
                     <div
@@ -262,7 +262,7 @@
                     <div class="notification-content">
                       <p class="notification-title">{{ notification.title }}</p>
                       <small class="notification-time">{{
-                        formatTime(notification?.timestamp || notification?.created_at)
+                        notification.time
                       }}</small>
                     </div>
                     <div
@@ -407,22 +407,10 @@ export default {
           
           // Filter out notifications older than 7 days
           const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-          notifications.value = parsed
-            .filter((n) => {
-              // Support both timestamp (from localStorage) and created_at (from API)
-              try {
-                const notifTime = new Date(n.timestamp || n.created_at || 0).getTime();
-                return notifTime > sevenDaysAgo && !isNaN(notifTime);
-              } catch (e) {
-                console.warn("🔔 NAVBAR: Invalid notification timestamp:", n);
-                return false;
-              }
-            })
-            .map((n) => {
-              // Remove old 'time' field if present (migrate to dynamic timestamp formatting)
-              const { time, ...rest } = n;
-              return rest;
-            });
+          notifications.value = parsed.filter((n) => {
+            const notifTime = new Date(n.timestamp).getTime();
+            return notifTime > sevenDaysAgo;
+          });
           
           console.log(
             "🔔 NAVBAR: ✅ Loaded",
@@ -922,13 +910,13 @@ export default {
           }
 
           // Add to notifications list
-          // Note: Don't store 'time' field - format it dynamically in template using timestamp
           const notification = {
             id: message.id,
             icon: iconClass,
             title: title,
             message: messagePreview,
-            timestamp: message.created_at, // Store timestamp, format dynamically in template
+            time: formatTime(message.created_at),
+            timestamp: message.created_at,
             conversationId: message.conversation_id,
             bookingId: bookingId, // Store bookingId for reschedule_request notifications
             type: message.message_type, // Store message type to filter reschedule responses
@@ -1159,7 +1147,6 @@ export default {
       toggleShowAllNotifications,
       handleNotificationClick,
       unreadCount,
-      formatTime, // Expose formatTime function to template
     };
   },
 };
