@@ -436,6 +436,14 @@
                                     getBookingData(message).confirmedTime
                                   )
                                 }}
+                                <template v-if="getBookingData(message).confirmedEndTime">
+                                  -
+                                  {{
+                                    formatTimeOnly(
+                                      getBookingData(message).confirmedEndTime
+                                    )
+                                  }}
+                                </template>
                               </p>
                               <p
                                 v-if="getBookingData(message).location"
@@ -1097,6 +1105,14 @@
                                       getBookingData(message).confirmedTime
                                     )
                                   }}
+                                  <template v-if="getBookingData(message).confirmedEndTime">
+                                    -
+                                    {{
+                                      formatTimeOnly(
+                                        getBookingData(message).confirmedEndTime
+                                      )
+                                    }}
+                                  </template>
                                 </p>
                                 <p
                                   v-if="getBookingData(message).location"

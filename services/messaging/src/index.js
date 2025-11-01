@@ -1492,6 +1492,8 @@ app.post('/messaging/booking-confirmations', verifyToken, async (req, res) => {
     const messageContent = JSON.stringify({
       bookingOfferId: bookingOfferId,
       confirmedTime: bookingOffer.proposed_time,
+      confirmedEndTime: bookingOffer.proposed_end_time,
+      duration: bookingOffer.duration,
       location: bookingOffer.final_location,
       isOnline: bookingOffer.is_online,
       bookingId: createdBooking?.id
