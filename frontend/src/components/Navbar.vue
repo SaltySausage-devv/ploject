@@ -405,12 +405,25 @@ export default {
           const parsed = JSON.parse(stored);
           console.log("🔔 NAVBAR: Parsed array length:", parsed.length);
           
-          // Filter out notifications older than 7 days
+          // Filter out notifications older than 7 days and recalculate time
           const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
-          notifications.value = parsed.filter((n) => {
-            const notifTime = new Date(n.timestamp).getTime();
-            return notifTime > sevenDaysAgo;
-          });
+          notifications.value = parsed
+            .filter((n) => {
+              const notifTime = new Date(n.timestamp || n.created_at || 0).getTime();
+              return notifTime > sevenDaysAgo;
+            })
+            .map((n) => {
+              // Recalculate time from timestamp (fixes "Just now" issue for old notifications)
+              const timestamp = n.timestamp || n.created_at;
+              if (timestamp) {
+                n.time = formatTime(timestamp);
+                // Ensure timestamp field exists
+                if (!n.timestamp) {
+                  n.timestamp = timestamp;
+                }
+              }
+              return n;
+            });
           
           console.log(
             "🔔 NAVBAR: ✅ Loaded",
