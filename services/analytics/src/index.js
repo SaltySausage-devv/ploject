@@ -296,26 +296,56 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     console.log('📊 Total Sessions (confirmed/completed):', totalSessions);
 
     // Hours This Month: from completed sessions (attendance_status === 'attended') in current month
-    // Only sessions where attendance was marked as 'attended' count towards hours
-    const currentMonthStart = new Date();
-    currentMonthStart.setDate(1);
+    // Only sessions where attendance was marked as 'attended' AND the session start_time is in current month
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     currentMonthStart.setHours(0, 0, 0, 0);
-    const currentMonthEnd = new Date();
-    currentMonthEnd.setMonth(currentMonthEnd.getMonth() + 1);
-    currentMonthEnd.setDate(0);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     currentMonthEnd.setHours(23, 59, 59, 999);
+
+    console.log('📊 Current month range:', {
+      start: currentMonthStart.toISOString(),
+      end: currentMonthEnd.toISOString(),
+      now: now.toISOString()
+    });
 
     const bookingsWithAttendanceThisMonth = allBookings
       ?.filter(b => {
         // Must have attendance marked as 'attended'
-        if (b.attendance_status !== 'attended') return false;
-        // Must be in current month (check attendance_marked_at or start_time)
-        if (!b.attendance_marked_at && !b.start_time) return false;
-        const checkDate = b.attendance_marked_at ? new Date(b.attendance_marked_at) : new Date(b.start_time);
-        return checkDate >= currentMonthStart && checkDate <= currentMonthEnd;
+        if (b.attendance_status !== 'attended') {
+          return false;
+        }
+        // Must have start_time to check the month
+        if (!b.start_time) {
+          console.log('📊 Skipping booking (no start_time):', b.id);
+          return false;
+        }
+        // Check if the session START TIME is in the current month (not when attendance was marked)
+        const sessionStart = new Date(b.start_time);
+        const isInCurrentMonth = sessionStart >= currentMonthStart && sessionStart <= currentMonthEnd;
+        
+        if (!isInCurrentMonth) {
+          console.log('📊 Skipping booking (not in current month):', {
+            id: b.id,
+            start_time: b.start_time,
+            sessionStart: sessionStart.toISOString(),
+            currentMonthStart: currentMonthStart.toISOString(),
+            currentMonthEnd: currentMonthEnd.toISOString()
+          });
+        }
+        
+        return isInCurrentMonth;
       }) || [];
 
-    console.log('📊 Bookings with attendance this month:', bookingsWithAttendanceThisMonth.length);
+    console.log('📊 Bookings with attendance this month:', {
+      count: bookingsWithAttendanceThisMonth.length,
+      bookings: bookingsWithAttendanceThisMonth.map(b => ({
+        id: b.id,
+        start_time: b.start_time,
+        end_time: b.end_time,
+        attendance_status: b.attendance_status,
+        attendance_marked_at: b.attendance_marked_at
+      }))
+    });
 
     const totalHours = bookingsWithAttendanceThisMonth
       ?.reduce((sum, b) => {
@@ -324,12 +354,20 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
           const end = new Date(b.end_time);
           const hours = (end - start) / (1000 * 60 * 60);
           // Ensure hours is never negative
-          return sum + Math.max(0, hours);
+          const validHours = Math.max(0, hours);
+          console.log('📊 Adding hours for booking:', {
+            id: b.id,
+            start: start.toISOString(),
+            end: end.toISOString(),
+            hours: validHours
+          });
+          return sum + validHours;
         }
+        console.log('📊 Skipping booking (missing start/end time):', b.id);
         return sum;
       }, 0) || 0;
 
-    console.log('📊 Total Hours This Month (from attended sessions):', totalHours);
+    console.log('📊 Total Hours This Month (from attended sessions in current month):', totalHours);
 
     // Total Spent: total amount from all confirmed bookings (all time, not just current month)
     // Only confirmed bookings count towards total spent (credits used)
