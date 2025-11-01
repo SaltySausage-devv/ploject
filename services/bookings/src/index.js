@@ -1390,6 +1390,7 @@ app.post('/bookings/:bookingId/complete', verifyToken, async (req, res) => {
           startTime: booking.start_time,
           endTime: booking.end_time,
           location: booking.location,
+          creditsTransfered: creditsAmount,
           tutorId: booking.tutor_id,
           studentId: booking.student_id
         };

@@ -74,7 +74,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // JWT verification middleware
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   
   if (!token) {
@@ -82,8 +82,19 @@ const verifyToken = (req, res, next) => {
   }
 
   try {
+    // Try Supabase auth first (for tokens from frontend)
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (user && !error) {
+      req.user = { userId: user.id, ...user };
+      return next();
+    }
+    
+    // Supabase auth failed, try JWT verification as fallback
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
+    
+    // Handle both Supabase tokens (uses 'sub') and custom tokens (uses 'userId')
+    const userId = decoded.sub || decoded.userId;
+    req.user = { userId, ...decoded };
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid token' });
@@ -92,7 +103,10 @@ const verifyToken = (req, res, next) => {
 
 // Validation schemas
 const sendNotificationSchema = Joi.object({
-  userId: Joi.number().required(),
+  userId: Joi.alternatives().try(
+    Joi.string().uuid(),
+    Joi.number()
+  ).required(),
   type: Joi.string().valid('email', 'sms', 'push').required(),
   subject: Joi.string().optional(),
   message: Joi.string().required(),
