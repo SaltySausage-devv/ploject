@@ -384,30 +384,17 @@ export default {
       // Tutors can mark as completed only after attendance has been marked
       // Sequential requirement: attendance must be marked first
       // Cannot complete if already completed
-      const attendanceStatus = props.booking.attendance_status;
-      const hasAttendanceMarked = attendanceStatus && 
-        (attendanceStatus === 'attended' || attendanceStatus === 'no_show');
+      const hasAttendanceMarked = props.booking.attendance_status && 
+        (props.booking.attendance_status === 'attended' || props.booking.attendance_status === 'no_show');
       const pastBooking = isPastBooking();
       
-      console.log("🔍 canComplete computed - evaluating:", {
-        attendanceStatus,
-        hasAttendanceMarked,
-        pastBooking,
-        status: props.booking.status,
-        isTutor: isTutor.value,
-        bookingId: props.booking.id
-      });
-      
-      const result = (
+      return (
         props.booking.status === "confirmed" &&
         isTutor.value &&
         pastBooking &&
         hasAttendanceMarked && // Must have attendance marked first (sequential flow)
         props.booking.status !== "completed" // Not already completed
       );
-      
-      console.log("🔍 canComplete result:", result);
-      return result;
     });
 
     const canJoinMeeting = computed(() => {
@@ -631,13 +618,6 @@ export default {
         showRescheduleRequestModal.value = true;
       }
     }, { immediate: true });
-
-    // Watch booking prop changes to ensure computed properties update
-    watch(() => props.booking.attendance_status, (newStatus, oldStatus) => {
-      console.log("👀 Booking attendance_status changed:", { oldStatus, newStatus, bookingId: props.booking.id });
-      // Force a re-render by touching the booking object
-      // This ensures Vue's reactivity system picks up the change
-    }, { immediate: false });
 
     // Lifecycle
     onMounted(() => {
