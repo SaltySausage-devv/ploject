@@ -558,7 +558,31 @@ export default {
     };
 
     const handleNotificationClick = (notification) => {
-      // For all notifications, navigate to messages to show the card
+      // For session_completed notifications, navigate to calendar
+      if (notification.type === 'session_completed' && notification.bookingId) {
+        console.log(
+          "🔔 NAVBAR: Clicked session_completed notification, navigating to calendar with bookingId:",
+          notification.bookingId
+        );
+
+        // Remove this notification
+        notifications.value = notifications.value.filter(
+          (n) => n.id !== notification.id
+        );
+
+        // Save updated state to localStorage
+        saveNotificationsToStorage();
+
+        // Close dropdown
+        const dropdowns = document.querySelectorAll(".dropdown-menu.show");
+        dropdowns.forEach((dropdown) => dropdown.classList.remove("show"));
+
+        // Navigate to calendar page
+        router.push(`/calendar`);
+        return;
+      }
+
+      // For all other notifications, navigate to messages to show the card
       if (notification.conversationId) {
         console.log(
           "🔔 NAVBAR: Clicked notification for conversation:",
@@ -650,7 +674,7 @@ export default {
         }
 
         // Remove notifications for messages that are now read
-        // BUT keep reschedule notifications (request, accepted, rejected) visible - they're important status updates
+        // BUT keep reschedule and session_completed notifications visible - they're important status updates
         if (readMessageIds.size > 0) {
           const beforeCount = notifications.value.length;
           notifications.value = notifications.value.filter(
@@ -658,7 +682,8 @@ export default {
               !readMessageIds.has(n.id) ||
               n.type === "reschedule_request" ||
               n.type === "reschedule_accepted" ||
-              n.type === "reschedule_rejected"
+              n.type === "reschedule_rejected" ||
+              n.type === "session_completed"
           );
           removedCount = beforeCount - notifications.value.length;
           
@@ -839,7 +864,13 @@ export default {
           } else if (message.message_type === "booking_cancelled") {
             messagePreview = "❌ Booking cancelled";
           } else if (message.message_type === "session_completed") {
-            messagePreview = "✅ Session completed";
+            try {
+              const messageData = JSON.parse(message.content);
+              const tutorName = messageData.tutorName || 'Your tutor';
+              messagePreview = `✅ ${tutorName} marked your session as completed`;
+            } catch (error) {
+              messagePreview = "✅ Session marked as completed";
+            }
           } else if (message.content) {
             messagePreview = message.content.substring(0, 50);
           } else {
@@ -854,16 +885,17 @@ export default {
             title = `New message from ${senderName}`;
           }
 
-          // Extract bookingId from reschedule messages for calendar navigation
+          // Extract bookingId from reschedule and session_completed messages for calendar navigation
           let bookingId = null;
           if ((message.message_type === 'reschedule_request' || 
                message.message_type === 'reschedule_accepted' || 
-               message.message_type === 'reschedule_rejected') && message.content) {
+               message.message_type === 'reschedule_rejected' ||
+               message.message_type === 'session_completed') && message.content) {
             try {
               const messageData = JSON.parse(message.content);
               bookingId = messageData.bookingId || null;
             } catch (error) {
-              console.error('Failed to parse reschedule message content:', error);
+              console.error('Failed to parse message content:', error);
             }
           }
 
@@ -974,14 +1006,15 @@ export default {
         );
 
         // Remove notifications from this conversation
-        // BUT keep reschedule notifications (request, accepted, rejected) visible - they're important status updates
+        // BUT keep reschedule and session_completed notifications visible - they're important status updates
         const beforeCount = notifications.value.length;
         notifications.value = notifications.value.filter(
           (n) =>
             n.conversationId !== data.conversationId ||
             (n.type === "reschedule_request" ||
               n.type === "reschedule_accepted" ||
-              n.type === "reschedule_rejected")
+              n.type === "reschedule_rejected" ||
+              n.type === "session_completed")
         );
         const afterCount = notifications.value.length;
         const removedCount = beforeCount - afterCount;

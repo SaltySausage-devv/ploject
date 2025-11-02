@@ -1297,7 +1297,10 @@ app.post('/bookings/:id/complete', verifyToken, async (req, res) => {
           location: booking.location,
           creditsTransfered: creditsAmount,
           tutorId: booking.tutor_id,
-          studentId: booking.student_id
+          studentId: booking.student_id,
+          tutorName: booking.tutor?.first_name && booking.tutor?.last_name 
+            ? `${booking.tutor.first_name} ${booking.tutor.last_name}` 
+            : 'Your tutor'
         };
 
         const messageContent = JSON.stringify(messageData);
