@@ -1756,6 +1756,20 @@ app.post('/messaging/system-message', verifyToken, async (req, res) => {
     // Broadcast message to conversation room via Socket.IO
     console.log(`📢 Broadcasting ${messageType} message to room: conversation_${conversationId}`);
     io.to(`conversation_${conversationId}`).emit('new_message', message);
+    
+    // For system messages (like session_completed), also send directly to participants if connected
+    // This ensures delivery even if they haven't joined the conversation room yet
+    if (isSystemMessage) {
+      console.log(`📢 Also sending ${messageType} directly to participants if connected`);
+      const participants = [conversation.participant1_id, conversation.participant2_id];
+      participants.forEach(participantId => {
+        const socket = activeConnections.get(participantId);
+        if (socket) {
+          console.log(`📢 Sending ${messageType} directly to user ${participantId}`);
+          socket.emit('new_message', message);
+        }
+      });
+    }
 
     // Update conversation last message
     const lastMessagePreview = messageType === 'text' ? content : 

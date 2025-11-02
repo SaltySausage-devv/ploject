@@ -1306,7 +1306,7 @@ app.post('/bookings/:id/complete', verifyToken, async (req, res) => {
         const messageContent = JSON.stringify(messageData);
         console.log(`📧 Message content to send:`, messageContent);
         
-        // Try to send via messaging service HTTP call first
+        // Send via messaging service - this will broadcast via Socket.IO
         try {
           const authToken = req.headers.authorization?.split(' ')[1];
           const sent = await sendMessageViaMessagingService(
@@ -1318,47 +1318,82 @@ app.post('/bookings/:id/complete', verifyToken, async (req, res) => {
 
           if (sent) {
             console.log(`✅ Completion notification sent to both parties via messaging service`);
+          } else {
+            console.error('❌ Messaging service call returned false - message may not have been sent');
+            // If messaging service call fails, we still insert to database
+            // The frontend will pick it up when they fetch messages
+            const { data: directMessage, error: messageError } = await supabase
+              .from('messages')
+              .insert({
+                conversation_id: conversationId,
+                sender_id: req.user.userId,
+                content: messageContent,
+                message_type: 'session_completed',
+                created_at: new Date().toISOString()
+              })
+              .select(`
+                *,
+                sender:sender_id (
+                  first_name,
+                  last_name,
+                  user_type
+                )
+              `)
+              .maybeSingle();
+
+            if (messageError) {
+              console.error('❌ Failed to insert completion message directly:', messageError);
+            } else {
+              console.log('✅ Completion message inserted directly to database (no Socket.IO broadcast)');
+              // Update conversation last message
+              await supabase
+                .from('conversations')
+                .update({
+                  last_message_at: new Date().toISOString(),
+                  last_message_content: 'Session completed'
+                })
+                .eq('id', conversationId);
+            }
           }
         } catch (error) {
-          console.log('⚠️ Messaging service HTTP call failed, inserting directly to database');
-        }
-
-        // Fallback: Insert message directly to database if HTTP call fails or service unavailable
-        try {
-          const { data: directMessage, error: messageError } = await supabase
-            .from('messages')
-            .insert({
-              conversation_id: conversationId,
-              sender_id: req.user.userId, // Use current user ID
-              content: messageContent,
-              message_type: 'session_completed',
-              created_at: new Date().toISOString()
-            })
-            .select(`
-              *,
-              sender:sender_id (
-                first_name,
-                last_name,
-                user_type
-              )
-            `)
-            .maybeSingle();
-
-          if (messageError) {
-            console.error('Failed to insert completion message directly:', messageError);
-          } else {
-            console.log('✅ Completion message inserted directly to database');
-            // Update conversation last message
-            await supabase
-              .from('conversations')
-              .update({
-                last_message_at: new Date().toISOString(),
-                last_message_content: 'Session completed'
+          console.error('❌ Error sending completion notification via messaging service:', error);
+          // Fallback: Insert message directly to database
+          try {
+            const { data: directMessage, error: messageError } = await supabase
+              .from('messages')
+              .insert({
+                conversation_id: conversationId,
+                sender_id: req.user.userId,
+                content: messageContent,
+                message_type: 'session_completed',
+                created_at: new Date().toISOString()
               })
-              .eq('id', conversationId);
+              .select(`
+                *,
+                sender:sender_id (
+                  first_name,
+                  last_name,
+                  user_type
+                )
+              `)
+              .maybeSingle();
+
+            if (messageError) {
+              console.error('❌ Failed to insert completion message directly:', messageError);
+            } else {
+              console.log('✅ Completion message inserted directly to database (no Socket.IO broadcast)');
+              // Update conversation last message
+              await supabase
+                .from('conversations')
+                .update({
+                  last_message_at: new Date().toISOString(),
+                  last_message_content: 'Session completed'
+                })
+                .eq('id', conversationId);
+            }
+          } catch (directError) {
+            console.error('❌ Failed to insert message directly:', directError);
           }
-        } catch (directError) {
-          console.error('Failed to insert message directly:', directError);
         }
 
         // Try to send notifications via notifications service

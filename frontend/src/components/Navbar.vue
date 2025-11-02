@@ -815,8 +815,15 @@ export default {
             console.log("🔔 NAVBAR: Reschedule request - shouldShow:", shouldShow);
           }
         } else if (isSystemMessage) {
-          // Other system messages: notify receiver
-          shouldShow = !isSender;
+          // Other system messages: notify receiver (not sender)
+          // For session_completed, only show to student (not the tutor who marked it)
+          if (message.message_type === 'session_completed') {
+            shouldShow = !isSender;
+            console.log("🔔 NAVBAR: session_completed - isSender:", isSender, "shouldShow:", shouldShow);
+            console.log("🔔 NAVBAR: sender_id:", message.sender_id, "currentUserId:", currentUserId.value);
+          } else {
+            shouldShow = !isSender;
+          }
         } else {
           // Regular messages: notify if not from yourself and has sender
           shouldShow = !isSender && message.sender;
