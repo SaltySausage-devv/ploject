@@ -122,7 +122,7 @@ export default {
       editable: true,
       selectable: true,
       selectMirror: true,
-      dayMaxEvents: true,
+      dayMaxEvents: false, // Don't limit events globally - use dayMaxEventRows per view instead
       weekends: true,
       events: bookings.value,
       eventContent: renderEventContent,
@@ -142,7 +142,11 @@ export default {
       views: {
         dayGridMonth: {
           titleFormat: { year: "numeric", month: "long" },
+          dayMaxEventRows: 1, // Show 1 event row fully, then "+X more" for the rest
           moreLinkText: (num) => {
+            // num is the count of hidden events (events after the first one shown)
+            // Since dayMaxEventRows is 1, num represents the count of remaining events
+            // For example: if there are 3 total events, show 1 event + "+2 more"
             // Desktop/wide view: "+X more", Mobile/compact view: "+X"
             return isMobile.value ? `+${num}` : `+${num} more`;
           },
