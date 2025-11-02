@@ -240,11 +240,9 @@ export default {
     }
 
     function getEventColor(status) {
-      if (status === "confirmed") return "#ff8c42"; // Orange - matches theme
-      if (status === "completed") return "#2ecc71"; // Green - success color
-      if (status === "cancelled") return "#6c757d"; // Grey
-      if (status === "pending") return "#ffd23f"; // Yellow - matches theme
-      return "#8e8ea0"; // Default grey
+      // All bookings use the same dark color - no color coding by status
+      // Match the calendar day background color (dark grey/black)
+      return "rgba(26, 26, 26, 0.9)"; // Dark grey/black to match calendar day cells
     }
 
     function handleEventClick(info) {
