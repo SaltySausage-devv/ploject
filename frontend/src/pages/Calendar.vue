@@ -142,11 +142,14 @@ export default {
       views: {
         dayGridMonth: {
           titleFormat: { year: "numeric", month: "long" },
-          dayMaxEventRows: 1, // Show 1 event row fully, then "+X more" for the rest
+          dayMaxEvents: 1, // Show exactly 1 event fully, then "+X more" for the rest
           moreLinkText: (num) => {
-            // num is the count of hidden events (events after the first one shown)
-            // Since dayMaxEventRows is 1, num represents the count of remaining events
-            // For example: if there are 3 total events, show 1 event + "+2 more"
+            // num is the count of events that are hidden (not shown)
+            // With dayMaxEvents: 1, if there are 5 total events:
+            //   - 1 event is shown fully
+            //   - 4 events are hidden
+            //   - num will be 4
+            // So we show: 1 event + "+4 more"
             // Desktop/wide view: "+X more", Mobile/compact view: "+X"
             return isMobile.value ? `+${num}` : `+${num} more`;
           },
