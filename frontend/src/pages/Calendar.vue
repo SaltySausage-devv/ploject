@@ -22,6 +22,7 @@
     <!-- Booking Details Modal -->
     <BookingDetailsModal
       v-if="selectedBooking"
+      :key="`booking-${selectedBooking.id}-${selectedBooking.attendance_status || 'no-attendance'}`"
       :booking="selectedBooking"
       :show-reschedule-request="showRescheduleRequestModal"
       @close="handleBookingModalClose"
@@ -337,29 +338,49 @@ export default {
     }
 
     async function handleBookingUpdated(updateData) {
+      console.log("🔄 handleBookingUpdated called with:", updateData);
+      
       // If updateData contains attendance_status, update selectedBooking immediately
       // This ensures the "Mark as Completed" button appears without needing a refresh
       if (updateData && updateData.attendance_status && selectedBooking.value) {
-        selectedBooking.value = {
-          ...selectedBooking.value,
-          attendance_status: updateData.attendance_status,
-        };
-        console.log("✅ Updated selectedBooking with attendance_status:", updateData.attendance_status);
+        // Directly mutate the property to ensure Vue reactivity is triggered
+        // Vue 3 reactivity system tracks changes to ref properties
+        selectedBooking.value.attendance_status = updateData.attendance_status;
+        console.log("✅ Immediately updated selectedBooking.attendance_status:", updateData.attendance_status);
+        console.log("✅ Updated booking object:", selectedBooking.value);
+        
+        // Force reactivity by creating a new reference (alternative approach if needed)
+        // This ensures Vue's reactivity system sees it as a change
+        selectedBooking.value = { ...selectedBooking.value };
+        
+        // Use nextTick to ensure the UI updates after the reactive change
+        await nextTick();
+        console.log("✅ After nextTick - booking should be reactive");
+        console.log("✅ Final booking state:", selectedBooking.value);
       }
 
-      // Refresh calendar data to get the latest from backend
-      await fetchCalendarData();
-
-      // Update the selectedBooking with fresh data if it exists
-      if (selectedBooking.value) {
-        const updatedEvent = bookings.value.find(
-          (booking) => booking.id === selectedBooking.value.id
-        );
-        if (updatedEvent && updatedEvent.extendedProps) {
-          // Update with the fresh booking data from extendedProps
-          selectedBooking.value = updatedEvent.extendedProps;
+      // Refresh calendar data to get the latest from backend (runs in background)
+      // Don't await this - let it run in the background
+      fetchCalendarData().then(() => {
+        // Update the selectedBooking with fresh data if it exists
+        if (selectedBooking.value) {
+          const updatedEvent = bookings.value.find(
+            (booking) => booking.id === selectedBooking.value.id
+          );
+          if (updatedEvent && updatedEvent.extendedProps) {
+            // Preserve any immediate updates (like attendance_status) while merging fresh data
+            const currentAttendanceStatus = selectedBooking.value.attendance_status;
+            selectedBooking.value = {
+              ...updatedEvent.extendedProps,
+              ...selectedBooking.value, // Preserve immediate updates
+              // Ensure attendance_status is not overwritten if it was just set
+              attendance_status: currentAttendanceStatus || updatedEvent.extendedProps.attendance_status,
+            };
+            console.log("✅ Updated selectedBooking with fresh data from backend");
+            console.log("✅ Preserved attendance_status:", selectedBooking.value.attendance_status);
+          }
         }
-      }
+      });
 
       showToast("Booking updated successfully", "success");
     }
