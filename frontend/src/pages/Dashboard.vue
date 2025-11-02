@@ -223,28 +223,36 @@ export default {
         return "Just now";
       }
       
-      // For less than 1 minute: show seconds with 2 decimal places
+      // For less than 1 minute: show seconds (no decimals)
       if (diffMins < 1) {
-        const roundedSecs = Math.round(diffSecs * 100) / 100; // Round to 2dp
-        return `${roundedSecs.toFixed(2)} seconds ago`;
+        const roundedSecs = Math.round(diffSecs);
+        return `${roundedSecs} ${roundedSecs === 1 ? "second" : "seconds"} ago`;
       }
       
-      // For less than 1 hour: show minutes with 2 decimal places
+      // For less than 1 hour: show minutes (no decimals)
       if (diffHours < 1) {
-        const roundedMins = Math.round(diffMins * 100) / 100; // Round to 2dp
-        return `${roundedMins.toFixed(2)} ${roundedMins === 1 ? "minute" : "minutes"} ago`;
+        const roundedMins = Math.round(diffMins);
+        return `${roundedMins} ${roundedMins === 1 ? "minute" : "minutes"} ago`;
       }
       
-      // For less than 24 hours: show hours with 2 decimal places
+      // For less than 24 hours: show hours and minutes
       if (diffDays < 1) {
-        const roundedHours = Math.round(diffHours * 100) / 100; // Round to 2dp
-        return `${roundedHours.toFixed(2)} ${roundedHours === 1 ? "hour" : "hours"} ago`;
+        const hours = Math.floor(diffHours);
+        const minutes = Math.floor((diffHours - hours) * 60);
+        
+        if (hours === 0) {
+          return `${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+        } else if (minutes === 0) {
+          return `${hours} ${hours === 1 ? "hour" : "hours"} ago`;
+        } else {
+          return `${hours} ${hours === 1 ? "hour" : "hours"} ${minutes} ${minutes === 1 ? "minute" : "minutes"} ago`;
+        }
       }
       
-      // For less than 7 days: show days with 2 decimal places
+      // For less than 7 days: show days (round down)
       if (diffDays < 7) {
-        const roundedDays = Math.round(diffDays * 100) / 100; // Round to 2dp
-        return `${roundedDays.toFixed(2)} ${roundedDays === 1 ? "day" : "days"} ago`;
+        const roundedDays = Math.floor(diffDays);
+        return `${roundedDays} ${roundedDays === 1 ? "day" : "days"} ago`;
       }
       
       // For older than 7 days: show the actual date
