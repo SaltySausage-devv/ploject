@@ -336,8 +336,18 @@ export default {
       }
     }
 
-    async function handleBookingUpdated() {
-      // Refresh calendar data first
+    async function handleBookingUpdated(updateData) {
+      // If updateData contains attendance_status, update selectedBooking immediately
+      // This ensures the "Mark as Completed" button appears without needing a refresh
+      if (updateData && updateData.attendance_status && selectedBooking.value) {
+        selectedBooking.value = {
+          ...selectedBooking.value,
+          attendance_status: updateData.attendance_status,
+        };
+        console.log("✅ Updated selectedBooking with attendance_status:", updateData.attendance_status);
+      }
+
+      // Refresh calendar data to get the latest from backend
       await fetchCalendarData();
 
       // Update the selectedBooking with fresh data if it exists

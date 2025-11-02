@@ -596,8 +596,20 @@ export default {
       emit("updated");
     }
 
-    function handleAttendanceMarked() {
-      emit("updated");
+    function handleAttendanceMarked(attendanceData) {
+      // Extract attendance_status from the response
+      // The backend returns { message, booking: { attendance_status, ... } }
+      // But if already_marked, it's directly in attendanceData
+      const attendanceStatus = attendanceData.booking?.attendance_status || 
+                               attendanceData.attendance_status || 
+                               attendanceData.attendanceStatus;
+      
+      // Emit the attendance data along with the update event
+      // so the parent can update the booking immediately without waiting for a refresh
+      emit("updated", { 
+        attendance_status: attendanceStatus,
+        ...attendanceData 
+      });
     }
 
     // Watch for showRescheduleRequest prop to open modal
