@@ -557,13 +557,24 @@ export default {
       return date.toLocaleDateString();
     };
 
-    const handleNotificationClick = (notification) => {
+    const handleNotificationClick = async (notification) => {
       // For session_completed notifications, navigate to calendar
       if (notification.type === 'session_completed' && notification.bookingId) {
         console.log(
           "🔔 NAVBAR: Clicked session_completed notification, navigating to calendar with bookingId:",
           notification.bookingId
         );
+
+        // Mark the message as read in the database
+        if (notification.conversationId) {
+          try {
+            console.log(`🔔 NAVBAR: Marking session_completed message as read for conversation: ${notification.conversationId}`);
+            await messagingService.markAsRead(notification.conversationId);
+            console.log(`🔔 NAVBAR: ✅ Session_completed message marked as read`);
+          } catch (error) {
+            console.error(`🔔 NAVBAR: ❌ Error marking session_completed message as read:`, error);
+          }
+        }
 
         // Remove this notification
         notifications.value = notifications.value.filter(
@@ -588,6 +599,15 @@ export default {
           "🔔 NAVBAR: Clicked notification for conversation:",
           notification.conversationId
         );
+
+        // Mark messages as read in the database
+        try {
+          console.log(`🔔 NAVBAR: Marking messages as read for conversation: ${notification.conversationId}`);
+          await messagingService.markAsRead(notification.conversationId);
+          console.log(`🔔 NAVBAR: ✅ Messages marked as read`);
+        } catch (error) {
+          console.error(`🔔 NAVBAR: ❌ Error marking messages as read:`, error);
+        }
 
         // Remove this specific notification
         notifications.value = notifications.value.filter(
@@ -712,6 +732,15 @@ export default {
                   const isSender = String(msg.sender_id) === String(currentUserId.value);
                   
                   if (!isSender) {
+                    // Check if message is already read
+                    // If read_at is set, it means the recipient (current user) has read it
+                    const isAlreadyRead = msg.read_at !== null && msg.read_at !== undefined;
+                    
+                    if (isAlreadyRead) {
+                      console.log(`🔔 NAVBAR: Skipping session_completed message - already read (read_at: ${msg.read_at}):`, msg.id);
+                      return;
+                    }
+                    
                     // Check if we already have this notification
                     const existingNotification = notifications.value.find(
                       (n) => n.id === msg.id
