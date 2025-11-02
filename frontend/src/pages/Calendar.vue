@@ -719,11 +719,11 @@ h1 {
 }
 
 :deep(.fc-more-popover .fc-popover-header) {
-  background: rgba(255, 140, 66, 0.1) !important;
-  color: var(--cyber-orange) !important;
+  background: rgba(42, 42, 42, 0.9) !important;
+  color: #ffffff !important;
   font-weight: 700;
   padding: 0.75rem 1rem;
-  border-bottom: 1px solid var(--cyber-orange);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 :deep(.fc-more-popover .fc-popover-body) {
@@ -745,11 +745,19 @@ h1 {
 
 :deep(.fc-more-popover .fc-event) {
   margin-bottom: 0.25rem;
+  background: rgba(42, 42, 42, 0.9) !important;
 }
 
 :deep(.fc-more-popover .fc-daygrid-event) {
   padding: 4px 8px;
   border-radius: 4px;
+  background: rgba(42, 42, 42, 0.9) !important;
+  color: #ffffff !important;
+}
+
+:deep(.fc-more-popover .fc-daygrid-event:hover) {
+  background: rgba(58, 58, 82, 0.9) !important;
+  color: #ffffff !important;
 }
 
 /* More link styling */
