@@ -2,7 +2,7 @@
   <div class="login-page min-vh-100 d-flex align-items-center position-relative" style="background: #1a1a1a !important;">
     <div class="container">
       <div class="row justify-content-center">
-        <div class="col-lg-5 col-md-7">
+        <div class="col-lg-5 col-md-7 col-sm-10">
           <!-- Login Card with Cyberpunk Styling -->
           <div 
             ref="loginCard"
@@ -721,14 +721,14 @@ export default {
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  min-height: 100vh;
-  width: 100vw;
-  height: 100vh;
+  min-height: 50%;
+  width: 100%;
+  height: 50%;
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding-top: 40px;
-  padding-bottom: 30px;
+  padding-top: 20px;
+  padding-bottom: 20px;
 }
 
 /* Force dark background on all elements */
@@ -740,7 +740,8 @@ export default {
 .login-page .container,
 .login-page .row,
 .login-page .col-lg-5,
-.login-page .col-md-7 {
+.login-page .col-md-7,
+.login-page .col-sm-10 {
   background: transparent !important;
 }
 

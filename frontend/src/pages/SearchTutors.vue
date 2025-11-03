@@ -269,21 +269,26 @@
                   </div>
                 </div>
 
-                <div class="col-12">
-                  <div class="search-buttons-container">
-                    <button
-                      ref="searchButton"
-                      type="submit"
-                      class="cyberpunk-search-btn"
-                      :disabled="isLoading"
-                    >
-                      <span
-                        v-if="isLoading"
-                        class="cyberpunk-spinner me-2"
-                      ></span>
-                      <i v-else class="fas fa-search me-2"></i>
-                      {{ isLoading ? "Searching..." : "SEARCH TUTORS" }}
-                    </button>
+
+                  <div class="col-md-6">
+                    <div class="search-buttons-container">
+                      <button
+                        ref="searchButton"
+                        type="submit"
+                        class="cyberpunk-search-btn"
+                        :disabled="isLoading"
+                      >
+                        <div
+                          v-if="isLoading"
+                          class="cyberpunk-spinner me-2"
+                        ></div>
+                        <i v-else class="fas fa-search me-2"></i>
+                        {{ isLoading ? "Searching..." : "SEARCH TUTORS" }}
+                      </button>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="search-buttons-container">
                     <button
                       ref="clearButton"
                       type="button"
@@ -293,8 +298,9 @@
                       <i class="fas fa-times me-2"></i>
                       Clear Filters
                     </button>
+                    </div>
                   </div>
-                </div>
+
               </form>
             </div>
           </div>
@@ -406,7 +412,7 @@
 
         <!-- Results -->
         <div class="col-lg-9">
-          <div class="d-flex justify-content-between align-items-center mb-4">
+          <div class="results-box justify-content-between align-items-center mb-4">
             <h5 class="cyberpunk-results-title mb-0">
               {{ totalFilteredTutors }} tutors found
             </h5>
@@ -1703,6 +1709,10 @@ export default {
   font-size: 0.95rem;
 }
 
+.results-box{
+  display: flex;
+}
+
 /* Cyberpunk Input Groups */
 .cyberpunk-input-group {
   position: relative;
@@ -1839,6 +1849,7 @@ select.cyberpunk-input option {
 .search-buttons-container .cyberpunk-search-btn,
 .search-buttons-container .cyberpunk-clear-btn {
   flex: 1;
+  overflow: hidden;
 }
 
 /* Mobile view - side by side with smaller size */
@@ -1854,13 +1865,16 @@ select.cyberpunk-input option {
   .search-buttons-container .cyberpunk-search-btn,
   .search-buttons-container .cyberpunk-clear-btn {
     flex: 1 1 50% !important;
-    max-width: 50% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
     width: auto !important;
     display: inline-block !important;
     padding: 0.65rem 0.75rem !important;
     font-size: 0.8rem !important;
     white-space: nowrap !important;
+  }
+  .results-box{
+    display: block !important;
   }
 }
 
@@ -2173,6 +2187,7 @@ select.cyberpunk-input option {
   color: var(--cyber-text);
   font-weight: 700;
   text-shadow: 0 0 10px rgba(255, 140, 66, 0.5);
+  display: inline-block
 }
 
 /* Cyberpunk Spinner */
