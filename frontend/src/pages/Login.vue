@@ -734,6 +734,8 @@ export default {
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  padding-top: 40px;
+  padding-bottom: 30px;
 }
 
 /* Force dark background on all elements */

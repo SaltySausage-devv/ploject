@@ -284,7 +284,6 @@ export default {
 @media (max-width: 924px) {
   .hero-section {
     padding-top: 4rem !important;
-    margin-top: 2rem;
   }
   
   .hero-content {
