@@ -572,8 +572,25 @@ export default {
           throw new Error("Failed to complete booking");
         }
 
+        const result = await response.json();
+        
+        // Immediately update local booking status to "completed" so UI updates without refresh
+        if (result.data) {
+          localBooking.status = "completed";
+          // Also update any other fields from the response
+          Object.assign(localBooking, result.data);
+        } else {
+          // Fallback: just set status to completed
+          localBooking.status = "completed";
+        }
+
         showToast("Booking marked as completed", "success");
-        emit("updated");
+        
+        // Emit update with status change so parent component updates too
+        emit("updated", { 
+          status: "completed",
+          ...result.data 
+        });
       } catch (error) {
         console.error("Error completing booking:", error);
         showToast("Failed to complete booking", "error");
@@ -613,8 +630,19 @@ export default {
                                attendanceData.attendance_status || 
                                attendanceData.attendanceStatus;
       
+      // Immediately update localBooking reactively so the "Mark as Completed" button appears instantly
+      if (attendanceStatus) {
+        localBooking.attendance_status = attendanceStatus;
+        // Also update session_notes if provided
+        const sessionNotes = attendanceData.booking?.session_notes || attendanceData.session_notes;
+        if (sessionNotes) {
+          localBooking.session_notes = sessionNotes;
+        }
+        console.log("✅ Updated localBooking with attendance_status:", attendanceStatus);
+      }
+      
       // Emit the attendance data along with the update event immediately
-      // so the parent can update the booking reactively and the "Mark as Completed" button appears
+      // so the parent can update the booking reactively too
       // The MarkAttendanceModal will close itself after emitting
       emit("updated", { 
         attendance_status: attendanceStatus,

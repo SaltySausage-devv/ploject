@@ -1256,9 +1256,17 @@ export default {
     // Set up periodic check to ensure handler is registered when connection is ready
     // This ensures we receive real-time messages even if the connection wasn't ready on mount
     const ensureHandlerRegistered = () => {
-      if (authStore.isAuthenticated && messagingService.isConnected && !messageHandler) {
-        console.log("🔔 NAVBAR: Connection ready but handler missing, registering now");
-        setupMessageNotifications();
+      if (authStore.isAuthenticated && messagingService.isConnected) {
+        // Check if handler is registered
+        const handlers = messagingService.messageHandlers?.get('new_message') || [];
+        const handlerRegistered = handlers.includes(messageHandler);
+        
+        if (!handlerRegistered || !messageHandler) {
+          console.log("🔔 NAVBAR: Connection ready but handler missing or not registered, setting up now");
+          console.log("🔔 NAVBAR: Current handlers count:", handlers.length);
+          console.log("🔔 NAVBAR: messageHandler exists?", !!messageHandler);
+          setupMessageNotifications();
+        }
       }
     };
     

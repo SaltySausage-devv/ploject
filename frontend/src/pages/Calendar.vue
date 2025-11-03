@@ -342,18 +342,43 @@ export default {
     }
 
     async function handleBookingUpdated(updateData) {
-      // If updateData contains attendance_status, update selectedBooking immediately
-      // This ensures the "Mark as Completed" button appears without needing a refresh
-      if (updateData && updateData.attendance_status && selectedBooking.value) {
-        // Create a new reactive object to trigger Vue's reactivity system
-        // This ensures computed properties like canComplete recalculate immediately
-        selectedBooking.value = {
-          ...selectedBooking.value,
-          attendance_status: updateData.attendance_status,
-          // Also update session_notes if provided
-          ...(updateData.session_notes && { session_notes: updateData.session_notes }),
-        };
-        console.log("✅ Updated selectedBooking with attendance_status:", updateData.attendance_status);
+      // Update selectedBooking immediately for reactive UI updates
+      if (updateData && selectedBooking.value) {
+        // Update attendance_status if provided
+        if (updateData.attendance_status) {
+          selectedBooking.value = {
+            ...selectedBooking.value,
+            attendance_status: updateData.attendance_status,
+            ...(updateData.session_notes && { session_notes: updateData.session_notes }),
+          };
+          console.log("✅ Updated selectedBooking with attendance_status:", updateData.attendance_status);
+        }
+        
+        // Update status if booking is completed
+        if (updateData.status === "completed") {
+          selectedBooking.value = {
+            ...selectedBooking.value,
+            status: "completed",
+            ...updateData,
+          };
+          console.log("✅ Updated selectedBooking with completed status");
+          
+          // Don't show success toast for completion - already shown in modal
+          // Refresh calendar data in background
+          fetchCalendarData().then(() => {
+            // Update the selectedBooking with fresh data if it exists
+            if (selectedBooking.value) {
+              const updatedEvent = bookings.value.find(
+                (booking) => booking.id === selectedBooking.value.id
+              );
+              if (updatedEvent && updatedEvent.extendedProps) {
+                // Update with the fresh booking data from extendedProps
+                selectedBooking.value = updatedEvent.extendedProps;
+              }
+            }
+          });
+          return; // Early return for completion - no need for extra toast
+        }
       }
 
       // Refresh calendar data to get the latest from backend (in background)
