@@ -1833,6 +1833,7 @@ select.cyberpunk-input option {
   display: flex;
   gap: 0.75rem;
   flex-wrap: nowrap;
+  overflow: hidden;
 }
 
 .search-buttons-container .cyberpunk-search-btn,

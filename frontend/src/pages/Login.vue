@@ -719,7 +719,8 @@ export default {
 .login-page {
   background: #1a1a1a !important;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   min-height: 100vh;
   width: 100vw;
   height: 100vh;
