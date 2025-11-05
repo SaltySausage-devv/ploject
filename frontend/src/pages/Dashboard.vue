@@ -444,17 +444,17 @@ export default {
             const notificationMessageType = notification.message_type || data.messageType || data.notificationType;
             
             if (notificationMessageType === "booking_confirmation" || message.includes("Booking confirmed") || message.includes("booking confirmed") || data.notificationType === "booking_confirmation") {
-              icon = "fas fa-calendar-check";
+              icon = "fas fa-calendar-check text-success"; // Green calendar with checkmark for booking confirmed
               title = "New booking confirmed";
               status = "Completed";
               badgeClass = "bg-success";
             } else if (notificationMessageType === "booking_cancelled" || message.includes("Booking cancelled") || message.includes("booking cancelled") || data.notificationType === "booking_cancelled") {
-              icon = "fas fa-calendar-times";
+              icon = "fas fa-calendar-times text-danger";
               title = "Booking cancelled";
               status = "Completed";
               badgeClass = "bg-success";
             } else if (notificationMessageType === "booking_offer" || notificationMessageType === "booking_proposal" || message.includes("Booking request") || message.includes("booking request") || message.includes("Booking offer") || message.includes("Booking proposal") || data.notificationType === "booking_offer" || data.notificationType === "booking_request" || data.notificationType === "booking_proposal") {
-              icon = "fas fa-calendar-plus";
+              icon = "fas fa-calendar-alt"; // Calendar icon for booking request/proposal
               
               // Determine if notification is from current user (sent) or to current user (received)
               // For notifications, we need to check the notification data or sender
@@ -542,7 +542,7 @@ export default {
                 badgeClass = "bg-success"; // Changed to green for consistency with other "Completed" statuses
               }
             } else if (message.includes("message") || message.includes("Message") || notification.type === "push") {
-              icon = "fas fa-envelope";
+              icon = "fas fa-calendar-alt"; // Use calendar icon instead of envelope
               title = message.includes("from") ? message : `New message${userType.value === "student" ? " from tutor" : " from student"}`;
               if (message.read_at != "" || message.read_at != null) {
                 status = "Completed";
@@ -628,24 +628,24 @@ export default {
           const messageType = message.message_type || 'text';
           const messageTimestamp = message.created_at || new Date().toISOString();
           
-          let icon = "fas fa-envelope";
+          let icon = "fas fa-calendar-alt"; // Default calendar icon
           let title = `New message${userType.value === "student" ? " from tutor" : " from student"}`;
           let status = "Unread";
           let badgeClass = "bg-warning";
           
           // Use same logic as createActivityFromMessage
           if (messageType === "booking_confirmation") {
-            icon = "fas fa-calendar-check";
+            icon = "fas fa-calendar-check text-success"; // Green calendar with checkmark for booking confirmed
             title = "New booking confirmed";
             status = "Completed";
             badgeClass = "bg-success";
           } else if (messageType === "booking_cancelled") {
-            icon = "fas fa-calendar-times";
+            icon = "fas fa-calendar-times text-danger";
             title = "Booking cancelled";
             status = "Completed";
             badgeClass = "bg-success";
           } else if (messageType === "booking_offer" || messageType === "booking_proposal") {
-            icon = "fas fa-calendar-plus";
+            icon = "fas fa-calendar-alt"; // Calendar icon for booking request/proposal
             
             // Determine if message is from current user (sent) or to current user (received)
             const isSender = String(message.sender_id) === String(userId.value);
@@ -709,7 +709,7 @@ export default {
               const senderName = `${message.sender.first_name || ''} ${message.sender.last_name || ''}`.trim();
               title = senderName ? `New message from ${senderName}` : `New message${userType.value === "student" ? " from tutor" : " from student"}`;
             }
-            icon = "fas fa-envelope";
+            icon = "fas fa-calendar-alt"; // Use calendar icon instead of envelope
             const isRead = message.read_at || (message.read_by && Array.isArray(message.read_by) && message.read_by.some(id => String(id) === String(userId.value)));
             status = isRead ? "Completed" : "Unread";
             badgeClass = isRead ? "bg-success" : "bg-warning";

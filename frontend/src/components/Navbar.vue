@@ -1022,19 +1022,34 @@ export default {
           }
 
           // Determine icon based on message type
-          let iconClass = "fas fa-envelope";
-          if (message.message_type === 'reschedule_request') {
+          // Use calendar icons for booking-related notifications
+          let iconClass = "fas fa-calendar-alt"; // Default calendar icon for regular messages
+          if (message.message_type === 'booking_offer' || message.message_type === 'booking_request') {
+            // Booking request: use calendar icon
+            iconClass = "fas fa-calendar-alt";
+          } else if (message.message_type === 'booking_proposal') {
+            // Booking proposal: use calendar icon
+            iconClass = "fas fa-calendar-alt";
+          } else if (message.message_type === 'booking_confirmation') {
+            // New booking confirmed: use green calendar with checkmark
+            iconClass = "fas fa-calendar-check text-success";
+          } else if (message.message_type === 'booking_cancelled') {
+            iconClass = "fas fa-calendar-times text-danger";
+          } else if (message.message_type === 'reschedule_request') {
             iconClass = "fas fa-calendar-alt text-warning";
           } else if (message.message_type === 'reschedule_accepted') {
             iconClass = "fas fa-calendar-check text-success";
           } else if (message.message_type === 'reschedule_rejected') {
             iconClass = "fas fa-calendar-times text-danger";
-          } else if (message.message_type === 'booking_cancelled') {
-            iconClass = "fas fa-ban text-danger";
           } else if (message.message_type === 'session_completed') {
             iconClass = "fas fa-check-double text-success";
           } else if (isSystemMessage) {
             iconClass = "fas fa-bell";
+          } else if (message.message_type === 'image') {
+            iconClass = "fas fa-image";
+          } else {
+            // Default: calendar icon for regular messages
+            iconClass = "fas fa-calendar-alt";
           }
 
           // Check if we already have this notification (prevent duplicates)
