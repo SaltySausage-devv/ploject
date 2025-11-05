@@ -116,6 +116,84 @@ const generateChartData = (data, startDate, endDate, period) => {
   const spendingData = [];
   const chartLabels = [];
   
+  // For periods 90 and 365, group by month instead of day
+  const periodInt = parseInt(period);
+  if (periodInt === 90 || periodInt === 365) {
+    // Group by month
+    const monthMap = new Map();
+    
+    // Process data items within date range
+    data.forEach(item => {
+      const itemDate = new Date(item.start_time || item.created_at);
+      // Only include items within the date range
+      if (itemDate < startDate || itemDate > endDate) return;
+      
+      const monthKey = `${itemDate.getFullYear()}-${itemDate.getMonth()}`;
+      
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, {
+          month: itemDate.getMonth(),
+          year: itemDate.getFullYear(),
+          hours: 0,
+          spending: 0
+        });
+      }
+      
+      const monthData = monthMap.get(monthKey);
+      
+      // Only count completed/confirmed bookings
+      if (item.status === 'completed' || item.status === 'confirmed') {
+        // Calculate hours
+        if (item.start_time && item.end_time) {
+          const start = new Date(item.start_time);
+          const end = new Date(item.end_time);
+          const hours = (end - start) / (1000 * 60 * 60);
+          monthData.hours += Math.max(0, hours);
+        }
+        
+        // Calculate spending
+        const amount = parseFloat(item.total_amount) || 0;
+        monthData.spending += Math.max(0, amount);
+      }
+    });
+    
+    // Get all months within the date range
+    const months = [];
+    const currentDate = new Date(startDate);
+    currentDate.setDate(1); // Start of month
+    currentDate.setHours(0, 0, 0, 0);
+    
+    while (currentDate <= endDate) {
+      const monthKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
+      months.push({
+        key: monthKey,
+        date: new Date(currentDate),
+        month: currentDate.getMonth(),
+        year: currentDate.getFullYear()
+      });
+      
+      // Move to next month
+      currentDate.setMonth(currentDate.getMonth() + 1);
+    }
+    
+    // Generate labels and data for each month
+    months.forEach(({ date, month, year }) => {
+      const monthKey = `${year}-${month}`;
+      const monthData = monthMap.get(monthKey) || { hours: 0, spending: 0 };
+      
+      chartLabels.push(date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+      hoursData.push(Math.max(0, parseFloat(monthData.hours.toFixed(1))));
+      spendingData.push(Math.max(0, parseFloat(monthData.spending.toFixed(2))));
+    });
+    
+    return { 
+      chartData: hoursData, 
+      spendingData: spendingData,
+      chartLabels 
+    };
+  }
+  
+  // Original daily grouping for periods 7 and 30
   // For earnings data, extend the range to include future dates
   const hasFutureData = data.some(item => {
     const itemDate = new Date(item.start_time || item.created_at);
@@ -822,37 +900,97 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
       sampleBooking: allConfirmedBookings?.[0]
     });
     
-    // Simple earnings chart data generation
+    // Earnings chart data generation
     const earningsData = [];
     const earningsLabels = [];
+    const periodInt = parseInt(period);
     
-    // Generate last 30 days + 7 future days
-    for (let i = 29; i >= -7; i--) {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      earningsLabels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    // For periods 90 and 365, group by month
+    if (periodInt === 90 || periodInt === 365) {
+      // Group by month
+      const monthMap = new Map();
       
-      const dayStart = new Date(date);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(date);
-      dayEnd.setHours(23, 59, 59, 999);
+      // Process attended bookings within date range
+      attendedBookings?.forEach(booking => {
+        if (!booking.start_time) return;
+        
+        const bookingDate = new Date(booking.start_time);
+        // Only include bookings within the date range
+        if (bookingDate < startDate || bookingDate > endDate) return;
+        
+        const monthKey = `${bookingDate.getFullYear()}-${bookingDate.getMonth()}`;
+        
+        if (!monthMap.has(monthKey)) {
+          monthMap.set(monthKey, {
+            month: bookingDate.getMonth(),
+            year: bookingDate.getFullYear(),
+            earnings: 0
+          });
+        }
+        
+        const monthData = monthMap.get(monthKey);
+        const amount = parseFloat(booking.total_amount) || 0;
+        monthData.earnings += Math.max(0, amount);
+      });
       
-      // Chart earnings: Only from bookings where attendance was marked as 'attended'
-      // This ensures chart data matches the main earnings metric
-      const dayEarnings = attendedBookings
-        ?.filter(booking => {
-          if (!booking.start_time) return false;
-          const bookingDate = new Date(booking.start_time);
-          return bookingDate >= dayStart && bookingDate <= dayEnd;
-        })
-        ?.reduce((sum, booking) => {
-          const amount = parseFloat(booking.total_amount) || 0;
-          // Ensure earnings is never negative
-          return sum + Math.max(0, amount);
-        }, 0) || 0;
+      // Get all months within the date range
+      const months = [];
+      const currentDate = new Date(startDate);
+      currentDate.setDate(1); // Start of month
+      currentDate.setHours(0, 0, 0, 0);
       
-      // Ensure final earnings value is non-negative
-      earningsData.push(Math.max(0, parseFloat(dayEarnings.toFixed(2))));
+      while (currentDate <= endDate) {
+        const monthKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}`;
+        months.push({
+          key: monthKey,
+          date: new Date(currentDate),
+          month: currentDate.getMonth(),
+          year: currentDate.getFullYear()
+        });
+        
+        // Move to next month
+        currentDate.setMonth(currentDate.getMonth() + 1);
+      }
+      
+      // Generate labels and data for each month
+      months.forEach(({ date, month, year }) => {
+        const monthKey = `${year}-${month}`;
+        const monthData = monthMap.get(monthKey) || { earnings: 0 };
+        
+        earningsLabels.push(date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+        earningsData.push(Math.max(0, parseFloat(monthData.earnings.toFixed(2))));
+      });
+    } else {
+      // Original daily grouping for periods 7 and 30
+      // Generate last 30 days + 7 future days
+      const daysToGenerate = periodInt === 7 ? 7 : 30;
+      for (let i = daysToGenerate - 1; i >= -7; i--) {
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        earningsLabels.push(date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+        
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(date);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        // Chart earnings: Only from bookings where attendance was marked as 'attended'
+        // This ensures chart data matches the main earnings metric
+        const dayEarnings = attendedBookings
+          ?.filter(booking => {
+            if (!booking.start_time) return false;
+            const bookingDate = new Date(booking.start_time);
+            return bookingDate >= dayStart && bookingDate <= dayEnd;
+          })
+          ?.reduce((sum, booking) => {
+            const amount = parseFloat(booking.total_amount) || 0;
+            // Ensure earnings is never negative
+            return sum + Math.max(0, amount);
+          }, 0) || 0;
+        
+        // Ensure final earnings value is non-negative
+        earningsData.push(Math.max(0, parseFloat(dayEarnings.toFixed(2))));
+      }
     }
     
     console.log('📊 TUTOR ANALYTICS: Simple earnings data generated:', {
