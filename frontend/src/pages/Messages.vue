@@ -1840,16 +1840,16 @@
                 <button
                   type="button"
                   class="btn btn-sm duration-btn"
-                  :class="{ active: bookingProposal.customDuration !== '' }"
+                  :class="{ active: bookingProposal.duration === 0 }"
                   @click="
                     bookingProposal.duration = 0;
-                    bookingProposal.customDuration = '60';
+                    bookingProposal.customDuration = bookingProposal.customDuration || '60';
                   "
                 >
                   Custom
                 </button>
               </div>
-              <div v-if="bookingProposal.customDuration !== ''" class="mt-2">
+              <div v-if="bookingProposal.duration === 0" class="mt-2">
                 <div class="input-group">
                   <input
                     type="number"
