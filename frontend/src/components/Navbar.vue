@@ -1381,13 +1381,13 @@ export default {
         lastClickTarget = e.target;
       };
 
-      // Prevent navbar collapse at 996px-1200px - OPTIMIZED
+      // Prevent navbar collapse at 990px-1200px - OPTIMIZED (includes 990px-1015px to match 1015px-1200px)
       let isNavbarForced = false;
       let toggleHandler = null;
       
       const preventNavbarCollapse = () => {
         const width = window.innerWidth;
-        if (width >= 996 && width <= 1200) {
+        if ((width >= 990 && width <= 1015) || (width >= 996 && width <= 1200)) {
           if (!isNavbarForced) {
             const navbarCollapse = document.getElementById("navbarNav");
             if (navbarCollapse) {
@@ -1494,12 +1494,12 @@ export default {
         }
       };
       
-      // Prevent auto-collapse for notification dropdown at 996px-1200px screen widths
+      // Prevent auto-collapse for notification dropdown at 990px-1015px and 996px-1200px screen widths
       const preventAutoCollapse = () => {
         const width = window.innerWidth;
         
         // Remove existing document click listener if outside range
-        if (trackClickHandler && trackClickActive && (width < 996 || width > 1200)) {
+        if (trackClickHandler && trackClickActive && !((width >= 990 && width <= 1015) || (width >= 996 && width <= 1200))) {
           document.removeEventListener('click', trackClickHandler, true);
           trackClickActive = false;
         }
@@ -1520,7 +1520,7 @@ export default {
           }
         });
         
-        if (width >= 996 && width <= 1200) {
+        if ((width >= 990 && width <= 1015) || (width >= 996 && width <= 1200)) {
           // Add document click listener to track clicks (only if not already added)
           if (trackClickHandler && !trackClickActive) {
             document.addEventListener('click', trackClickHandler, true);
@@ -1564,10 +1564,10 @@ export default {
         }
       };
 
-      // Prevent navbar from scrolling when dropdowns open at 996px-1200px
+      // Prevent navbar from scrolling when dropdowns open at 990px-1015px and 996px-1200px
       const preventNavbarScrollOnDropdown = () => {
         const width = window.innerWidth;
-        if (width >= 996 && width <= 1200) {
+        if ((width >= 990 && width <= 1015) || (width >= 996 && width <= 1200)) {
           const navbar = document.querySelector('.navbar, nav.navbar');
           const navbarCollapse = document.getElementById("navbarNav");
           const navbarContainer = document.querySelector('.navbar .container, nav.navbar .container');
@@ -1596,7 +1596,7 @@ export default {
       // Watch for dropdown show events to prevent scrolling
       const setupDropdownScrollPrevention = () => {
         const width = window.innerWidth;
-        if (width >= 996 && width <= 1200) {
+        if ((width >= 990 && width <= 1015) || (width >= 996 && width <= 1200)) {
           // Find all dropdowns in navbar
           const dropdowns = document.querySelectorAll('.navbar .dropdown, nav.navbar .dropdown');
           
@@ -1619,7 +1619,7 @@ export default {
               );
               
               const width = window.innerWidth;
-              if (hasDropdownClassChange && width >= 996 && width <= 1200) {
+              if (hasDropdownClassChange && ((width >= 990 && width <= 1015) || (width >= 996 && width <= 1200))) {
                 const openDropdowns = navbar.querySelectorAll('.dropdown.show');
                 if (openDropdowns.length > 0) {
                   preventNavbarScrollOnDropdown();
@@ -1647,7 +1647,8 @@ export default {
         
         // Set up MutationObserver to catch any Bootstrap changes (only if needed)
         const navbarCollapse = document.getElementById("navbarNav");
-        if (navbarCollapse && window.innerWidth >= 996 && window.innerWidth <= 1200) {
+        const currentWidth = window.innerWidth;
+        if (navbarCollapse && ((currentWidth >= 990 && currentWidth <= 1015) || (currentWidth >= 996 && currentWidth <= 1200))) {
           let observerTimeout = null;
           const observer = new MutationObserver((mutations) => {
             // Debounce to avoid performance issues
@@ -1656,7 +1657,7 @@ export default {
             }
             observerTimeout = setTimeout(() => {
               const width = window.innerWidth;
-              if (width >= 996 && width <= 1200) {
+              if ((width >= 990 && width <= 1015) || (width >= 996 && width <= 1200)) {
                 // Only force if navbar collapse class was changed
                 const hasCollapseClass = navbarCollapse.classList.contains('collapse') || navbarCollapse.classList.contains('collapsing');
                 if (hasCollapseClass) {
@@ -2044,21 +2045,124 @@ export default {
   }
 }
 
-/* Ensure 990px-1015px follows 871px-900px styling - override any conflicting rules */
+/* Ensure 990px-1015px follows 1015px-1200px styling (same as 996px-1200px) */
 @media (min-width: 990px) and (max-width: 1015px) {
-  .mobile-nav-items {
+  /* Force navbar to stay expanded - prevent collapse - COMPLETE OVERRIDE */
+  .navbar-collapse,
+  .navbar-collapse.collapse,
+  .navbar-collapse.collapsing,
+  .navbar-collapse.show,
+  #navbarNav,
+  #navbarNav.collapse,
+  #navbarNav.collapsing,
+  #navbarNav.show {
     display: flex !important;
-    gap: 0.7rem !important;
-    padding-right: 0.7rem !important;
+    flex-basis: auto !important;
+    flex-grow: 1 !important;
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    position: static !important;
+    transform: none !important;
+    transition: none !important;
   }
 
-  .navbar .container {
-    padding-left: 1rem !important;
-    padding-right: 1rem !important;
+  /* Prevent navbar-collapse from scrolling when dropdowns are open */
+  .navbar-collapse:has(.dropdown.show),
+  .navbar-collapse:has(.dropdown[aria-expanded="true"]),
+  #navbarNav:has(.dropdown.show),
+  #navbarNav:has(.dropdown[aria-expanded="true"]),
+  .navbar-collapse .dropdown.show,
+  .navbar-collapse .dropdown[aria-expanded="true"],
+  #navbarNav .dropdown.show,
+  #navbarNav .dropdown[aria-expanded="true"] {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
   }
 
-  .navbar-brand {
-    margin-right: 1rem !important;
+  /* Hide navbar toggler completely */
+  .navbar-toggler,
+  .cyberpunk-hamburger,
+  button[data-bs-toggle="collapse"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* Hide mobile nav items container */
+  .mobile-nav-items {
+    display: none !important;
+  }
+
+  /* Prevent navbar from being scrollable */
+  .navbar,
+  nav.navbar {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Prevent navbar container from scrolling when dropdowns are open */
+  .navbar .container,
+  .navbar > .container,
+  nav.navbar .container,
+  nav.navbar > .container {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Prevent navbar from scrolling when any dropdown is open */
+  .navbar:has(.dropdown.show),
+  .navbar:has(.dropdown[aria-expanded="true"]),
+  nav.navbar:has(.dropdown.show),
+  nav.navbar:has(.dropdown[aria-expanded="true"]) {
+    overflow: visible !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Alternative selector for browsers that don't support :has() */
+  .navbar .dropdown.show ~ *,
+  .navbar-collapse:has(.dropdown.show) {
+    overflow: visible !important;
+  }
+
+  /* Ensure all nav items are visible */
+  .navbar-nav,
+  .navbar-nav.me-auto {
+    display: flex !important;
+    flex-direction: row !important;
+    overflow: visible !important;
+    max-height: none !important;
+    flex-wrap: nowrap !important;
+  }
+
+  /* Prevent navbar-nav from scrolling when dropdowns are open */
+  .navbar-nav:has(.dropdown.show),
+  .navbar-nav:has(.dropdown[aria-expanded="true"]),
+  .navbar-nav .dropdown.show,
+  .navbar-nav .dropdown[aria-expanded="true"] {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Ensure dropdown menus don't cause navbar to scroll */
+  .dropdown-menu,
+  .dropdown-menu.show,
+  .dropdown.show .dropdown-menu {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Prevent body or html from scrolling when navbar dropdowns are open */
+  body:has(.navbar .dropdown.show),
+  html:has(.navbar .dropdown.show) {
+    overflow-x: hidden !important;
   }
 }
 
