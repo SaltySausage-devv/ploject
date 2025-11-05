@@ -212,24 +212,34 @@ export default {
 
               // Generate user-friendly message preview based on message type
               let messagePreview;
+              let notificationTitle;
               if (message.message_type === "image") {
                 messagePreview = "📷 Sent an image";
+                notificationTitle = `New message from ${senderName}`;
               } else if (message.message_type === "reschedule_request") {
                 messagePreview = "📅 Reschedule booking request";
+                notificationTitle = "Reschedule booking request";
               } else if (message.message_type === "reschedule_accepted") {
                 messagePreview = "✅ Reschedule request accepted";
+                notificationTitle = "Reschedule request accepted";
               } else if (message.message_type === "reschedule_rejected") {
                 messagePreview = "❌ Reschedule request rejected";
-              } else if (message.message_type === "booking_offer") {
-                messagePreview = "📋 Booking offer";
+                notificationTitle = "Reschedule request rejected";
+              } else if (message.message_type === "booking_offer" || message.message_type === "booking_request") {
+                messagePreview = "📋 Booking request";
+                notificationTitle = "Booking request";
               } else if (message.message_type === "booking_proposal") {
                 messagePreview = "📝 Booking proposal";
+                notificationTitle = "Booking proposal";
               } else if (message.message_type === "booking_confirmation") {
                 messagePreview = "✅ Booking confirmed";
+                notificationTitle = "New booking confirmed";
               } else if (message.message_type === "booking_cancelled") {
                 messagePreview = "❌ Booking cancelled";
+                notificationTitle = "Booking cancelled";
               } else {
                 messagePreview = message.content;
+                notificationTitle = `New message from ${senderName}`;
               }
 
               // Toast popup disabled - user requested removal of popup toasts

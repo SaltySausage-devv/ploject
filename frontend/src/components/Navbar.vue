@@ -967,6 +967,8 @@ export default {
             messagePreview = "✅ Reschedule request accepted";
           } else if (message.message_type === "reschedule_rejected") {
             messagePreview = "❌ Reschedule request declined";
+          } else if (message.message_type === "booking_offer" || message.message_type === "booking_request") {
+            messagePreview = "📋 Booking request";
           } else if (message.message_type === "booking_proposal") {
             messagePreview = "📝 Booking proposal";
           } else if (message.message_type === "booking_confirmation") {
@@ -987,11 +989,21 @@ export default {
             messagePreview = "New message";
           }
 
-          // Format title
+          // Format title based on message type
           let title;
           if (isSystemMessage) {
             title = messagePreview;
+          } else if (message.message_type === "booking_offer" || message.message_type === "booking_request") {
+            // Booking request: show "Booking request" as title
+            title = "Booking request";
+          } else if (message.message_type === "booking_proposal") {
+            // Booking proposal: show "Booking proposal" as title
+            title = "Booking proposal";
+          } else if (message.message_type === "booking_confirmation") {
+            // Booking confirmation: show "New booking confirmed" as title
+            title = "New booking confirmed";
           } else {
+            // Regular messages: show "New message from sender"
             title = `New message from ${senderName}`;
           }
 
