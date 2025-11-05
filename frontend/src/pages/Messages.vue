@@ -1,6 +1,6 @@
 <template>
   <div class="messages-page">
-    <div class="container-fluid pt-4 pt-lg-5 pb-3 pb-lg-4 px-3 px-lg-5">
+    <div class="container-fluid pt-4 pt-lg-5 pb-2 pb-lg-2 px-3 px-lg-5">
       <div class="row g-3 g-lg-4 messages-row">
         <!-- Conversations Sidebar -->
         <div
@@ -5791,7 +5791,7 @@ export default {
   min-height: 50%;
   overflow-y: auto;
   color: var(--cyber-text, #ffffff);
-  padding-bottom: 20px;
+  padding-bottom: 10px;
 }
 
 /* Override Bootstrap primary color to match theme */
@@ -5902,6 +5902,40 @@ h6 {
   height: calc(100vh - 170px);
   max-height: calc(100vh - 170px);
   margin-top: 0 !important;
+}
+
+/* LG breakpoint specific adjustments (992px - 1199px) */
+@media (min-width: 992px) and (max-width: 1199px) {
+  /* Fix cramped header in conversations sidebar */
+  .conversations-col .card-header {
+    padding: 1.25rem 1.5rem !important;
+  }
+
+  .conversations-col .card-header > div {
+    gap: 1.5rem;
+  }
+
+  .conversations-col .card-header h5 {
+    margin-right: 1rem;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .conversations-col .card-header h5 i.fa-comments {
+    margin-right: 0.75rem !important;
+  }
+
+  .conversations-col .card-header .btn {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    min-width: fit-content;
+  }
+
+  .conversations-col .card-header .btn i.fa-plus {
+    margin-right: 0.5rem !important;
+  }
 }
 
 .chat-card {

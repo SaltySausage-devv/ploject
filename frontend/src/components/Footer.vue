@@ -12,18 +12,18 @@
             Find your perfect match for academic success.
           </p>
           <div class="d-flex gap-3">
-            <a href="#" class="text-light">
+            <span class="text-light footer-link-disabled">
               <i class="fab fa-facebook-f"></i>
-            </a>
-            <a href="#" class="text-light">
+            </span>
+            <span class="text-light footer-link-disabled">
               <i class="fab fa-twitter"></i>
-            </a>
-            <a href="#" class="text-light">
+            </span>
+            <span class="text-light footer-link-disabled">
               <i class="fab fa-instagram"></i>
-            </a>
-            <a href="#" class="text-light">
+            </span>
+            <span class="text-light footer-link-disabled">
               <i class="fab fa-linkedin-in"></i>
-            </a>
+            </span>
           </div>
         </div>
         
@@ -31,9 +31,9 @@
           <h5 class="fw-bold mb-3">For Students</h5>
           <ul class="list-unstyled">
             <li class="mb-2">
-              <router-link to="/search" class="text-muted text-decoration-none">
+              <span class="text-muted text-decoration-none footer-link-disabled">
                 Find Tutors
-              </router-link>
+              </span>
             </li>
           </ul>
         </div>
@@ -42,11 +42,10 @@
           <h5 class="fw-bold mb-3">For Tutors</h5>
           <ul class="list-unstyled">
             <li class="mb-2">
-              <router-link to="/register" class="text-muted text-decoration-none">Become a Tutor
-              </router-link>
+              <span class="text-muted text-decoration-none footer-link-disabled">Become a Tutor</span>
             </li>
             <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Success Stories</a>
+              <span class="text-muted text-decoration-none footer-link-disabled">Success Stories</span>
             </li>
           </ul>
         </div>
@@ -55,10 +54,10 @@
           <h5 class="fw-bold mb-3">Company</h5>
           <ul class="list-unstyled">
             <li class="mb-2">
-              <router-link to="/Home" class="text-muted text-decoration-none">About Us</router-link>
+              <span class="text-muted text-decoration-none footer-link-disabled">About Us</span>
             </li>
             <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Blog</a>
+              <span class="text-muted text-decoration-none footer-link-disabled">Blog</span>
             </li>
           </ul>
         </div>
@@ -67,16 +66,16 @@
           <h5 class="fw-bold mb-3">Support</h5>
           <ul class="list-unstyled">
             <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Help Center</a>
+              <span class="text-muted text-decoration-none footer-link-disabled">Help Center</span>
             </li>
             <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Contact Us</a>
+              <span class="text-muted text-decoration-none footer-link-disabled">Contact Us</span>
             </li>
             <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Privacy Policy</a>
+              <span class="text-muted text-decoration-none footer-link-disabled">Privacy Policy</span>
             </li>
             <li class="mb-2">
-              <a href="#" class="text-muted text-decoration-none">Terms of Service</a>
+              <span class="text-muted text-decoration-none footer-link-disabled">Terms of Service</span>
             </li>
           </ul>
         </div>
@@ -120,5 +119,17 @@ footer a:hover {
 .fab:hover {
   transform: translateY(-2px);
   color: var(--primary-color) !important;
+}
+
+/* Disabled footer links styling */
+.footer-link-disabled {
+  cursor: default !important;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.footer-link-disabled:hover {
+  color: inherit !important;
+  transform: none !important;
 }
 </style>
