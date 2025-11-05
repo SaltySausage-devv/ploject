@@ -1,6 +1,6 @@
 <template>
   <div class="profile-page">
-    <div class="container py-5">
+    <div class="container pt-5 pb-0 pb-lg-0">
       <!-- Profile Header -->
       <motion.div
         :initial="{ opacity: 0, y: 30 }"
@@ -460,9 +460,16 @@ export default {
 /* Cyberpunk Profile Page */
 .profile-page {
   background: transparent !important;
-  min-height: 100vh;
+  min-height: calc(100vh - 250px);
   position: relative;
   z-index: 10;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.profile-page .container {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
 }
 
 /* Elegant Warning Banner */
@@ -1145,5 +1152,19 @@ export default {
     padding: 0.65rem 1.25rem;
     min-height: 45px;
   }
+}
+</style>
+
+<style>
+/* Reduce whitespace above footer on profile page */
+body:has(.profile-page) footer.cyberpunk-footer {
+  margin-top: 0 !important;
+  padding-top: 3rem !important;
+}
+
+/* Remove any extra spacing from main element when profile page is active */
+body:has(.profile-page) main {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
 }
 </style>
