@@ -71,23 +71,41 @@ export default {
     const currentUserId = computed(() => authStore.user?.id);
     const isMobile = computed(() => windowWidth.value <= 768);
 
+    // Format time to lowercase (e.g., "5:00pm" instead of "5:00 PM")
+    function formatTimeLowercase(timeText) {
+      if (!timeText) return '';
+      // Convert "5:00 PM - 5:30 PM" to "5:00pm - 5:30pm"
+      // Remove spaces before am/pm and convert to lowercase
+      return timeText
+        .replace(/\s+([ap]m)/gi, '$1') // Remove space before am/pm
+        .toLowerCase()
+        .trim();
+    }
+
     // Custom event renderer
     function renderEventContent(info) {
       const event = info.event;
       const extendedProps = event.extendedProps || {};
-      const subject = extendedProps.subject || '';
+      const subject = extendedProps.subject || event.title || '';
       const level = extendedProps.level || '';
       const view = info.view.type;
       
-      // For week and day views, show more details
+      // For week and day views, show all details in one line
       if (view === 'timeGridWeek' || view === 'timeGridDay') {
-        const time = info.timeText || '';
+        const time = formatTimeLowercase(info.timeText || '');
+        
+        // Build the single line content: "5:00pm - 5:30pm, English, IB"
+        const parts = [];
+        if (time) parts.push(time);
+        if (subject) parts.push(subject);
+        if (level) parts.push(level);
+        
+        const singleLineContent = parts.join(', ');
+        
         return {
           html: `
-            <div class="fc-event-content-custom">
-              <div class="fc-event-time">${time}</div>
-              <div class="fc-event-title">${subject || event.title}</div>
-              ${level ? `<div class="fc-event-level">${level}</div>` : ''}
+            <div class="fc-event-content-custom fc-event-single-line">
+              ${singleLineContent}
             </div>
           `
         };
@@ -637,6 +655,32 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Single line event content for week/day view */
+:deep(.fc-event-content-custom.fc-event-single-line) {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.85em;
+  font-weight: 600;
+  line-height: 1.3;
+  padding: 2px 4px;
+}
+
+/* Truncation for smaller screens */
+@media (max-width: 768px) {
+  :deep(.fc-event-content-custom.fc-event-single-line) {
+    font-size: 0.75em;
+    padding: 1px 3px;
+  }
+}
+
+@media (max-width: 480px) {
+  :deep(.fc-event-content-custom.fc-event-single-line) {
+    font-size: 0.7em;
+    padding: 1px 2px;
+  }
 }
 
 :deep(.fc-event-time) {
