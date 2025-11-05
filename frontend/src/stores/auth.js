@@ -239,9 +239,16 @@ export const useAuthStore = defineStore('auth', () => {
 
         console.log('🔔 Setting up user data subscription for:', userId)
 
+        // Create a unique channel name per user to avoid conflicts
+        const channelName = `user-updates-${userId}`
+
         // Subscribe to changes in the user's data
         userSubscription = supabase
-            .channel('user-updates')
+            .channel(channelName, {
+                config: {
+                    broadcast: { self: true }
+                }
+            })
             .on(
                 'postgres_changes',
                 {
@@ -251,16 +258,34 @@ export const useAuthStore = defineStore('auth', () => {
                     filter: `id=eq.${userId}`
                 },
                 (payload) => {
-                    console.log('🔄 User data updated:', payload)
+                    console.log('🔄 User data updated via real-time:', payload)
                     if (payload.new && user.value) {
                         // Update the user data with the new values
                         const oldCredits = user.value.credits;
-                        user.value = { ...user.value, ...payload.new }
+                        const oldPenaltyPoints = user.value.penalty_points;
+                        
+                        // Merge the new data with existing user data
+                        user.value = { 
+                            ...user.value, 
+                            ...payload.new,
+                            // Preserve penalty_points if not in payload (for tutors)
+                            penalty_points: payload.new.penalty_points !== undefined 
+                                ? payload.new.penalty_points 
+                                : user.value.penalty_points
+                        }
+                        
                         console.log('✅ User data updated in store:', {
                             oldCredits,
                             newCredits: user.value.credits,
-                            fullUser: user.value
+                            oldPenaltyPoints,
+                            newPenaltyPoints: user.value.penalty_points,
+                            creditsChanged: oldCredits !== user.value.credits
                         })
+                        
+                        // Force reactivity update if credits changed
+                        if (oldCredits !== user.value.credits) {
+                            console.log('💰 Credits updated! Triggering reactivity update')
+                        }
                     }
                 }
             )
@@ -273,7 +298,7 @@ export const useAuthStore = defineStore('auth', () => {
                     filter: `user_id=eq.${userId}`
                 },
                 async (payload) => {
-                    console.log('🔄 Tutor profile updated:', payload)
+                    console.log('🔄 Tutor profile updated via real-time:', payload)
                     if (payload.new && user.value && user.value.user_type === 'tutor') {
                         // Update penalty points in user data
                         const oldPenaltyPoints = user.value.penalty_points;
@@ -286,9 +311,29 @@ export const useAuthStore = defineStore('auth', () => {
                     }
                 }
             )
-            .subscribe()
+            .subscribe((status) => {
+                console.log('📡 Subscription status:', status)
+                if (status === 'SUBSCRIBED') {
+                    console.log('✅ User subscription established and active')
+                } else if (status === 'CHANNEL_ERROR') {
+                    console.error('❌ Subscription channel error, attempting to reconnect...')
+                    // Attempt to reconnect after a short delay
+                    setTimeout(() => {
+                        if (user.value?.id) {
+                            setupUserSubscription(user.value.id)
+                        }
+                    }, 2000)
+                } else if (status === 'TIMED_OUT') {
+                    console.warn('⚠️ Subscription timed out, attempting to reconnect...')
+                    setTimeout(() => {
+                        if (user.value?.id) {
+                            setupUserSubscription(user.value.id)
+                        }
+                    }, 2000)
+                }
+            })
 
-        console.log('✅ User subscription established')
+        console.log('✅ User subscription setup complete')
     }
 
     const refreshUserData = async () => {
