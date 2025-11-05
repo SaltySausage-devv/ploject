@@ -2026,8 +2026,8 @@ export default {
   }
 }
 
-/* Near-desktop screens (900px to 1000px) - same as 850px-899px */
-@media (min-width: 900px) and (max-width: 1000px) {
+/* Near-desktop screens (900px to 1015px) - same as 850px-899px */
+@media (min-width: 900px) and (max-width: 1015px) {
   .mobile-nav-items {
     gap: 0.7rem;
     padding-right: 0.7rem;
