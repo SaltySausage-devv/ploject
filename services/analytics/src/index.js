@@ -242,7 +242,14 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
 
     console.log('📊 ANALYTICS: Found bookings:', bookings?.length || 0);
 
-    // Get student reviews
+    // Get student reviews - fetch ALL reviews (not date-filtered) to match with allBookings
+    // This ensures ratings show correctly for bookings regardless of when the review was created
+    const { data: allReviews } = await supabase
+      .from('reviews')
+      .select('*')
+      .eq('student_id', studentId);
+
+    // Get date-filtered reviews for totalReviews metric (to match the selected period)
     const { data: reviews } = await supabase
       .from('reviews')
       .select('*')
@@ -250,7 +257,8 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
       .gte('created_at', startDate.toISOString())
       .lte('created_at', endDate.toISOString());
 
-    console.log('📊 ANALYTICS: Found reviews:', reviews?.length || 0);
+    console.log('📊 ANALYTICS: Found all reviews (for ratings):', allReviews?.length || 0);
+    console.log('📊 ANALYTICS: Found date-filtered reviews (for metrics):', reviews?.length || 0);
 
     // Get student messages
     const { data: messages } = await supabase
@@ -456,13 +464,50 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
     const { chartData, spendingData, chartLabels } = generateChartData(bookings || [], startDate, endDate, period);
 
     // Recent activity with ratings (only completed/confirmed bookings)
-    const recentActivity = allBookings
-      ?.filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
-      ?.slice(0, 10)
+    // Sort by created_at descending to get the most recent bookings first
+    const sortedBookings = [...(allBookings || [])]
+      .filter(booking => booking.status === 'completed' || booking.status === 'confirmed')
+      .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+    
+    console.log('📊 ANALYTICS: Sorted bookings for recentActivity:', {
+      totalBookings: sortedBookings.length,
+      latestBooking: sortedBookings[0] ? {
+        id: sortedBookings[0].id,
+        status: sortedBookings[0].status,
+        created_at: sortedBookings[0].created_at,
+        subject: sortedBookings[0].subject
+      } : null
+    });
+    
+    const recentActivity = sortedBookings
+      .slice(0, 10)
       .map(booking => {
-        // Find rating for this booking
-        const bookingReview = reviews?.find(review => review.booking_id === booking.id);
+        // Find rating for this booking (use allReviews to find ratings regardless of review date)
+        // Convert both IDs to strings to ensure proper comparison (handles UUID type mismatches)
+        const bookingIdStr = String(booking.id || '').trim();
+        const bookingReview = allReviews?.find(review => {
+          const reviewBookingId = String(review.booking_id || '').trim();
+          return reviewBookingId === bookingIdStr;
+        });
+        
         const rating = bookingReview ? bookingReview.rating : 'N/A';
+        
+        // Debug logging only for the first (latest) booking to help diagnose issues
+        if (sortedBookings.indexOf(booking) === 0) {
+          console.log('📊 ANALYTICS: Latest booking rating lookup:', {
+            bookingId: bookingIdStr,
+            bookingStatus: booking.status,
+            bookingCreatedAt: booking.created_at,
+            foundReview: !!bookingReview,
+            rating: rating,
+            totalReviews: allReviews?.length || 0,
+            reviewBookingIds: allReviews?.slice(0, 5).map(r => ({
+              id: String(r.booking_id || '').trim(),
+              rating: r.rating,
+              matches: String(r.booking_id || '').trim() === bookingIdStr
+            }))
+          });
+        }
         
         return {
           date: booking.created_at,
