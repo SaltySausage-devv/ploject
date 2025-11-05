@@ -1346,8 +1346,14 @@ export default {
       if (resizeHandler) {
         window.removeEventListener('resize', resizeHandler);
       }
-      notificationClickHandlers.forEach((handler, toggle) => {
-        toggle.removeEventListener('click', handler);
+      // Remove document click tracker
+      if (trackClickHandler && trackClickActive) {
+        document.removeEventListener('click', trackClickHandler, true);
+        trackClickActive = false;
+      }
+      // Remove Bootstrap hide event handlers
+      notificationClickHandlers.forEach((handler, dropdown) => {
+        dropdown.removeEventListener('hide.bs.dropdown', handler);
       });
       notificationClickHandlers.clear();
       // Note: messages_read handler is anonymous, so it stays registered
@@ -1357,56 +1363,96 @@ export default {
     // Store event listener references to prevent duplicates
     let notificationClickHandlers = new Map();
     let resizeHandler = null;
+    let lastClickTarget = null;
+    let trackClickHandler = null;
+    let trackClickActive = false;
 
     const setupNavbarInteractions = () => {
       // All animations disabled
       
-      // Disable notification dropdown for 900px-1200px screen widths
-      const disableNotificationDropdown = () => {
+      // Track click targets globally
+      trackClickHandler = (e) => {
+        lastClickTarget = e.target;
+      };
+      
+      // Prevent auto-collapse for notification dropdown at 900px-1200px screen widths
+      const preventAutoCollapse = () => {
         const width = window.innerWidth;
+        
+        // Remove existing document click listener if outside range
+        if (trackClickHandler && trackClickActive && (width < 900 || width > 1200)) {
+          document.removeEventListener('click', trackClickHandler, true);
+          trackClickActive = false;
+        }
+        
+        // Find all notification dropdown toggles
         const notificationToggles = document.querySelectorAll(
           '.navbar-notification-container [data-bs-toggle="dropdown"], .navbar-nav .nav-item.dropdown [data-bs-toggle="dropdown"]'
         );
         
+        // Remove existing handlers
         notificationToggles.forEach((toggle) => {
-          // Remove existing handler if it exists
-          if (notificationClickHandlers.has(toggle)) {
-            const existingHandler = notificationClickHandlers.get(toggle);
-            toggle.removeEventListener('click', existingHandler);
-            notificationClickHandlers.delete(toggle);
-          }
-
-          if (width >= 900 && width <= 1200) {
-            // Create new handler for this screen width
-            const handler = (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              // Remove 'show' class if it was added
-              const dropdown = toggle.closest('.dropdown');
-              if (dropdown) {
-                dropdown.classList.remove('show');
-                const menu = dropdown.querySelector('.dropdown-menu');
-                if (menu) {
-                  menu.classList.remove('show');
-                }
-              }
-            };
-            
-            // Store handler reference and attach it
-            notificationClickHandlers.set(toggle, handler);
-            toggle.addEventListener('click', handler);
+          const dropdown = toggle.closest('.dropdown');
+          if (!dropdown) return;
+          
+          if (notificationClickHandlers.has(dropdown)) {
+            dropdown.removeEventListener('hide.bs.dropdown', notificationClickHandlers.get(dropdown));
+            notificationClickHandlers.delete(dropdown);
           }
         });
+        
+        if (width >= 900 && width <= 1200) {
+          // Add document click listener to track clicks (only if not already added)
+          if (trackClickHandler && !trackClickActive) {
+            document.addEventListener('click', trackClickHandler, true);
+            trackClickActive = true;
+          }
+          
+          notificationToggles.forEach((toggle) => {
+            const dropdown = toggle.closest('.dropdown');
+            if (!dropdown) return;
+            
+            // Prevent Bootstrap dropdown from auto-closing on outside clicks
+            const preventHide = (e) => {
+              const dropdownMenu = dropdown.querySelector('.dropdown-menu');
+              const toggleButton = dropdown.querySelector('[data-bs-toggle="dropdown"]');
+              
+              // Check if click was inside dropdown
+              if (lastClickTarget) {
+                // Allow if click is inside dropdown menu
+                if (dropdownMenu && dropdownMenu.contains(lastClickTarget)) {
+                  return; // Allow normal behavior
+                }
+                // Allow if click is on toggle button (to allow closing)
+                if (toggleButton && (toggleButton.contains(lastClickTarget) || lastClickTarget === toggleButton)) {
+                  return; // Allow normal toggle behavior
+                }
+                // Allow if click is anywhere inside dropdown element
+                if (dropdown.contains(lastClickTarget)) {
+                  return; // Allow normal behavior
+                }
+              }
+              
+              // Prevent auto-hide for clicks outside the dropdown
+              e.preventDefault();
+              e.stopPropagation();
+            };
+            
+            // Listen to Bootstrap's hide event
+            dropdown.addEventListener('hide.bs.dropdown', preventHide);
+            notificationClickHandlers.set(dropdown, preventHide);
+          });
+        }
       };
 
       // Call on mount and when window is resized
       // Use setTimeout to ensure DOM is ready
       setTimeout(() => {
-        disableNotificationDropdown();
+        preventAutoCollapse();
       }, 100);
       
       // Store resize handler reference
-      resizeHandler = disableNotificationDropdown;
+      resizeHandler = preventAutoCollapse;
       window.addEventListener('resize', resizeHandler);
     };
 
@@ -2061,21 +2107,8 @@ export default {
   }
 }
 
-/* Disable dropdown for 900px-1200px screen widths */
+/* Prevent auto-collapse for dropdown at 900px-1200px screen widths */
 @media (min-width: 900px) and (max-width: 1200px) {
-  /* Disable mobile notification dropdown */
-  .navbar-notification-container .dropdown-menu {
-    display: none !important;
-  }
-
-  .navbar-notification-container .dropdown.show .dropdown-menu {
-    display: none !important;
-  }
-
-  .navbar-notification-container .dropdown.show::before {
-    display: none !important;
-  }
-
   /* Prevent underline on notification link */
   .navbar-notification-container .nav-link {
     text-decoration: none !important;
@@ -2087,15 +2120,6 @@ export default {
 
   .navbar-notification-container .nav-link:focus {
     text-decoration: none !important;
-  }
-
-  /* Disable desktop notification dropdown */
-  .navbar-nav .nav-item.dropdown .notifications-dropdown {
-    display: none !important;
-  }
-
-  .navbar-nav .nav-item.dropdown.show .notifications-dropdown {
-    display: none !important;
   }
 
   /* Prevent underline on desktop notification link */
