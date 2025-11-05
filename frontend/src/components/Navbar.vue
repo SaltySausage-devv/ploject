@@ -1349,6 +1349,8 @@ export default {
   box-shadow: var(--cyber-glow) !important;
   border-radius: 8px;
   padding: 8px 0;
+  z-index: 1050 !important;
+  position: absolute !important;
 }
 
 .dropdown-item {
@@ -1720,64 +1722,6 @@ export default {
   }
 }
 
-/* LG breakpoint specific adjustments (992px - 1199px) */
-@media (min-width: 992px) and (max-width: 1199px) {
-  .navbar .container {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
-
-  /* Increase spacing between nav items */
-  .navbar-nav {
-    gap: 1.5rem;
-  }
-
-  /* Right-side nav items (credits, penalty, notifications, user) */
-  .navbar-nav:last-child {
-    gap: 1.75rem;
-    margin-left: 1.5rem;
-  }
-
-  /* All nav links get better padding */
-  .navbar-nav .nav-link {
-    padding: 0.5rem 1rem;
-    white-space: nowrap;
-  }
-
-  /* Penalty points nav item spacing */
-  .navbar-nav .nav-item.d-none.d-lg-block .nav-link {
-    padding: 0.5rem 0.75rem;
-  }
-
-  /* Notification dropdown link - ensure good spacing */
-  .navbar-nav .nav-item.dropdown.d-none.d-lg-block .nav-link {
-    padding: 0.5rem 1rem;
-  }
-
-  /* User dropdown spacing */
-  .navbar-nav .nav-item.dropdown:last-child .nav-link {
-    padding: 0.5rem 1rem;
-  }
-
-  /* Show notification text on LG to prevent icon-only cramped look */
-  .navbar-nav .nav-item.dropdown.d-none.d-lg-block .notification-text {
-    display: inline !important;
-    margin-left: 0.25rem;
-  }
-
-  /* Brand spacing */
-  .navbar-brand {
-    margin-right: 2.5rem;
-    padding-right: 1rem;
-  }
-
-  /* Left nav items spacing */
-  .navbar-nav.me-auto {
-    margin-right: 2.5rem;
-    gap: 1.5rem;
-  }
-}
-
 /* Notification text - hide on desktop, show on mobile */
 .notification-text {
   display: none;
@@ -1819,6 +1763,8 @@ export default {
   padding: 0 !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5) !important;
   overflow: hidden;
+  z-index: 1055 !important;
+  position: absolute !important;
 }
 
 /* Desktop-specific: Wider dropdown for better readability */
@@ -1844,6 +1790,8 @@ export default {
     left: auto !important;
     min-width: 180px;
     max-width: min(220px, 18vw);
+    z-index: 1050 !important;
+    position: absolute !important;
   }
 }
 
@@ -2149,6 +2097,98 @@ export default {
   .navbar-notification-container .notifications-dropdown {
     top: 56px !important;
     max-height: calc(100vh - 56px) !important;
+  }
+}
+
+/* LG breakpoint specific adjustments (992px - 1199px) - Mirror XL behavior */
+@media (min-width: 992px) and (max-width: 1199px) {
+  /* Just adjust spacing/padding like XL, don't override positioning or z-index */
+  .navbar .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    /* Ensure dropdowns can overflow container */
+    overflow: visible !important;
+  }
+
+  /* Ensure navbar doesn't clip dropdowns */
+  .navbar {
+    overflow: visible !important;
+  }
+
+  /* Ensure navbar-collapse doesn't clip dropdowns at LG */
+  .navbar-collapse {
+    overflow: visible !important;
+  }
+
+  /* Reduce spacing between nav items to prevent overflow */
+  .navbar-nav {
+    gap: 0.75rem;
+    overflow: visible !important;
+  }
+
+  /* Right-side nav items */
+  .navbar-nav:last-child {
+    gap: 0.75rem;
+    margin-left: 1rem;
+    overflow: visible !important;
+  }
+
+  /* Compact nav links */
+  .navbar-nav .nav-link {
+    padding: 0.5rem 0.75rem;
+    white-space: nowrap;
+    font-size: 0.9rem;
+  }
+
+  /* Penalty points nav item spacing */
+  .navbar-nav .nav-item.d-none.d-lg-block .nav-link {
+    padding: 0.5rem 0.5rem;
+  }
+
+  /* Notification dropdown link - compact spacing */
+  .navbar-nav .nav-item.dropdown.d-none.d-lg-block .nav-link {
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* Hide notification text on LG to save space */
+  .navbar-nav .nav-item.dropdown.d-none.d-lg-block .notification-text {
+    display: none !important;
+  }
+
+  /* Compact brand spacing */
+  .navbar-brand {
+    margin-right: 1.5rem;
+    font-size: 1.3rem;
+  }
+
+  /* Left nav items spacing - reduced */
+  .navbar-nav.me-auto {
+    margin-right: 1.5rem;
+    gap: 0.75rem;
+  }
+
+  /* Ensure dropdown menu is properly positioned and clickable at LG */
+  .nav-item.dropdown {
+    position: relative !important;
+    overflow: visible !important;
+  }
+
+  .nav-item.dropdown .dropdown-menu {
+    position: absolute !important;
+    right: max(5px, 1vw) !important;
+    left: auto !important;
+    min-width: 180px;
+    max-width: min(220px, 18vw);
+    z-index: 1050 !important;
+    overflow: visible !important;
+    /* Ensure dropdown is not clipped */
+    margin-top: 0.125rem !important;
+  }
+
+  /* Ensure dropdown items are clickable */
+  .dropdown-item {
+    pointer-events: auto !important;
+    cursor: pointer !important;
   }
 }
 </style>
