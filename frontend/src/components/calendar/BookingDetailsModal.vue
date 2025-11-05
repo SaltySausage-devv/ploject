@@ -326,6 +326,8 @@ export default {
     // Watch the booking prop and update localBooking whenever it changes
     // But skip if we just made a local update (to preserve our immediate changes)
     watch(() => props.booking, (newBooking) => {
+      if (!newBooking) return;
+      
       // Don't overwrite if we just made a local update
       if (isLocalUpdate) {
         isLocalUpdate = false;
@@ -334,8 +336,8 @@ export default {
         const currentSessionNotes = localBooking.session_notes;
         const currentStatus = localBooking.status;
         
-        // Update from prop
-        Object.assign(localBooking, newBooking);
+        // Update from prop - create new object reference to ensure reactivity
+        Object.assign(localBooking, { ...newBooking });
         
         // Restore local changes if they exist (they're more recent)
         if (currentAttendanceStatus) {
@@ -349,7 +351,14 @@ export default {
         }
       } else {
         // Normal prop update - merge all properties
-        Object.assign(localBooking, newBooking);
+        // Create new object reference to ensure reactivity
+        Object.assign(localBooking, { ...newBooking });
+        
+        // If attendance_status was updated in the prop, ensure currentTime is updated
+        // This ensures canComplete re-evaluates immediately
+        if (newBooking.attendance_status && localBooking.attendance_status) {
+          currentTime.value = new Date();
+        }
       }
     }, { deep: true, immediate: true });
 
@@ -759,6 +768,29 @@ export default {
         showRescheduleRequestModal.value = true;
       }
     }, { immediate: true });
+    
+    // Watch for changes in canComplete to debug when it becomes true
+    watch(() => canComplete.value, (newValue, oldValue) => {
+      if (newValue !== oldValue) {
+        console.log("🔄 canComplete changed:", { from: oldValue, to: newValue });
+        if (newValue) {
+          console.log("✅ Mark as Completed button should now be visible!");
+        }
+      }
+    });
+    
+    // Watch for attendance_status changes to immediately check if session has ended
+    watch(() => localBooking.attendance_status, (newStatus) => {
+      if (newStatus && (newStatus === 'attended' || newStatus === 'no_show')) {
+        console.log("🔄 Attendance status changed to:", newStatus);
+        // Immediately update currentTime to check if session has ended
+        currentTime.value = new Date();
+        // Force another update after a short delay to ensure reactivity
+        setTimeout(() => {
+          currentTime.value = new Date();
+        }, 100);
+      }
+    });
 
     // Lifecycle
     // Start time update interval to re-evaluate time-based computed properties

@@ -361,16 +361,41 @@ export default {
     }
 
     async function handleBookingUpdated(updateData) {
+      console.log("📅 Calendar: handleBookingUpdated called with:", updateData);
+      
       // Update selectedBooking immediately for reactive UI updates
       if (updateData && selectedBooking.value) {
         // Update attendance_status if provided
         if (updateData.attendance_status) {
+          // Create a new object reference to ensure Vue reactivity
           selectedBooking.value = {
             ...selectedBooking.value,
             attendance_status: updateData.attendance_status,
             ...(updateData.session_notes && { session_notes: updateData.session_notes }),
           };
           console.log("✅ Updated selectedBooking with attendance_status:", updateData.attendance_status);
+          
+          // Also update the corresponding booking in the bookings array immediately
+          // This ensures the calendar events are updated too
+          const bookingIndex = bookings.value.findIndex(
+            (booking) => booking.id === selectedBooking.value.id
+          );
+          if (bookingIndex !== -1) {
+            const booking = bookings.value[bookingIndex];
+            if (booking.extendedProps) {
+              // Update extendedProps reactively
+              booking.extendedProps.attendance_status = updateData.attendance_status;
+              if (updateData.session_notes) {
+                booking.extendedProps.session_notes = updateData.session_notes;
+              }
+              console.log("✅ Updated booking in bookings array");
+            }
+          }
+          
+          // Don't show toast for attendance marking - it's handled in the modal
+          // Refresh calendar data in background without blocking
+          fetchCalendarData().catch(err => console.error("Error refreshing calendar:", err));
+          return; // Early return for attendance - no need for extra toast
         }
         
         // Update status if booking is completed
@@ -381,6 +406,18 @@ export default {
             ...updateData,
           };
           console.log("✅ Updated selectedBooking with completed status");
+          
+          // Also update the corresponding booking in the bookings array immediately
+          const bookingIndex = bookings.value.findIndex(
+            (booking) => booking.id === selectedBooking.value.id
+          );
+          if (bookingIndex !== -1) {
+            const booking = bookings.value[bookingIndex];
+            if (booking.extendedProps) {
+              booking.extendedProps.status = "completed";
+              Object.assign(booking.extendedProps, updateData);
+            }
+          }
           
           // Don't show success toast for completion - already shown in modal
           // Refresh calendar data in background
@@ -400,7 +437,7 @@ export default {
         }
       }
 
-      // Refresh calendar data to get the latest from backend (in background)
+      // For other updates, refresh calendar data to get the latest from backend (in background)
       fetchCalendarData().then(() => {
         // Update the selectedBooking with fresh data if it exists
         if (selectedBooking.value) {
