@@ -834,6 +834,52 @@ export default {
   .cyberpunk-title {
     font-size: 0.875rem;
   }
+
+  /* Consistent padding between elements on mobile */
+  .profile-page .container {
+    padding-top: 1.5rem !important;
+  }
+
+  .profile-page .row {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .profile-page .row.mb-5 {
+    margin-bottom: 2rem !important;
+  }
+
+  .profile-page .col-12.mb-3 {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .profile-page .col-12.mb-4 {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .profile-header-container {
+    padding: 1.5rem !important;
+    margin-bottom: 1.5rem !important;
+  }
+
+  .cyberpunk-card {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .card-body {
+    padding: 1.5rem !important;
+  }
+
+  .cyberpunk-header {
+    padding: 1rem 1.5rem !important;
+  }
+
+  .profile-page .mb-3 {
+    margin-bottom: 1rem !important;
+  }
+
+  .profile-page .mt-4 {
+    margin-top: 1.5rem !important;
+  }
 }
 
 @media (max-width: 480px) {
@@ -855,6 +901,36 @@ export default {
   .btn {
     padding: 0.5rem 1rem;
     font-size: 0.75rem;
+  }
+
+  /* Even more consistent spacing on small mobile */
+  .profile-page .container {
+    padding-top: 1rem !important;
+  }
+
+  .profile-page .row {
+    margin-bottom: 1.25rem !important;
+  }
+
+  .profile-page .row.mb-5 {
+    margin-bottom: 1.5rem !important;
+  }
+
+  .profile-header-container {
+    padding: 1.25rem !important;
+    margin-bottom: 1.25rem !important;
+  }
+
+  .card-body {
+    padding: 1.25rem !important;
+  }
+
+  .cyberpunk-header {
+    padding: 0.75rem 1.25rem !important;
+  }
+
+  .profile-page .mb-3 {
+    margin-bottom: 0.875rem !important;
   }
 }
 

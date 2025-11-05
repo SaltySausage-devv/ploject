@@ -1971,4 +1971,16 @@ body:has(.dashboard-page) main {
 .dashboard-page > .container {
   margin-bottom: 0 !important;
 }
+
+/* Add padding between Quick Actions and footer on mobile */
+@media (max-width: 768px) {
+  .dashboard-page .row:last-child .col-lg-4:last-child {
+    margin-bottom: 2.5rem !important;
+    padding-bottom: 1rem !important;
+  }
+
+  .dashboard-page .row:last-child .col-lg-4:last-child .card {
+    margin-bottom: 0 !important;
+  }
+}
 </style>
