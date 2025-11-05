@@ -688,7 +688,15 @@ export default {
               status = "Completed";
               badgeClass = "bg-success";
             } else {
-              title = "Reschedule booking request";
+              // Reschedule request: determine if message is from current user (sent) or to current user (received)
+              const isSender = String(message.sender_id) === String(userId.value);
+              if (isSender) {
+                // User sent the reschedule request
+                title = "Reschedule booking request sent";
+              } else {
+                // User received the reschedule request
+                title = "Reschedule booking received";
+              }
               status = "Unread";
               badgeClass = "bg-warning";
             }
@@ -704,6 +712,17 @@ export default {
             badgeClass = isRead ? "bg-success" : "bg-warning";
           }
           
+          // Extract bookingId from reschedule messages for matching
+          let bookingId = null;
+          if (messageType === "reschedule_request" || messageType === "reschedule_accepted" || messageType === "reschedule_rejected") {
+            try {
+              const messageData = typeof message.content === "string" ? JSON.parse(message.content) : message.content || {};
+              bookingId = messageData.bookingId || null;
+            } catch (e) {
+              // Ignore parsing errors
+            }
+          }
+          
           activities.push({
             icon: icon,
             title: title,
@@ -716,6 +735,8 @@ export default {
             id: message.id || `msg_${messageTimestamp}_${Math.random()}`,
             // Store booking_offer_id for matching with booking_confirmation
             booking_offer_id: message.booking_offer_id || null,
+            // Store bookingId for matching reschedule requests with responses
+            booking_id: bookingId,
             message_type: messageType, // Store message type for confirmation matching
           });
         });
@@ -790,6 +811,51 @@ export default {
               }
               
               if (hasRelatedConfirmation) {
+                activity.status = "Completed";
+                activity.badgeClass = "bg-success";
+                existingActivityMap.set(key, activity);
+              }
+            }
+          });
+        }
+        
+        // Also check for reschedule_request that should be marked as "Completed"
+        // Look for reschedule_accepted or reschedule_rejected and mark related reschedule_request as Completed
+        const rescheduleResponseActivities = Array.from(existingActivityMap.values()).filter(a => 
+          a.message_type === "reschedule_accepted" || a.message_type === "reschedule_rejected"
+        );
+        
+        if (rescheduleResponseActivities.length > 0) {
+          // For each reschedule response, find related reschedule_request and mark as Completed
+          // Match by bookingId if available, otherwise match by timestamp proximity
+          existingActivityMap.forEach((activity, key) => {
+            const isRescheduleRequest = 
+              (activity.title && (activity.title.includes("Reschedule booking request") || activity.title.includes("Reschedule booking"))) ||
+              activity.message_type === "reschedule_request";
+            
+            if (isRescheduleRequest && activity.status === "Unread") {
+              // Try to match by bookingId first (most reliable)
+              let hasRelatedResponse = false;
+              
+              if (activity.booking_id) {
+                // Match by bookingId - check if response has same bookingId
+                hasRelatedResponse = rescheduleResponseActivities.some(resp => {
+                  if (resp.booking_id && String(resp.booking_id) === String(activity.booking_id)) {
+                    return true;
+                  }
+                  return false;
+                });
+              }
+              
+              // If no bookingId match, use timestamp proximity (within 24 hours, response after request)
+              if (!hasRelatedResponse) {
+                hasRelatedResponse = rescheduleResponseActivities.some(resp => 
+                  Math.abs(new Date(resp.timestamp) - new Date(activity.timestamp)) < 24 * 60 * 60 * 1000 &&
+                  new Date(resp.timestamp) > new Date(activity.timestamp) // Response is after the request
+                );
+              }
+              
+              if (hasRelatedResponse) {
                 activity.status = "Completed";
                 activity.badgeClass = "bg-success";
                 existingActivityMap.set(key, activity);
@@ -933,7 +999,15 @@ export default {
             status = "Completed";
             badgeClass = "bg-success";
           } else {
-            title = "Reschedule booking request";
+            // Reschedule request: determine if message is from current user (sent) or to current user (received)
+            const isSender = String(message.sender_id) === String(userId.value);
+            if (isSender) {
+              // User sent the reschedule request
+              title = "Reschedule booking request sent";
+            } else {
+              // User received the reschedule request
+              title = "Reschedule booking received";
+            }
             status = "Unread";
             badgeClass = "bg-warning";
           }
@@ -953,6 +1027,17 @@ export default {
           badgeClass = isRead ? "bg-success" : "bg-warning";
         }
         
+        // Extract bookingId from reschedule messages for matching
+        let bookingId = null;
+        if (messageType === "reschedule_request" || messageType === "reschedule_accepted" || messageType === "reschedule_rejected") {
+          try {
+            const messageData = typeof messageContent === "string" ? JSON.parse(messageContent) : messageContent || {};
+            bookingId = messageData.bookingId || null;
+          } catch (e) {
+            // Ignore parsing errors
+          }
+        }
+        
         return {
           icon: icon,
           title: title,
@@ -963,6 +1048,8 @@ export default {
           id: message.id || `msg_${Date.now()}`, // Use message ID or generate one
           // Store booking_offer_id for matching with booking_confirmation
           booking_offer_id: message.booking_offer_id || null,
+          // Store bookingId for matching reschedule requests with responses
+          booking_id: bookingId,
           message_type: messageType, // Store message type for confirmation matching
         };
       };
@@ -1088,6 +1175,55 @@ export default {
                   
                   if (isRelated) {
                     console.log("📊 DASHBOARD: Marking related booking_offer/proposal as Completed:", activity.title);
+                    activity.status = "Completed";
+                    activity.badgeClass = "bg-success";
+                    recentActivity.value[index] = activity;
+                  }
+                }
+              });
+              
+              // Re-sort after updates
+              recentActivity.value.sort((a, b) => {
+                const timeA = new Date(a.timestamp || 0);
+                const timeB = new Date(b.timestamp || 0);
+                return timeB - timeA;
+              });
+            }
+            
+            // After adding/updating activity, check if this is a reschedule_accepted or reschedule_rejected
+            // If so, mark related reschedule_request as "Completed"
+            if (message.message_type === "reschedule_accepted" || message.message_type === "reschedule_rejected") {
+              console.log("📊 DASHBOARD: Reschedule responded, checking for related reschedule_request to mark as Completed");
+              
+              // Extract bookingId from the response message
+              let responseBookingId = null;
+              try {
+                const messageData = typeof message.content === "string" ? JSON.parse(message.content) : message.content || {};
+                responseBookingId = messageData.bookingId || null;
+              } catch (e) {
+                // Ignore parsing errors
+              }
+              
+              recentActivity.value.forEach((activity, index) => {
+                const isRescheduleRequest = 
+                  activity.message_type === "reschedule_request" ||
+                  (activity.title && (activity.title.includes("Reschedule booking request") || activity.title.includes("Reschedule booking")));
+                
+                if (isRescheduleRequest && activity.status === "Unread") {
+                  // Check if this reschedule_request is related to the response
+                  // Match by bookingId if available, otherwise by timestamp proximity
+                  let isRelated = false;
+                  
+                  if (activity.booking_id && responseBookingId) {
+                    isRelated = String(activity.booking_id) === String(responseBookingId);
+                  } else {
+                    // Fallback: check if response is within 24 hours after the request
+                    isRelated = Math.abs(new Date(activityItem.timestamp) - new Date(activity.timestamp)) < 24 * 60 * 60 * 1000 &&
+                               new Date(activityItem.timestamp) > new Date(activity.timestamp);
+                  }
+                  
+                  if (isRelated) {
+                    console.log("📊 DASHBOARD: Marking related reschedule_request as Completed:", activity.title);
                     activity.status = "Completed";
                     activity.badgeClass = "bg-success";
                     recentActivity.value[index] = activity;
