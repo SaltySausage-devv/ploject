@@ -191,6 +191,33 @@ const calculateGrowth = (current, previous) => {
   return ((current - previous) / previous * 100).toFixed(1);
 };
 
+// Helper function to format duration with hours and minutes
+const formatDuration = (startTime, endTime) => {
+  if (!startTime || !endTime) return 'N/A';
+  
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  const diffMs = end - start;
+  
+  if (diffMs < 0) return 'N/A';
+  
+  // Calculate total minutes
+  const totalMinutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  
+  // Format: "Xh Ym" or just "Ym" if less than 1 hour
+  if (hours > 0 && minutes > 0) {
+    return `${hours}h ${minutes}m`;
+  } else if (hours > 0) {
+    return `${hours}h`;
+  } else if (minutes > 0) {
+    return `${minutes}m`;
+  } else {
+    return '0m';
+  }
+};
+
 // Routes
 
 // Student Analytics
@@ -513,8 +540,7 @@ app.get('/analytics/student/:studentId', verifyToken, async (req, res) => {
           date: booking.created_at,
           subject: booking.subject || 'General',
           tutorName: `${booking.tutor?.first_name || ''} ${booking.tutor?.last_name || ''}`.trim() || 'Tutor',
-          duration: booking.start_time && booking.end_time ? 
-            Math.round(((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60))) + 'h' : 'N/A',
+          duration: formatDuration(booking.start_time, booking.end_time),
           cost: parseFloat(booking.total_amount || 0),
           rating: rating,
           status: booking.status
@@ -847,8 +873,7 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
         date: booking.created_at,
         subject: booking.subject || 'General',
         studentName: `${booking.student?.first_name || ''} ${booking.student?.last_name || ''}`.trim() || 'Student',
-        duration: booking.start_time && booking.end_time ? 
-          Math.round(((new Date(booking.end_time) - new Date(booking.start_time)) / (1000 * 60 * 60))) + 'h' : 'N/A',
+        duration: formatDuration(booking.start_time, booking.end_time),
         earnings: Math.max(0, parseFloat(booking.total_amount || 0)),
         status: booking.status
       })) || [];
