@@ -1072,7 +1072,7 @@
                                 </div>
                                 <div class="text-info">
                                   <i class="fas fa-info-circle me-1"></i>
-                                  Tutor credits have been deducted
+                                  Student credits have been deducted
                                 </div>
                               </div>
                             </div>
