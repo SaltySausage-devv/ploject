@@ -1,5 +1,5 @@
 <template>
-  <div class="login-page min-vh-100 d-flex align-items-center position-relative" style="background: #1a1a1a !important;">
+  <div class="login-page d-flex position-relative" style="background: #1a1a1a !important;">
     <div class="container">
       <div class="row justify-content-center">
         <div class="col-lg-5 col-md-7 col-sm-10">
@@ -8,9 +8,9 @@
             ref="loginCard"
             class="cyberpunk-login-card"
           >
-            <div class="card-body p-5">
+            <div class="card-body cyberpunk-card-body">
               <!-- Header with Animation -->
-              <div ref="loginHeader" class="text-center mb-4">
+              <div ref="loginHeader" class="text-center mb-3">
                 <div ref="logoIcon" class="cyberpunk-logo-icon">
                   <i class="fas fa-graduation-cap"></i>
                 </div>
@@ -71,9 +71,9 @@
                 </div>
 
                 <!-- Remember Me and Forgot Password with Animation -->
-                <div ref="rememberField" class="mb-4">
-                  <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2 gap-sm-0">
-                    <div class="cyberpunk-checkbox-group">
+                <div ref="rememberField" class="mb-4 remember-forgot-container">
+                  <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center remember-forgot-wrapper">
+                    <div class="cyberpunk-checkbox-group remember-me-group">
                       <input
                         type="checkbox"
                         id="remember"
@@ -84,7 +84,7 @@
                         Remember me
                       </label>
                     </div>
-                    <router-link to="/forgot-password" class="cyberpunk-link">
+                    <router-link to="/forgot-password" class="cyberpunk-link forgot-password-link">
                       Forgot password?
                     </router-link>
                   </div>
@@ -111,13 +111,13 @@
                 </button>
 
                 <!-- Sign Up Link with Animation -->
-                <div ref="signupLink" class="text-center mt-4">
+                <div ref="signupLink" class="text-center mt-2">
                   <p class="cyberpunk-signup-text">
-                    Don't have an account? 
-                    <router-link to="/register" class="cyberpunk-link">
-                      Sign up here
-                    </router-link>
+                    Don't have an account?
                   </p>
+                  <router-link to="/register" class="cyberpunk-link cyberpunk-signup-link">
+                    Sign up here
+                  </router-link>
                 </div>
               </form>
             </div>
@@ -721,14 +721,17 @@ export default {
   position: relative;
   overflow-x: hidden;
   overflow-y: auto;
-  min-height: 50%;
   width: 100%;
-  height: 50%;
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  padding-top: 20px;
-  padding-bottom: 20px;
+  padding-top: 1.5rem;
+  padding-bottom: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: auto;
+  height: auto;
 }
 
 /* Force dark background on all elements */
@@ -743,6 +746,23 @@ export default {
 .login-page .col-md-7,
 .login-page .col-sm-10 {
   background: transparent !important;
+}
+
+/* Reduce container and row spacing */
+.login-page .container {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.login-page .row {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+.login-page .row > [class*="col-"] {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
 }
 
 /* Ensure body and html are dark */
@@ -846,6 +866,13 @@ body, html {
   position: relative;
   z-index: 10;
   overflow: hidden;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Reduce card body padding */
+.cyberpunk-card-body {
+  padding: 0.75rem 3rem !important;
 }
 
 .cyberpunk-login-card::before {
@@ -866,7 +893,7 @@ body, html {
 .cyberpunk-logo-icon {
   width: 80px;
   height: 80px;
-  margin: 0 auto 20px;
+  margin: 0 auto 15px;
   background: linear-gradient(45deg, var(--cyber-orange), var(--cyber-yellow));
   border-radius: 50%;
   display: flex;
@@ -911,12 +938,13 @@ body, html {
 .cyberpunk-input-group {
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   background: rgba(42, 42, 42, 0.8);
   border: 2px solid var(--cyber-grey-light);
   border-radius: 12px;
   overflow: hidden;
   transition: all 0.3s ease;
+  width: 100%;
 }
 
 .cyberpunk-input-group:focus-within {
@@ -934,6 +962,13 @@ body, html {
   align-items: center;
   justify-content: center;
   min-width: 50px;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.cyberpunk-input-icon i {
+  display: block;
+  line-height: 1;
 }
 
 .cyberpunk-input {
@@ -945,6 +980,8 @@ body, html {
   font-size: 1rem;
   outline: none;
   font-family: 'Courier New', monospace;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .cyberpunk-input::placeholder {
@@ -968,11 +1005,27 @@ body, html {
   cursor: pointer;
   transition: all 0.3s ease;
   border-left: 1px solid var(--cyber-grey-light);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 50px;
+  flex-shrink: 0;
+  outline: none;
+  box-sizing: border-box;
+  margin: 0;
 }
 
 .cyberpunk-toggle-btn:hover {
   background: rgba(255, 140, 66, 0.2);
   color: var(--cyber-yellow);
+}
+
+.cyberpunk-toggle-btn i {
+  font-size: 1rem;
+  display: block;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 /* Cyberpunk Checkbox */
@@ -1134,7 +1187,12 @@ body, html {
 .cyberpunk-signup-text {
   color: var(--cyber-text-muted);
   font-size: 1rem;
-  margin: 0;
+  margin: 0 0 0.5rem 0;
+}
+
+.cyberpunk-signup-link {
+  display: inline-block;
+  margin-top: 0.25rem;
 }
 
 .cyberpunk-link {
@@ -1167,63 +1225,667 @@ body, html {
   100% { transform: rotate(360deg); }
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
+/* Remember Me and Forgot Password Container - Base Styles */
+.remember-forgot-container {
+  width: 100%;
+}
+
+.remember-forgot-wrapper {
+  width: 100%;
+  gap: 0;
+}
+
+.remember-me-group {
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.forgot-password-link {
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* ============================================
+   RESPONSIVE BREAKPOINTS - CONSISTENT STRUCTURE
+   ============================================ */
+
+/* Extra Small (XS) - Below 576px */
+@media (max-width: 575.98px) {
+  /* Page Layout */
+  .login-page {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    min-height: auto;
+    height: auto;
+  }
+
+  /* Login Card */
   .cyberpunk-login-card {
-    margin: 20px;
+    margin: 10px;
     border-radius: 15px;
   }
   
-  .cyberpunk-login-card .card-body {
-    padding: 2rem !important;
+  .cyberpunk-card-body {
+    padding: 0.5rem 1.5rem !important;
   }
-  
-  .cyberpunk-welcome-text {
-    font-size: 2rem;
-  }
-  
-  .floating-icon {
-    font-size: 1.5rem;
-  }
-  
+
+  /* Logo & Header */
   .cyberpunk-logo-icon {
     width: 60px;
     height: 60px;
+    margin: 0 auto 12px;
   }
   
   .cyberpunk-logo-icon i {
     font-size: 2rem;
   }
-}
 
-/* SM breakpoint specific adjustments */
-@media (min-width: 576px) and (max-width: 767px) {
-  .cyberpunk-login-card .card-body {
-    padding: 2.5rem !important;
-  }
-  
-  .cyberpunk-checkbox-group {
-    margin-bottom: 0;
-  }
-  
-  .cyberpunk-link {
-    white-space: nowrap;
-    margin-left: 1rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .cyberpunk-login-card {
-    margin: 10px;
-  }
-  
   .cyberpunk-welcome-text {
     font-size: 1.8rem;
+    margin-bottom: 8px;
+    letter-spacing: 1px;
   }
-  
+
+  .cyberpunk-subtitle {
+    font-size: 0.95rem;
+  }
+
+  /* Form Elements */
+  .cyberpunk-label {
+    font-size: 0.9rem;
+    margin-bottom: 6px;
+  }
+
+  .cyberpunk-input-group {
+    border-radius: 10px;
+    align-items: stretch;
+  }
+
+  .cyberpunk-input-icon {
+    padding: 12px;
+    min-width: 45px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-input-icon i {
+    font-size: 0.9rem;
+  }
+
+  .cyberpunk-input {
+    padding: 12px;
+    font-size: 0.95rem;
+    min-width: 0;
+  }
+
+  .cyberpunk-toggle-btn {
+    padding: 12px;
+    min-width: 45px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-toggle-btn i {
+    font-size: 0.9rem;
+  }
+
+  /* Remember Me & Forgot Password */
+  .remember-forgot-wrapper {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 1rem !important;
+  }
+
+  .remember-me-group {
+    width: 100%;
+  }
+
+  .cyberpunk-checkbox {
+    width: 18px;
+    height: 18px;
+  }
+
+  .cyberpunk-checkbox-label {
+    font-size: 0.9rem;
+  }
+
+  .forgot-password-link {
+    width: 100%;
+    text-align: left;
+    font-size: 0.9rem;
+  }
+
+  /* Submit Button */
   .cyberpunk-submit-btn {
     padding: 15px;
     font-size: 1rem;
+    letter-spacing: 0.5px;
+  }
+
+  /* Signup Link */
+  .cyberpunk-signup-text {
+    font-size: 0.9rem;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .cyberpunk-signup-link {
+    font-size: 0.9rem;
+    margin-top: 0.25rem;
+  }
+
+  /* Floating Icons */
+  .floating-icon {
+    font-size: 1.5rem;
+  }
+}
+
+/* Small (SM) - 576px to 767px */
+@media (min-width: 576px) and (max-width: 767.98px) {
+  /* Page Layout */
+  .login-page {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+    min-height: calc(100vh - 60px);
+  }
+
+  /* Login Card */
+  .cyberpunk-login-card {
+    margin: 20px;
+    border-radius: 15px;
+  }
+  
+  .cyberpunk-card-body {
+    padding: 1.25rem 2rem !important;
+  }
+
+  /* Logo & Header */
+  .cyberpunk-logo-icon {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto 15px;
+  }
+  
+  .cyberpunk-logo-icon i {
+    font-size: 2.2rem;
+  }
+
+  .cyberpunk-welcome-text {
+    font-size: 2rem;
+    margin-bottom: 10px;
+    letter-spacing: 1.5px;
+  }
+
+  .cyberpunk-subtitle {
+    font-size: 1rem;
+  }
+
+  /* Form Elements */
+  .cyberpunk-label {
+    font-size: 0.95rem;
+    margin-bottom: 8px;
+  }
+
+  .cyberpunk-input-group {
+    border-radius: 12px;
+    align-items: stretch;
+  }
+
+  .cyberpunk-input-icon {
+    padding: 14px;
+    min-width: 48px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-input-icon i {
+    font-size: 0.95rem;
+  }
+
+  .cyberpunk-input {
+    padding: 14px;
+    font-size: 0.98rem;
+    min-width: 0;
+  }
+
+  .cyberpunk-toggle-btn {
+    padding: 14px;
+    min-width: 48px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-toggle-btn i {
+    font-size: 0.95rem;
+  }
+
+  /* Remember Me & Forgot Password */
+  .remember-forgot-wrapper {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 1rem !important;
+  }
+
+  .remember-me-group {
+    flex: 0 0 auto;
+    margin-right: auto;
+  }
+
+  .cyberpunk-checkbox {
+    width: 18px;
+    height: 18px;
+  }
+
+  .cyberpunk-checkbox-label {
+    font-size: 0.85rem;
+  }
+
+  .forgot-password-link {
+    flex: 0 0 auto;
+    margin-left: 1rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  /* Submit Button */
+  .cyberpunk-submit-btn {
+    padding: 16px;
+    font-size: 1.05rem;
+    letter-spacing: 0.75px;
+  }
+
+  /* Signup Link */
+  .cyberpunk-signup-text {
+    font-size: 0.95rem;
+  }
+
+  /* Floating Icons */
+  .floating-icon {
+    font-size: 1.5rem;
+  }
+}
+
+/* Medium (MD) - 768px to 991px */
+@media (min-width: 768px) and (max-width: 991.98px) {
+  /* Page Layout */
+  .login-page {
+    padding-top: 0;
+    padding-bottom: 0;
+    min-height: auto;
+    height: auto;
+  }
+
+  /* Login Card */
+  .cyberpunk-login-card {
+    margin: 20px;
+    border-radius: 18px;
+  }
+  
+  .cyberpunk-card-body {
+    padding: 0.75rem 2.5rem !important;
+  }
+
+  /* Logo & Header */
+  .cyberpunk-logo-icon {
+    width: 75px;
+    height: 75px;
+    margin: 0 auto 15px;
+  }
+  
+  .cyberpunk-logo-icon i {
+    font-size: 2.3rem;
+  }
+
+  .cyberpunk-welcome-text {
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+    letter-spacing: 1.75px;
+  }
+
+  .cyberpunk-subtitle {
+    font-size: 1.05rem;
+  }
+
+  /* Form Elements */
+  .cyberpunk-label {
+    font-size: 1rem;
+    margin-bottom: 8px;
+  }
+
+  .cyberpunk-input-group {
+    border-radius: 12px;
+    align-items: stretch;
+  }
+
+  .cyberpunk-input-icon {
+    padding: 15px;
+    min-width: 50px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-input-icon i {
+    font-size: 1rem;
+  }
+
+  .cyberpunk-input {
+    padding: 15px;
+    font-size: 1rem;
+    min-width: 0;
+  }
+
+  .cyberpunk-toggle-btn {
+    padding: 15px;
+    min-width: 50px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-toggle-btn i {
+    font-size: 1rem;
+  }
+
+  /* Remember Me & Forgot Password */
+  .remember-forgot-wrapper {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 1.5rem !important;
+  }
+
+  .remember-me-group {
+    flex: 0 0 auto;
+  }
+
+  .cyberpunk-checkbox {
+    width: 20px;
+    height: 20px;
+  }
+
+  .cyberpunk-checkbox-label {
+    font-size: 0.9rem;
+  }
+
+  .forgot-password-link {
+    flex: 0 0 auto;
+    font-size: 0.9rem;
+    white-space: nowrap;
+  }
+
+  /* Submit Button */
+  .cyberpunk-submit-btn {
+    padding: 17px;
+    font-size: 1.08rem;
+    letter-spacing: 0.875px;
+  }
+
+  /* Signup Link */
+  .cyberpunk-signup-text {
+    font-size: 0.98rem;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .cyberpunk-signup-link {
+    font-size: 0.98rem;
+    margin-top: 0.25rem;
+  }
+
+  /* Floating Icons */
+  .floating-icon {
+    font-size: 1.8rem;
+  }
+}
+
+/* Large (LG) - 992px to 1199px */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  /* Page Layout */
+  .login-page {
+    padding-top: 1.5rem;
+    padding-bottom: 1.5rem;
+    min-height: auto;
+    height: auto;
+  }
+
+  /* Login Card */
+  .cyberpunk-login-card {
+    margin: 0;
+    border-radius: 20px;
+  }
+  
+  .cyberpunk-card-body {
+    padding: 1rem 3rem !important;
+  }
+
+  /* Logo & Header */
+  .cyberpunk-logo-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 15px;
+  }
+  
+  .cyberpunk-logo-icon i {
+    font-size: 2.5rem;
+  }
+
+  .cyberpunk-welcome-text {
+    font-size: 2.3rem;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+  }
+
+  .cyberpunk-subtitle {
+    font-size: 1.1rem;
+  }
+
+  /* Form Elements */
+  .cyberpunk-label {
+    font-size: 1rem;
+    margin-bottom: 8px;
+  }
+
+  .cyberpunk-input-group {
+    border-radius: 12px;
+    align-items: stretch;
+  }
+
+  .cyberpunk-input-icon {
+    padding: 15px;
+    min-width: 50px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-input-icon i {
+    font-size: 1rem;
+  }
+
+  .cyberpunk-input {
+    padding: 15px;
+    font-size: 1rem;
+    min-width: 0;
+  }
+
+  .cyberpunk-toggle-btn {
+    padding: 15px;
+    min-width: 50px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-toggle-btn i {
+    font-size: 1rem;
+  }
+
+  /* Remember Me & Forgot Password */
+  .remember-forgot-wrapper {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 2rem !important;
+  }
+
+  .remember-me-group {
+    flex: 0 0 auto;
+  }
+
+  .cyberpunk-checkbox {
+    width: 20px;
+    height: 20px;
+  }
+
+  .cyberpunk-checkbox-label {
+    font-size: 0.95rem;
+  }
+
+  .forgot-password-link {
+    flex: 0 0 auto;
+    font-size: 0.95rem;
+    white-space: nowrap;
+  }
+
+  /* Submit Button */
+  .cyberpunk-submit-btn {
+    padding: 18px;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+  }
+
+  /* Signup Link */
+  .cyberpunk-signup-text {
+    font-size: 1rem;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .cyberpunk-signup-link {
+    font-size: 1rem;
+    margin-top: 0.25rem;
+  }
+
+  /* Floating Icons */
+  .floating-icon {
+    font-size: 2rem;
+  }
+}
+
+/* Extra Large (XL) - 1200px and above */
+@media (min-width: 1200px) {
+  /* Page Layout */
+  .login-page {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+    min-height: auto;
+    height: auto;
+  }
+
+  /* Login Card */
+  .cyberpunk-login-card {
+    margin: 0;
+    border-radius: 20px;
+  }
+  
+  .cyberpunk-card-body {
+    padding: 1.25rem 3.5rem !important;
+  }
+
+  /* Logo & Header */
+  .cyberpunk-logo-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 15px;
+  }
+  
+  .cyberpunk-logo-icon i {
+    font-size: 2.5rem;
+  }
+
+  .cyberpunk-welcome-text {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+  }
+
+  .cyberpunk-subtitle {
+    font-size: 1.1rem;
+  }
+
+  /* Form Elements */
+  .cyberpunk-label {
+    font-size: 1rem;
+    margin-bottom: 8px;
+  }
+
+  .cyberpunk-input-group {
+    border-radius: 12px;
+    align-items: stretch;
+  }
+
+  .cyberpunk-input-icon {
+    padding: 15px;
+    min-width: 50px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-input-icon i {
+    font-size: 1rem;
+  }
+
+  .cyberpunk-input {
+    padding: 15px;
+    font-size: 1rem;
+    min-width: 0;
+  }
+
+  .cyberpunk-toggle-btn {
+    padding: 15px;
+    min-width: 50px;
+    flex-shrink: 0;
+  }
+
+  .cyberpunk-toggle-btn i {
+    font-size: 1rem;
+  }
+
+  /* Remember Me & Forgot Password */
+  .remember-forgot-wrapper {
+    flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 2.5rem !important;
+  }
+
+  .remember-me-group {
+    flex: 0 0 auto;
+  }
+
+  .cyberpunk-checkbox {
+    width: 20px;
+    height: 20px;
+  }
+
+  .cyberpunk-checkbox-label {
+    font-size: 1rem;
+  }
+
+  .forgot-password-link {
+    flex: 0 0 auto;
+    font-size: 1rem;
+    white-space: nowrap;
+  }
+
+  /* Submit Button */
+  .cyberpunk-submit-btn {
+    padding: 18px;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+  }
+
+  /* Signup Link */
+  .cyberpunk-signup-text {
+    font-size: 1rem;
+    margin: 0 0 0.5rem 0;
+  }
+
+  .cyberpunk-signup-link {
+    font-size: 1rem;
+    margin-top: 0.25rem;
+  }
+
+  /* Floating Icons */
+  .floating-icon {
+    font-size: 2rem;
   }
 }
 </style>
