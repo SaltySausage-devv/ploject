@@ -14,8 +14,19 @@
           ></button>
         </div>
         <div class="modal-body">
+          <!-- Already Marked Message -->
+          <div v-if="alreadyMarked" class="success-message mb-4">
+            <div class="success-content">
+              <i class="fas fa-exclamation-triangle success-icon" style="color: #ffa726;"></i>
+              <h5 class="success-title" style="color: #ffa726;">Attendance Already Marked</h5>
+              <p class="success-details">
+                You have already taken attendance for this booking. The page will refresh shortly.
+              </p>
+            </div>
+          </div>
+
           <!-- Success Message -->
-          <div v-if="attendanceMarked" class="success-message mb-4">
+          <div v-else-if="attendanceMarked" class="success-message mb-4">
             <div class="success-content">
               <i class="fas fa-check-circle success-icon"></i>
               <h5 class="success-title">✓ Attendance Marked Successfully!</h5>
@@ -49,7 +60,7 @@
           </div>
 
           <!-- Attendance Status -->
-          <form v-if="!attendanceMarked" @submit.prevent="handleSubmit">
+          <form v-if="!attendanceMarked && !alreadyMarked" @submit.prevent="handleSubmit">
             <div class="mb-4">
               <label class="form-label">
                 Student Attendance Status <span class="text-danger">*</span>
@@ -169,7 +180,7 @@
         </div>
         <div class="modal-footer">
           <button
-            v-if="!attendanceMarked"
+            v-if="!attendanceMarked && !alreadyMarked"
             type="button"
             class="btn btn-secondary"
             @click="$emit('close')"
@@ -177,7 +188,7 @@
             Cancel
           </button>
           <button
-            v-if="!attendanceMarked"
+            v-if="!attendanceMarked && !alreadyMarked"
             type="button"
             class="btn btn-primary"
             @click="handleSubmit"
@@ -191,7 +202,7 @@
             Mark Attendance
           </button>
           <button
-            v-if="attendanceMarked"
+            v-if="attendanceMarked && !alreadyMarked"
             type="button"
             class="btn btn-success"
             @click="$emit('close')"
@@ -206,7 +217,7 @@
 </template>
 
 <script>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useAuthStore } from "../../stores/auth";
 import { useToast } from "../../composables/useToast";
 
@@ -231,9 +242,26 @@ export default {
     const sessionNotes = ref("");
     const fileInput = ref(null);
     const attendanceMarked = ref(false);
+    const alreadyMarked = ref(false);
 
     // Global request tracking to prevent duplicate requests
     const pendingRequests = new Set();
+
+    // Check if attendance has already been marked when modal opens
+    onMounted(() => {
+      const hasAttendanceMarked = props.booking.attendance_status && 
+        (props.booking.attendance_status === 'attended' || props.booking.attendance_status === 'no_show');
+      
+      if (hasAttendanceMarked) {
+        alreadyMarked.value = true;
+        showToast("You have already taken attendance for this booking", "warning");
+        // Close modal and refresh browser after a short delay
+        setTimeout(() => {
+          emit("close");
+          window.location.reload();
+        }, 2000);
+      }
+    });
 
     // Computed properties
     const canSubmit = computed(() => {
@@ -400,17 +428,14 @@ export default {
             errorData.error &&
             errorData.error.includes("already been marked")
           ) {
-            // Attendance was already marked - treat as success
-            showToast("Attendance was already marked for this session", "info");
-            attendanceMarked.value = true;
-
-            // Close modal after a short delay
+            // Attendance was already marked - show message and refresh
+            alreadyMarked.value = true;
+            showToast("You have already taken attendance for this booking", "warning");
+            
+            // Close modal and refresh browser after a short delay
             setTimeout(() => {
-              emit("attendance-marked", {
-                attendance_status: attendanceStatus.value,
-                session_notes: sessionNotes.value,
-                already_marked: true,
-              });
+              emit("close");
+              window.location.reload();
             }, 2000);
             return; // Exit early, don't throw error
           } else if (response.status === 429) {
@@ -457,6 +482,7 @@ export default {
       sessionNotes,
       fileInput,
       attendanceMarked,
+      alreadyMarked,
       canSubmit,
       formatDate,
       formatTime,
