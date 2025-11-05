@@ -1446,7 +1446,7 @@ export default {
             }
           }
         } else {
-          // Restore normal behavior outside range
+          // Restore normal behavior outside 996px-1200px range
           if (isNavbarForced) {
             const navbarTogglers = document.querySelectorAll(".navbar-toggler, .cyberpunk-hamburger");
             navbarTogglers.forEach(toggler => {
@@ -1456,7 +1456,40 @@ export default {
             if (mobileNavItems) {
               mobileNavItems.style.cssText = "";
             }
+            // Restore navbar collapse to normal state
+            const navbarCollapse = document.getElementById("navbarNav");
+            if (navbarCollapse) {
+              navbarCollapse.style.cssText = "";
+            }
             isNavbarForced = false;
+          }
+          
+          // Ensure hamburger works in 576px-850px range
+          const width = window.innerWidth;
+          if (width >= 576 && width <= 850) {
+            const navbarTogglers = document.querySelectorAll(".navbar-toggler, .cyberpunk-hamburger, button[data-bs-toggle='collapse']");
+            navbarTogglers.forEach(toggler => {
+              toggler.style.cssText = "";
+              toggler.style.display = "flex";
+              toggler.style.visibility = "visible";
+              toggler.style.opacity = "1";
+              toggler.style.pointerEvents = "auto";
+            });
+            
+            const mobileNavItems = document.querySelector(".mobile-nav-items");
+            if (mobileNavItems) {
+              mobileNavItems.style.cssText = "";
+              mobileNavItems.style.display = "flex";
+            }
+            
+            // Ensure Bootstrap collapse works
+            const navbarCollapse = document.getElementById("navbarNav");
+            if (navbarCollapse && window.bootstrap && window.bootstrap.Collapse) {
+              // Don't dispose, let Bootstrap handle it naturally
+              const collapseInstance = bootstrap.Collapse.getInstance(navbarCollapse) || new bootstrap.Collapse(navbarCollapse, {
+                toggle: false
+              });
+            }
           }
         }
       };
@@ -1900,6 +1933,79 @@ export default {
   .navbar .container {
     padding-left: 0.75rem;
     padding-right: 0.75rem;
+  }
+}
+
+/* Ensure navbar layout and hamburger work correctly for 576px-850px */
+@media (min-width: 576px) and (max-width: 850px) {
+  /* Ensure mobile nav items are visible */
+  .mobile-nav-items {
+    display: flex !important;
+    gap: 0.6rem;
+    padding-right: 0.6rem;
+  }
+
+  /* Ensure hamburger is visible and functional */
+  .navbar-toggler,
+  .cyberpunk-hamburger,
+  button[data-bs-toggle="collapse"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+  }
+
+  /* Ensure navbar brand is visible */
+  .navbar-brand {
+    display: flex !important;
+    margin-right: 1rem;
+  }
+
+  /* Ensure navbar collapse works properly */
+  .navbar-collapse {
+    position: fixed;
+    top: 60px !important;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: rgba(26, 26, 26, 0.98);
+    border: none;
+    border-top: 1px solid var(--cyber-orange);
+    border-radius: 0;
+    margin: 0;
+    padding: 1rem 1.5rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(20px);
+    z-index: 1040;
+    max-height: calc(100vh - 60px);
+    overflow-y: auto;
+  }
+
+  .navbar-collapse:not(.show) {
+    display: none !important;
+  }
+
+  .navbar-collapse.show {
+    display: block !important;
+  }
+
+  /* Ensure container layout is correct */
+  .navbar .container {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Ensure nav links are visible in collapsed menu */
+  .navbar-nav {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .navbar-nav .nav-item {
+    width: 100%;
   }
 }
 
