@@ -336,8 +336,9 @@ export default {
 
           // Process notifications (messages, booking confirmations, booking requests)
           notifications.forEach((notification) => {
-            // Use timestamp field (from localStorage) or created_at (from API)
-            const notificationTimestamp = notification.timestamp || notification.created_at;
+            // Use created_at (from API/database) first, then timestamp (from localStorage)
+            // created_at is more accurate as it comes from the database
+            const notificationTimestamp = notification.created_at || notification.timestamp;
             
             // Debug logging for timestamp
             if (!notificationTimestamp) {
@@ -529,6 +530,7 @@ export default {
         console.log("📊 DASHBOARD: Message sender_id:", message.sender_id);
         console.log("📊 DASHBOARD: Current user_id:", userId.value);
         console.log("📊 DASHBOARD: Message type:", message.message_type);
+        console.log("📊 DASHBOARD: Message created_at:", message.created_at);
 
         // Only update activity if message is from another user or is a system message
         const isSystemMessage =
@@ -544,11 +546,14 @@ export default {
         const isSender = String(message.sender_id) === String(userId.value);
 
         // For system messages, update activity for receiver
-        // For regular messages, only update if not from self
-        if (isSystemMessage || (!isSender && message.sender)) {
+        // For regular messages, only update if not from self (allow even if sender object is missing)
+        if (isSystemMessage || (!isSender && (message.sender || message.message_type === 'text'))) {
           console.log("📊 DASHBOARD: Message qualifies for activity update, reloading activity");
           // Reload activity to get latest data (this will include the new message/notification)
-          loadRecentActivity();
+          // Use a small delay to ensure the notification is saved to localStorage first
+          setTimeout(() => {
+            loadRecentActivity();
+          }, 100);
         } else {
           console.log("📊 DASHBOARD: Skipping activity update (message from self or no sender)");
         }
