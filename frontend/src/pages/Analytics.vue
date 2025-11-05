@@ -260,11 +260,15 @@ export default {
     }
 
     const getSpendingChartTitle = () => {
+      const periodInt = parseInt(selectedPeriod.value)
+      const isMonthly = periodInt === 90 || periodInt === 365
+      const prefix = isMonthly ? 'Monthly' : 'Daily'
+      
       switch (userType.value) {
-        case 'tutor': return 'Daily Earnings'
-        case 'student': return 'Daily Spending'
-        case 'centre': return 'Daily Revenue'
-        default: return 'Daily Financials'
+        case 'tutor': return `${prefix} Earnings`
+        case 'student': return `${prefix} Spending`
+        case 'centre': return `${prefix} Revenue`
+        default: return `${prefix} Financials`
       }
     }
 
@@ -667,6 +671,25 @@ export default {
                 legend: {
                   labels: {
                     color: '#ffffff'
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      const periodInt = parseInt(selectedPeriod.value)
+                      const isMonthly = periodInt === 90 || periodInt === 365
+                      const prefix = isMonthly ? 'Monthly' : 'Daily'
+                      let label = prefix
+                      
+                      switch (userType.value) {
+                        case 'tutor': label += ' Earnings'; break
+                        case 'student': label += ' Spending'; break
+                        case 'centre': label += ' Revenue'; break
+                        default: label += ' Financials'
+                      }
+                      
+                      return `${label}: $${Math.max(0, context.parsed.y).toFixed(2)}`
+                    }
                   }
                 }
               },
