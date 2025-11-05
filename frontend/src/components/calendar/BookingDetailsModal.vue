@@ -430,16 +430,38 @@ export default {
         (localBooking.attendance_status === 'attended' || localBooking.attendance_status === 'no_show');
       
       // Use reactive currentTime to ensure re-evaluation when time passes
+      // Access currentTime.value to ensure computed tracks this dependency
+      const now = currentTime.value;
       const sessionEndTime = new Date(localBooking.end || localBooking.end_time);
-      const pastBooking = sessionEndTime < currentTime.value;
+      const pastBooking = sessionEndTime < now;
       
-      return (
-        localBooking.status === "confirmed" &&
-        isTutor.value &&
+      // Access all reactive dependencies explicitly to ensure tracking
+      const status = localBooking.status;
+      const attendanceStatus = localBooking.attendance_status;
+      const tutor = isTutor.value;
+      
+      const result = (
+        status === "confirmed" &&
+        tutor &&
         pastBooking &&
         hasAttendanceMarked && // Must have attendance marked first (sequential flow)
-        localBooking.status !== "completed" // Not already completed
+        status !== "completed" // Not already completed
       );
+      
+      // Debug logging (only log when it changes to true to avoid spam)
+      if (result) {
+        console.log("✅ canComplete is now TRUE:", {
+          status,
+          tutor,
+          pastBooking,
+          hasAttendanceMarked,
+          attendanceStatus,
+          now,
+          sessionEndTime
+        });
+      }
+      
+      return result;
     });
 
     const canJoinMeeting = computed(() => {
@@ -677,19 +699,38 @@ export default {
       
       // Immediately update localBooking reactively so the "Mark as Completed" button appears instantly
       if (attendanceStatus) {
+        // Directly update the reactive object properties
+        // This ensures Vue properly tracks the change
         localBooking.attendance_status = attendanceStatus;
+        
         // Also update session_notes if provided
         const sessionNotes = attendanceData.booking?.session_notes || attendanceData.session_notes;
         if (sessionNotes) {
           localBooking.session_notes = sessionNotes;
         }
+        
         console.log("✅ Updated localBooking with attendance_status:", attendanceStatus);
         
         // Update current time immediately to check if session has ended
         // This ensures the "Mark as Completed" button appears right away if session has passed
         currentTime.value = new Date();
         
-        // Wait for next tick to ensure reactivity is processed
+        // Force Vue to re-evaluate computed properties
+        // Use nextTick to ensure reactivity is processed in the current tick
+        await nextTick();
+        
+        // Force a reactivity update by triggering a microtask
+        // This ensures computed properties see the updated values
+        await new Promise(resolve => {
+          // Use requestAnimationFrame to ensure DOM updates are processed
+          requestAnimationFrame(() => {
+            // Update time again to force re-evaluation
+            currentTime.value = new Date();
+            resolve();
+          });
+        });
+        
+        // Wait for next tick to ensure all reactivity is fully processed
         await nextTick();
         
         // Log computed property state for debugging
