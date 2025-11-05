@@ -417,8 +417,8 @@ export default {
       } else if (messageType === 'image') {
         return "fas fa-image";
       } else {
-        // Default: calendar icon for regular messages
-        return "fas fa-calendar-alt";
+        // Default: mail icon for regular messages
+        return "fas fa-envelope";
       }
     };
 
@@ -1059,7 +1059,7 @@ export default {
 
           // Determine icon based on message type
           // Use calendar icons for booking-related notifications
-          let iconClass = "fas fa-calendar-alt"; // Default calendar icon for regular messages
+          let iconClass = "fas fa-envelope"; // Default mail icon for regular messages
           if (message.message_type === 'booking_offer' || message.message_type === 'booking_request') {
             // Booking request: use calendar icon
             iconClass = "fas fa-calendar-alt";
@@ -1084,8 +1084,8 @@ export default {
           } else if (message.message_type === 'image') {
             iconClass = "fas fa-image";
           } else {
-            // Default: calendar icon for regular messages
-            iconClass = "fas fa-calendar-alt";
+            // Default: mail icon for regular messages
+            iconClass = "fas fa-envelope";
           }
 
           // Check if we already have this notification (prevent duplicates)
