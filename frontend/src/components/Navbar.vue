@@ -2500,16 +2500,57 @@ export default {
   }
 
   /* Prevent scrollable inner area in notifications dropdown within this range */
-  .notifications-body {
+  .notifications-body,
+  .notifications-dropdown .notifications-body,
+  .navbar-notification-container .notifications-body,
+  .navbar-nav .notifications-dropdown .notifications-body {
     max-height: none !important;
     overflow-y: visible !important;
     overflow-x: visible !important;
+    overflow: visible !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  /* Hide scrollbar completely for notifications body - all browsers */
+  .notifications-body::-webkit-scrollbar,
+  .notifications-body::-webkit-scrollbar-track,
+  .notifications-body::-webkit-scrollbar-thumb,
+  .notifications-dropdown .notifications-body::-webkit-scrollbar,
+  .notifications-dropdown .notifications-body::-webkit-scrollbar-track,
+  .notifications-dropdown .notifications-body::-webkit-scrollbar-thumb,
+  .navbar-notification-container .notifications-body::-webkit-scrollbar,
+  .navbar-notification-container .notifications-body::-webkit-scrollbar-track,
+  .navbar-notification-container .notifications-body::-webkit-scrollbar-thumb {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    visibility: hidden !important;
   }
 
   /* Ensure notifications dropdown itself doesn't create scrollable area */
-  .notifications-dropdown {
+  .notifications-dropdown,
+  .navbar-notification-container .notifications-dropdown,
+  .navbar-nav .notifications-dropdown {
     overflow: visible !important;
     max-height: none !important;
+    overflow-y: visible !important;
+    overflow-x: visible !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  /* Also hide scrollbar on dropdown itself - all browsers */
+  .notifications-dropdown::-webkit-scrollbar,
+  .notifications-dropdown::-webkit-scrollbar-track,
+  .notifications-dropdown::-webkit-scrollbar-thumb,
+  .navbar-notification-container .notifications-dropdown::-webkit-scrollbar,
+  .navbar-notification-container .notifications-dropdown::-webkit-scrollbar-track,
+  .navbar-notification-container .notifications-dropdown::-webkit-scrollbar-thumb {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    visibility: hidden !important;
   }
 }
 
