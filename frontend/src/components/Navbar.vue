@@ -1585,7 +1585,8 @@ export default {
                  mutation.target.closest('.dropdown'))
               );
               
-              if (hasDropdownClassChange && window.innerWidth >= 996 && window.innerWidth <= 1200) {
+              const width = window.innerWidth;
+              if (hasDropdownClassChange && width >= 996 && width <= 1200) {
                 const openDropdowns = navbar.querySelectorAll('.dropdown.show');
                 if (openDropdowns.length > 0) {
                   preventNavbarScrollOnDropdown();
