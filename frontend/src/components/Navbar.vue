@@ -2029,6 +2029,7 @@ export default {
 /* Near-desktop screens (900px to 1015px) - same as 850px-899px */
 @media (min-width: 900px) and (max-width: 1015px) {
   .mobile-nav-items {
+    display: flex !important;
     gap: 0.7rem;
     padding-right: 0.7rem;
   }
@@ -2040,6 +2041,24 @@ export default {
 
   .navbar-brand {
     margin-right: 1rem;
+  }
+}
+
+/* Ensure 990px-1015px follows 871px-900px styling - override any conflicting rules */
+@media (min-width: 990px) and (max-width: 1015px) {
+  .mobile-nav-items {
+    display: flex !important;
+    gap: 0.7rem !important;
+    padding-right: 0.7rem !important;
+  }
+
+  .navbar .container {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+
+  .navbar-brand {
+    margin-right: 1rem !important;
   }
 }
 
