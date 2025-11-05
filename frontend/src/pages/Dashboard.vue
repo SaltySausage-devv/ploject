@@ -168,9 +168,10 @@
 </template>
 
 <script>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { useAuthStore } from "../stores/auth";
 import api from "../services/api";
+import messagingService from "../services/messaging.js";
 
 export default {
   name: "Dashboard",
@@ -185,6 +186,9 @@ export default {
     const recentActivity = ref([]);
     const isLoading = ref(false);
     const error = ref(null);
+    
+    // Real-time message handler for Recent Activity updates
+    let dashboardMessageHandler = null;
 
     // Helper to format time ago
     // Calculates: current time - timestamp, rounds to 2 decimal places
@@ -365,16 +369,78 @@ export default {
             let badgeClass = "bg-success"; // Changed from bg-info (blue) to bg-success (green)
 
             // Check notification message/content for type
-            if (message.includes("Booking confirmed") || message.includes("booking confirmed") || data.notificationType === "booking_confirmation") {
+            // First check for message_type from notification data (for system messages)
+            const notificationMessageType = notification.message_type || data.messageType || data.notificationType;
+            
+            if (notificationMessageType === "booking_confirmation" || message.includes("Booking confirmed") || message.includes("booking confirmed") || data.notificationType === "booking_confirmation") {
               icon = "fas fa-calendar-check";
               title = "New booking confirmed";
               status = "Confirmed";
               badgeClass = "bg-success";
-            } else if (message.includes("Booking request") || message.includes("booking request") || message.includes("Booking offer") || data.notificationType === "booking_offer" || data.notificationType === "booking_request") {
+            } else if (notificationMessageType === "booking_cancelled" || message.includes("Booking cancelled") || message.includes("booking cancelled") || data.notificationType === "booking_cancelled") {
+              icon = "fas fa-calendar-times";
+              title = "Booking cancelled";
+              status = "Cancelled";
+              badgeClass = "bg-danger";
+            } else if (notificationMessageType === "booking_offer" || notificationMessageType === "booking_proposal" || message.includes("Booking request") || message.includes("booking request") || message.includes("Booking offer") || message.includes("Booking proposal") || data.notificationType === "booking_offer" || data.notificationType === "booking_request" || data.notificationType === "booking_proposal") {
               icon = "fas fa-calendar-plus";
-              title = "Booking request sent";
+              title = notificationMessageType === "booking_proposal" ? "Booking proposal received" : "Booking request sent";
               status = "Unread"; 
               badgeClass = "bg-warning";
+            } else if (notificationMessageType === "session_completed" || message.includes("session completed") || message.includes("Session completed") || message.includes("marked as completed") || data.notificationType === "session_completed") {
+              // Parse credit information from session_completed message
+              let creditInfo = "";
+              try {
+                const messageData = typeof notification.content === "string" ? JSON.parse(notification.content) : notification.content || {};
+                const creditsAmount = messageData.creditsAmount || messageData.credits || 0;
+                
+                if (userType.value === "tutor" && creditsAmount > 0) {
+                  creditInfo = ` - ${creditsAmount} credits added`;
+                  icon = "fas fa-dollar-sign";
+                  title = `Session completed${creditInfo}`;
+                  status = "Completed";
+                  badgeClass = "bg-success";
+                } else if (userType.value === "student") {
+                  // For students, credits were already deducted at booking confirmation
+                  // This message just confirms session completion
+                  icon = "fas fa-check-circle";
+                  title = "Session marked as completed";
+                  status = "Completed";
+                  badgeClass = "bg-success";
+                } else {
+                  icon = "fas fa-check-circle";
+                  title = "Session completed";
+                  status = "Completed";
+                  badgeClass = "bg-success";
+                }
+              } catch (e) {
+                // If parsing fails, use default
+                icon = "fas fa-check-circle";
+                title = userType.value === "tutor" ? "Session completed - credits added" : "Session marked as completed";
+                status = "Completed";
+                badgeClass = "bg-success";
+              }
+            } else if (message.includes("Credit") || message.includes("credit") || message.includes("credits deducted") || message.includes("credits added") || message.includes("credits reserved")) {
+              // Handle credit transaction notifications
+              const creditMatch = message.match(/(\d+\.?\d*)\s*credit/i);
+              const credits = creditMatch ? creditMatch[1] : "";
+              
+              if (message.includes("deducted") || message.includes("reserved")) {
+                icon = "fas fa-minus-circle";
+                title = credits ? `Credits deducted: ${credits} credits` : "Credits deducted";
+                status = "Completed";
+                badgeClass = "bg-info";
+              } else if (message.includes("added") || message.includes("transferred")) {
+                icon = "fas fa-plus-circle";
+                title = credits ? `Credits added: ${credits} credits` : "Credits added";
+                status = "Completed";
+                badgeClass = "bg-success";
+              } else {
+                icon = "fas fa-dollar-sign";
+                title = "Credit transaction";
+                status = "Completed";
+                badgeClass = "bg-info";
+              }
             } else if (message.includes("message") || message.includes("Message") || notification.type === "push") {
               icon = "fas fa-envelope";
               title = message.includes("from") ? message : `New message${userType.value === "student" ? " from tutor" : " from student"}`;
@@ -442,6 +508,56 @@ export default {
         // Fallback to empty array
         recentActivity.value = [];
       }
+    };
+
+    // Setup real-time listener for Recent Activity updates
+    const setupRealTimeActivityUpdates = () => {
+      console.log("📊 DASHBOARD: Setting up real-time activity updates");
+      console.log("📊 DASHBOARD: User ID:", userId.value);
+      console.log("📊 DASHBOARD: Messaging service connected?", messagingService.isConnected);
+
+      // Remove old handler if it exists to prevent duplicates
+      if (dashboardMessageHandler) {
+        console.log("📊 DASHBOARD: Removing existing message handler");
+        messagingService.off("new_message", dashboardMessageHandler);
+        dashboardMessageHandler = null;
+      }
+
+      // Create new handler for dashboard activity updates
+      dashboardMessageHandler = (message) => {
+        console.log("📊 DASHBOARD: ✨ Received new message for activity update:", message);
+        console.log("📊 DASHBOARD: Message sender_id:", message.sender_id);
+        console.log("📊 DASHBOARD: Current user_id:", userId.value);
+        console.log("📊 DASHBOARD: Message type:", message.message_type);
+
+        // Only update activity if message is from another user or is a system message
+        const isSystemMessage =
+          message.message_type === "reschedule_request" ||
+          message.message_type === "reschedule_accepted" ||
+          message.message_type === "reschedule_rejected" ||
+          message.message_type === "booking_cancelled" ||
+          message.message_type === "booking_proposal" ||
+          message.message_type === "booking_confirmation" ||
+          message.message_type === "booking_offer" ||
+          message.message_type === "session_completed";
+
+        const isSender = String(message.sender_id) === String(userId.value);
+
+        // For system messages, update activity for receiver
+        // For regular messages, only update if not from self
+        if (isSystemMessage || (!isSender && message.sender)) {
+          console.log("📊 DASHBOARD: Message qualifies for activity update, reloading activity");
+          // Reload activity to get latest data (this will include the new message/notification)
+          loadRecentActivity();
+        } else {
+          console.log("📊 DASHBOARD: Skipping activity update (message from self or no sender)");
+        }
+      };
+
+      // Register the handler
+      console.log("📊 DASHBOARD: Registering new_message handler");
+      messagingService.on("new_message", dashboardMessageHandler);
+      console.log("📊 DASHBOARD: ✅ Real-time activity handler registered");
     };
 
     const loadDashboardData = async () => {
@@ -646,6 +762,90 @@ export default {
       // Load data immediately if userType and userId are available
       if (userType.value && userId.value) {
         loadDashboardData();
+        
+        // Setup real-time activity updates - ensure it's set up when messaging service connects
+        if (authStore.isAuthenticated) {
+          // Try to setup immediately if already connected
+          if (messagingService.isConnected) {
+            console.log("📊 DASHBOARD: Messaging service already connected, setting up real-time updates");
+            setupRealTimeActivityUpdates();
+          } else {
+            // If not connected yet, wait and retry multiple times
+            console.log("📊 DASHBOARD: Messaging service not connected yet, will retry...");
+            let retryCount = 0;
+            const maxRetries = 5;
+            const retryInterval = setInterval(() => {
+              retryCount++;
+              if (messagingService.isConnected) {
+                console.log("📊 DASHBOARD: Messaging service connected after retry, setting up real-time updates");
+                setupRealTimeActivityUpdates();
+                clearInterval(retryInterval);
+              } else if (retryCount >= maxRetries) {
+                console.warn("📊 DASHBOARD: Messaging service not connected after", maxRetries, "retries");
+                clearInterval(retryInterval);
+              }
+            }, 1000); // Check every 1 second
+          }
+        }
+      }
+    });
+
+    // Watch for authentication changes to setup real-time updates
+    watch(
+      () => authStore.isAuthenticated,
+      (isAuth) => {
+        console.log("📊 DASHBOARD: Auth state changed:", isAuth);
+        if (isAuth && userId.value) {
+          // Setup real-time updates when user logs in
+          if (messagingService.isConnected) {
+            console.log("📊 DASHBOARD: Messaging service connected, setting up real-time updates");
+            setupRealTimeActivityUpdates();
+          } else {
+            // Wait for connection with retries
+            console.log("📊 DASHBOARD: Messaging service not connected, will retry...");
+            let retryCount = 0;
+            const maxRetries = 5;
+            const retryInterval = setInterval(() => {
+              retryCount++;
+              if (messagingService.isConnected) {
+                console.log("📊 DASHBOARD: Messaging service connected after retry, setting up real-time updates");
+                setupRealTimeActivityUpdates();
+                clearInterval(retryInterval);
+              } else if (retryCount >= maxRetries) {
+                console.warn("📊 DASHBOARD: Messaging service not connected after", maxRetries, "retries");
+                clearInterval(retryInterval);
+              }
+            }, 1000); // Check every 1 second
+          }
+        } else if (!isAuth) {
+          // Clean up on logout
+          if (dashboardMessageHandler) {
+            messagingService.off("new_message", dashboardMessageHandler);
+            dashboardMessageHandler = null;
+          }
+        }
+      }
+    );
+
+    // Also watch for messaging service connection state changes
+    // This ensures real-time updates are set up when the service connects
+    watch(
+      () => authStore.isAuthenticated && messagingService.isConnected,
+      (isConnected) => {
+        if (isConnected && userId.value && !dashboardMessageHandler) {
+          console.log("📊 DASHBOARD: Messaging service connection detected, setting up real-time updates");
+          setupRealTimeActivityUpdates();
+        }
+      },
+      { immediate: true }
+    );
+
+    // Cleanup on unmount
+    onUnmounted(() => {
+      console.log("📊 DASHBOARD: Component unmounting, cleaning up handlers");
+      if (dashboardMessageHandler) {
+        messagingService.off("new_message", dashboardMessageHandler);
+        dashboardMessageHandler = null;
       }
     });
 
