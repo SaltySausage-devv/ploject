@@ -280,7 +280,7 @@
 </template>
 
 <script>
-import { ref, computed, watch, onMounted, reactive, nextTick } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted, reactive, nextTick } from "vue";
 import { useAuthStore } from "../../stores/auth";
 import { useToast } from "../../composables/useToast";
 import RescheduleModal from "./RescheduleModal.vue";
@@ -317,6 +317,11 @@ export default {
     
     // Track if we're updating locally to prevent watch from overwriting
     let isLocalUpdate = false;
+    
+    // Reactive current time to trigger re-evaluation of time-based computed properties
+    // This ensures the "Mark as Completed" button appears automatically when session ends
+    const currentTime = ref(new Date());
+    let timeUpdateInterval = null;
     
     // Watch the booking prop and update localBooking whenever it changes
     // But skip if we just made a local update (to preserve our immediate changes)
@@ -423,7 +428,10 @@ export default {
       // Cannot complete if already completed
       const hasAttendanceMarked = localBooking.attendance_status && 
         (localBooking.attendance_status === 'attended' || localBooking.attendance_status === 'no_show');
-      const pastBooking = isPastBooking();
+      
+      // Use reactive currentTime to ensure re-evaluation when time passes
+      const sessionEndTime = new Date(localBooking.end || localBooking.end_time);
+      const pastBooking = sessionEndTime < currentTime.value;
       
       return (
         localBooking.status === "confirmed" &&
@@ -534,15 +542,18 @@ export default {
     }
 
     function isPastBooking() {
-      return new Date(localBooking.end || localBooking.end_time) < new Date();
+      // Use reactive currentTime for consistency
+      return new Date(localBooking.end || localBooking.end_time) < currentTime.value;
     }
 
     function isSessionStarted() {
-      return new Date(localBooking.start || localBooking.start_time) <= new Date();
+      // Use reactive currentTime for consistency
+      return new Date(localBooking.start || localBooking.start_time) <= currentTime.value;
     }
 
     function isWithinMeetingWindow() {
-      const now = new Date();
+      // Use reactive currentTime for consistency
+      const now = currentTime.value;
       const startTime = new Date(
         localBooking.start || localBooking.start_time
       );
@@ -674,6 +685,10 @@ export default {
         }
         console.log("✅ Updated localBooking with attendance_status:", attendanceStatus);
         
+        // Update current time immediately to check if session has ended
+        // This ensures the "Mark as Completed" button appears right away if session has passed
+        currentTime.value = new Date();
+        
         // Wait for next tick to ensure reactivity is processed
         await nextTick();
         
@@ -683,6 +698,8 @@ export default {
         console.log("✅ localBooking.status:", localBooking.status);
         console.log("✅ isTutor:", isTutor.value);
         console.log("✅ isPastBooking:", isPastBooking());
+        console.log("✅ currentTime:", currentTime.value);
+        console.log("✅ sessionEndTime:", new Date(localBooking.end || localBooking.end_time));
       }
       
       // Emit the attendance data along with the update event after local update
@@ -703,10 +720,29 @@ export default {
     }, { immediate: true });
 
     // Lifecycle
+    // Start time update interval to re-evaluate time-based computed properties
+    // This ensures the "Mark as Completed" button appears automatically when session ends
     onMounted(() => {
       // If prop says to show reschedule request, open it
       if (props.showRescheduleRequest && localBooking.reschedule_status === 'pending') {
         showRescheduleRequestModal.value = true;
+      }
+      
+      // Update current time every 10 seconds to check if session has ended
+      // This ensures the "Mark as Completed" button appears automatically
+      timeUpdateInterval = setInterval(() => {
+        currentTime.value = new Date();
+      }, 10000); // Update every 10 seconds for better responsiveness
+      
+      // Also update immediately on mount
+      currentTime.value = new Date();
+    });
+    
+    // Clean up interval when component unmounts
+    onUnmounted(() => {
+      if (timeUpdateInterval) {
+        clearInterval(timeUpdateInterval);
+        timeUpdateInterval = null;
       }
     });
 
