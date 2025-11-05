@@ -728,10 +728,10 @@ export default {
   padding-top: 1.5rem;
   padding-bottom: 1.5rem;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  min-height: auto;
-  height: auto;
+  min-height: 100vh;
+  height: 100%;
 }
 
 /* Force dark background on all elements */
@@ -1256,8 +1256,8 @@ body, html {
   .login-page {
     padding-top: 1rem;
     padding-bottom: 1rem;
-    min-height: auto;
-    height: auto;
+    min-height: 100vh;
+    height: 100%;
   }
 
   /* Login Card */
@@ -1384,7 +1384,8 @@ body, html {
   .login-page {
     padding-top: 1.5rem;
     padding-bottom: 1.5rem;
-    min-height: calc(100vh - 60px);
+    min-height: 100vh;
+    height: 100%;
   }
 
   /* Login Card */
@@ -1508,8 +1509,8 @@ body, html {
   .login-page {
     padding-top: 0;
     padding-bottom: 0;
-    min-height: auto;
-    height: auto;
+    min-height: 100vh;
+    height: 100%;
   }
 
   /* Login Card */
@@ -1637,8 +1638,8 @@ body, html {
   .login-page {
     padding-top: 1.5rem;
     padding-bottom: 1.5rem;
-    min-height: auto;
-    height: auto;
+    min-height: 100vh;
+    height: 100%;
   }
 
   /* Login Card */
@@ -1766,8 +1767,8 @@ body, html {
   .login-page {
     padding-top: 2rem;
     padding-bottom: 2rem;
-    min-height: auto;
-    height: auto;
+    min-height: 100vh;
+    height: 100%;
   }
 
   /* Login Card */
