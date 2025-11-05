@@ -349,7 +349,8 @@ export default {
                 if (messagesResponse && messagesResponse.messages && messagesResponse.messages.length > 0) {
                   // Process all messages, not just the first one
                   messagesResponse.messages.forEach((message) => {
-                    // Only include if message is from another user or is a system message
+                    // For booking_offer and booking_proposal, include for both sender and receiver
+                    // For other system messages, only include if not from self
                     const isSender = String(message.sender_id) === String(userId.value);
                     const isSystemMessage =
                       message.message_type === "reschedule_request" ||
@@ -361,9 +362,19 @@ export default {
                       message.message_type === "booking_offer" ||
                       message.message_type === "session_completed";
                     
-                    // Include all messages (read and unread) - don't filter by read status
-                    // Read messages will show as "Completed" but still appear in Recent Activity
-                    if (isSystemMessage || !isSender) {
+                    // Include booking_offer and booking_proposal for both sender and receiver
+                    // Include other system messages only for receiver
+                    // Include regular messages only if not from self
+                    const isBookingOfferOrProposal = message.message_type === "booking_offer" || message.message_type === "booking_proposal";
+                    
+                    if (isBookingOfferOrProposal) {
+                      // Always include booking_offer and booking_proposal (both sent and received)
+                      recentMessages.push(message);
+                    } else if (isSystemMessage && !isSender) {
+                      // Other system messages: only include if not from self
+                      recentMessages.push(message);
+                    } else if (!isSystemMessage && !isSender) {
+                      // Regular messages: only include if not from self
                       recentMessages.push(message);
                     }
                   });
@@ -441,7 +452,36 @@ export default {
               badgeClass = "bg-danger";
             } else if (notificationMessageType === "booking_offer" || notificationMessageType === "booking_proposal" || message.includes("Booking request") || message.includes("booking request") || message.includes("Booking offer") || message.includes("Booking proposal") || data.notificationType === "booking_offer" || data.notificationType === "booking_request" || data.notificationType === "booking_proposal") {
               icon = "fas fa-calendar-plus";
-              title = notificationMessageType === "booking_proposal" ? "Booking proposal received" : "Booking request sent";
+              
+              // Determine if notification is from current user (sent) or to current user (received)
+              // For notifications, we need to check the notification data or sender
+              const notificationSenderId = notification.sender_id || notification.user_id || data.senderId;
+              const isSender = notificationSenderId && String(notificationSenderId) === String(userId.value);
+              
+              if (notificationMessageType === "booking_offer" || data.notificationType === "booking_offer" || data.notificationType === "booking_request") {
+                // Booking request: students send, tutors receive
+                if (isSender && userType.value === "student") {
+                  // Student sent the booking request
+                  title = "Booking request sent";
+                } else {
+                  // Tutor received the booking request
+                  title = "Booking request received";
+                }
+              } else if (notificationMessageType === "booking_proposal" || data.notificationType === "booking_proposal") {
+                // Booking proposal: tutors send, students receive
+                if (isSender && userType.value === "tutor") {
+                  // Tutor sent the booking proposal
+                  title = "Booking proposal sent";
+                } else {
+                  // Student received the booking proposal
+                  title = "Booking proposal received";
+                }
+              } else {
+                // Fallback for text-based detection
+                title = message.includes("proposal") ? "Booking proposal received" : "Booking request sent";
+              }
+              
+              // Check if booking is confirmed - will be updated if confirmation is found during merge
               status = "Unread"; 
               badgeClass = "bg-warning";
             } else if (notificationMessageType === "session_completed" || message.includes("session completed") || message.includes("Session completed") || message.includes("marked as completed") || data.notificationType === "session_completed") {
@@ -526,6 +566,9 @@ export default {
               status: status,
               badgeClass: badgeClass,
               timestamp: notificationTimestamp,
+              // Store booking_offer_id for matching with booking_confirmation
+              booking_offer_id: notification.booking_offer_id || data.bookingOfferId || null,
+              message_type: notificationMessageType || data.messageType || data.notificationType || null,
             });
           });
 
@@ -600,7 +643,33 @@ export default {
             badgeClass = "bg-danger";
           } else if (messageType === "booking_offer" || messageType === "booking_proposal") {
             icon = "fas fa-calendar-plus";
-            title = messageType === "booking_proposal" ? "Booking proposal received" : "Booking request sent";
+            
+            // Determine if message is from current user (sent) or to current user (received)
+            const isSender = String(message.sender_id) === String(userId.value);
+            
+            if (messageType === "booking_offer") {
+              // Booking request: students send, tutors receive
+              if (isSender && userType.value === "student") {
+                // Student sent the booking request
+                title = "Booking request sent";
+              } else {
+                // Tutor received the booking request
+                title = "Booking request received";
+              }
+            } else if (messageType === "booking_proposal") {
+              // Booking proposal: tutors send, students receive
+              if (isSender && userType.value === "tutor") {
+                // Tutor sent the booking proposal
+                title = "Booking proposal sent";
+              } else {
+                // Student received the booking proposal
+                title = "Booking proposal received";
+              }
+            }
+            
+            // Check if booking is confirmed - if there's a booking_confirmation message for the same booking_offer_id
+            // We'll check this by looking for a booking_confirmation in the activities array
+            // For now, set as Unread - will be updated if confirmation is found during merge
             status = "Unread";
             badgeClass = "bg-warning";
           } else if (messageType === "session_completed") {
@@ -645,6 +714,9 @@ export default {
             // Use message ID as primary identifier - this ensures proper deduplication
             // and allows read messages to update their status instead of disappearing
             id: message.id || `msg_${messageTimestamp}_${Math.random()}`,
+            // Store booking_offer_id for matching with booking_confirmation
+            booking_offer_id: message.booking_offer_id || null,
+            message_type: messageType, // Store message type for confirmation matching
           });
         });
 
@@ -674,6 +746,57 @@ export default {
             }
           }
         });
+        
+        // After all activities are added, check for booking_offer/proposal that should be marked as "Completed"
+        // Look for booking_confirmation and mark related booking_offer/proposal as Completed
+        const confirmationActivities = Array.from(existingActivityMap.values()).filter(a => 
+          a.title === "New booking confirmed" || a.message_type === "booking_confirmation"
+        );
+        
+        if (confirmationActivities.length > 0) {
+          // For each confirmation, find related booking_offer/proposal and mark as Completed
+          // Match by booking_offer_id if available, otherwise match by timestamp proximity
+          existingActivityMap.forEach((activity, key) => {
+            const isBookingRequestOrProposal = 
+              (activity.title && (activity.title.includes("Booking request") || activity.title.includes("Booking proposal"))) ||
+              activity.message_type === "booking_offer" || 
+              activity.message_type === "booking_proposal";
+            
+            if (isBookingRequestOrProposal && activity.status === "Unread") {
+              // Try to match by booking_offer_id first (most reliable)
+              let hasRelatedConfirmation = false;
+              
+              if (activity.booking_offer_id) {
+                // Match by booking_offer_id - check if confirmation has same booking_offer_id
+                hasRelatedConfirmation = confirmationActivities.some(conf => {
+                  // Try to get booking_offer_id from confirmation message content
+                  try {
+                    if (conf.message_type === "booking_confirmation" && conf.booking_offer_id) {
+                      return String(conf.booking_offer_id) === String(activity.booking_offer_id);
+                    }
+                  } catch (e) {
+                    // Fallback to timestamp matching
+                  }
+                  return false;
+                });
+              }
+              
+              // If no booking_offer_id match, use timestamp proximity (within 24 hours, confirmation after request/proposal)
+              if (!hasRelatedConfirmation) {
+                hasRelatedConfirmation = confirmationActivities.some(conf => 
+                  Math.abs(new Date(conf.timestamp) - new Date(activity.timestamp)) < 24 * 60 * 60 * 1000 &&
+                  new Date(conf.timestamp) > new Date(activity.timestamp) // Confirmation is after the request/proposal
+                );
+              }
+              
+              if (hasRelatedConfirmation) {
+                activity.status = "Completed";
+                activity.badgeClass = "bg-success";
+                existingActivityMap.set(key, activity);
+              }
+            }
+          });
+        }
 
         // Convert map back to array and sort by timestamp
         const mergedActivities = Array.from(existingActivityMap.values());
@@ -743,7 +866,33 @@ export default {
           badgeClass = "bg-danger";
         } else if (messageType === "booking_offer" || messageType === "booking_proposal") {
           icon = "fas fa-calendar-plus";
-          title = messageType === "booking_proposal" ? "Booking proposal received" : "Booking request sent";
+          
+          // Determine if message is from current user (sent) or to current user (received)
+          const isSender = String(message.sender_id) === String(userId.value);
+          
+          if (messageType === "booking_offer") {
+            // Booking request: students send, tutors receive
+            if (isSender && userType.value === "student") {
+              // Student sent the booking request
+              title = "Booking request sent";
+            } else {
+              // Tutor received the booking request
+              title = "Booking request received";
+            }
+          } else if (messageType === "booking_proposal") {
+            // Booking proposal: tutors send, students receive
+            if (isSender && userType.value === "tutor") {
+              // Tutor sent the booking proposal
+              title = "Booking proposal sent";
+            } else {
+              // Student received the booking proposal
+              title = "Booking proposal received";
+            }
+          }
+          
+          // Check if booking is confirmed - if there's a booking_confirmation message for the same booking_offer_id
+          // We'll check this by looking for a booking_confirmation in the activities array
+          // For now, set as Unread - will be updated if confirmation is found during merge
           status = "Unread";
           badgeClass = "bg-warning";
         } else if (messageType === "session_completed") {
@@ -812,6 +961,9 @@ export default {
           badgeClass: badgeClass,
           timestamp: messageTimestamp,
           id: message.id || `msg_${Date.now()}`, // Use message ID or generate one
+          // Store booking_offer_id for matching with booking_confirmation
+          booking_offer_id: message.booking_offer_id || null,
+          message_type: messageType, // Store message type for confirmation matching
         };
       };
 
@@ -836,10 +988,12 @@ export default {
 
         const isSender = String(message.sender_id) === String(userId.value);
 
-        // For system messages, update activity for receiver
+        // For booking_offer and booking_proposal, show for both sender and receiver
+        // For other system messages, update activity for receiver
         // For regular messages, only update if not from self
         // Allow messages even if sender object is missing (fallback for Socket.IO messages)
-        const shouldShow = isSystemMessage || (!isSender && (message.sender || message.message_type === 'text' || message.content || message.message_type === null || message.message_type === undefined));
+        const isBookingOfferOrProposal = message.message_type === "booking_offer" || message.message_type === "booking_proposal";
+        const shouldShow = isBookingOfferOrProposal || isSystemMessage || (!isSender && (message.sender || message.message_type === 'text' || message.content || message.message_type === null || message.message_type === undefined));
         
         if (shouldShow) {
           console.log("📊 DASHBOARD: Message qualifies for activity update");
@@ -889,25 +1043,65 @@ export default {
             console.log("📊 DASHBOARD: ✅ Activity updated in real-time, new count:", recentActivity.value.length);
             console.log("📊 DASHBOARD: Activity title:", activityItem.title);
             console.log("📊 DASHBOARD: Activity status:", activityItem.status);
-          } else {
-            // Activity already exists - update it if status changed (e.g., unread -> read)
-            // This ensures read messages update their status instead of disappearing
-            const existingActivity = recentActivity.value[existingIndex];
-            if (existingActivity.status !== activityItem.status) {
-              console.log("📊 DASHBOARD: Updating existing activity status:", existingActivity.status, "->", activityItem.status);
-              // Update the existing activity
-              recentActivity.value[existingIndex] = activityItem;
-              // Re-sort to maintain correct order
+            } else {
+              // Activity already exists - update it if status changed (e.g., unread -> read)
+              // This ensures read messages update their status instead of disappearing
+              const existingActivity = recentActivity.value[existingIndex];
+              if (existingActivity.status !== activityItem.status) {
+                console.log("📊 DASHBOARD: Updating existing activity status:", existingActivity.status, "->", activityItem.status);
+                // Update the existing activity
+                recentActivity.value[existingIndex] = activityItem;
+                // Re-sort to maintain correct order
+                recentActivity.value.sort((a, b) => {
+                  const timeA = new Date(a.timestamp || 0);
+                  const timeB = new Date(b.timestamp || 0);
+                  return timeB - timeA;
+                });
+                console.log("📊 DASHBOARD: ✅ Activity status updated in real-time");
+              } else {
+                console.log("📊 DASHBOARD: Activity already exists with same status, skipping duplicate");
+              }
+            }
+            
+            // After adding/updating activity, check if this is a booking_confirmation
+            // If so, mark related booking_offer/proposal as "Completed"
+            if (message.message_type === "booking_confirmation") {
+              console.log("📊 DASHBOARD: Booking confirmed, checking for related booking_offer/proposal to mark as Completed");
+              recentActivity.value.forEach((activity, index) => {
+                const isBookingRequestOrProposal = 
+                  activity.message_type === "booking_offer" || 
+                  activity.message_type === "booking_proposal" ||
+                  (activity.title && (activity.title.includes("Booking request") || activity.title.includes("Booking proposal")));
+                
+                if (isBookingRequestOrProposal && activity.status === "Unread") {
+                  // Check if this booking_offer/proposal is related to the confirmation
+                  // Match by booking_offer_id if available, otherwise by timestamp proximity
+                  let isRelated = false;
+                  
+                  if (activity.booking_offer_id && message.booking_offer_id) {
+                    isRelated = String(activity.booking_offer_id) === String(message.booking_offer_id);
+                  } else {
+                    // Fallback: check if confirmation is within 24 hours after the request/proposal
+                    isRelated = Math.abs(new Date(activityItem.timestamp) - new Date(activity.timestamp)) < 24 * 60 * 60 * 1000 &&
+                               new Date(activityItem.timestamp) > new Date(activity.timestamp);
+                  }
+                  
+                  if (isRelated) {
+                    console.log("📊 DASHBOARD: Marking related booking_offer/proposal as Completed:", activity.title);
+                    activity.status = "Completed";
+                    activity.badgeClass = "bg-success";
+                    recentActivity.value[index] = activity;
+                  }
+                }
+              });
+              
+              // Re-sort after updates
               recentActivity.value.sort((a, b) => {
                 const timeA = new Date(a.timestamp || 0);
                 const timeB = new Date(b.timestamp || 0);
                 return timeB - timeA;
               });
-              console.log("📊 DASHBOARD: ✅ Activity status updated in real-time");
-            } else {
-              console.log("📊 DASHBOARD: Activity already exists with same status, skipping duplicate");
             }
-          }
         } else {
           console.log("📊 DASHBOARD: Skipping activity update (message from self or no sender)");
           console.log("📊 DASHBOARD: isSystemMessage:", isSystemMessage);
