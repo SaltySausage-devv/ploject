@@ -1720,6 +1720,64 @@ export default {
   }
 }
 
+/* LG breakpoint specific adjustments (992px - 1199px) */
+@media (min-width: 992px) and (max-width: 1199px) {
+  .navbar .container {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+
+  /* Increase spacing between nav items */
+  .navbar-nav {
+    gap: 1.5rem;
+  }
+
+  /* Right-side nav items (credits, penalty, notifications, user) */
+  .navbar-nav:last-child {
+    gap: 1.75rem;
+    margin-left: 1.5rem;
+  }
+
+  /* All nav links get better padding */
+  .navbar-nav .nav-link {
+    padding: 0.5rem 1rem;
+    white-space: nowrap;
+  }
+
+  /* Penalty points nav item spacing */
+  .navbar-nav .nav-item.d-none.d-lg-block .nav-link {
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* Notification dropdown link - ensure good spacing */
+  .navbar-nav .nav-item.dropdown.d-none.d-lg-block .nav-link {
+    padding: 0.5rem 1rem;
+  }
+
+  /* User dropdown spacing */
+  .navbar-nav .nav-item.dropdown:last-child .nav-link {
+    padding: 0.5rem 1rem;
+  }
+
+  /* Show notification text on LG to prevent icon-only cramped look */
+  .navbar-nav .nav-item.dropdown.d-none.d-lg-block .notification-text {
+    display: inline !important;
+    margin-left: 0.25rem;
+  }
+
+  /* Brand spacing */
+  .navbar-brand {
+    margin-right: 2.5rem;
+    padding-right: 1rem;
+  }
+
+  /* Left nav items spacing */
+  .navbar-nav.me-auto {
+    margin-right: 2.5rem;
+    gap: 1.5rem;
+  }
+}
+
 /* Notification text - hide on desktop, show on mobile */
 .notification-text {
   display: none;
