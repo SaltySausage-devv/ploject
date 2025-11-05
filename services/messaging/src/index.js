@@ -324,7 +324,8 @@ const createBookingOfferSchema = Joi.object({
   isOnline: Joi.boolean().default(false),
   tuteeLocation: Joi.string().allow(null, '').optional(),
   notes: Joi.string().max(500).allow(null, '').optional(),
-  subject: Joi.string().allow(null, '').optional()
+  subject: Joi.string().allow(null, '').optional(),
+  level: Joi.string().allow(null, '').optional()
 });
 
 const createBookingProposalSchema = Joi.object({
@@ -946,8 +947,8 @@ app.post('/messaging/booking-offers', verifyToken, async (req, res) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
-    const { conversationId, isOnline, tuteeLocation, notes, subject } = value;
-    console.log('📝 BOOKING OFFER: Parsed values:', { conversationId, isOnline, tuteeLocation, notes, subject });
+    const { conversationId, isOnline, tuteeLocation, notes, subject, level } = value;
+    console.log('📝 BOOKING OFFER: Parsed values:', { conversationId, isOnline, tuteeLocation, notes, subject, level });
 
     // Verify user is participant in conversation
     const { data: conversation } = await supabase
@@ -978,6 +979,7 @@ app.post('/messaging/booking-offers', verifyToken, async (req, res) => {
       tutee_location: tuteeLocation,
       notes: notes,
       subject: subject,
+      level: level,
       status: 'pending',
       created_at: new Date().toISOString()
     };
@@ -1001,6 +1003,7 @@ app.post('/messaging/booking-offers', verifyToken, async (req, res) => {
     const messageContent = JSON.stringify({
       bookingOfferId: bookingOffer.id,
       subject: subject,
+      level: level,
       isOnline: isOnline,
       tuteeLocation: tuteeLocation,
       notes: notes

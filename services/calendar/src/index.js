@@ -945,9 +945,40 @@ app.post('/bookings/:id/cancel', verifyToken, async (req, res) => {
       console.log('ℹ️ No tutor credit action needed - credits were held, not transferred');
     } else {
       // Only happens when student cancels less than 24 hours before
-      console.log('❌ Student cancelled less than 24 hours - no refund for student');
-      console.log('ℹ️ Credits remain deducted from student account as late cancellation penalty');
-      // NOTE: No tutor credit deduction needed since credits were never transferred
+      // Tutor receives 100% of the credits as compensation for late cancellation
+      console.log('❌ Student cancelled less than 24 hours - transferring 100% credits to tutor');
+      console.log(`💰 Transferring ${creditsToRefund} credits from student to tutor`);
+      
+      // Get tutor's current credits
+      const { data: tutor, error: tutorError } = await supabase
+        .from('users')
+        .select('credits')
+        .eq('id', booking.tutor_id)
+        .single();
+
+      if (tutorError) {
+        console.error('❌ Error fetching tutor credits:', tutorError);
+      } else {
+        const newTutorCredits = (tutor.credits || 0) + creditsToRefund;
+        console.log(`💸 Transferring ${creditsToRefund} credits to tutor. Old: ${tutor.credits}, New: ${newTutorCredits}`);
+        
+        const { error: tutorUpdateError } = await supabase
+          .from('users')
+          .update({ 
+            credits: newTutorCredits,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', booking.tutor_id);
+          
+        if (tutorUpdateError) {
+          console.error('❌ Error updating tutor credits:', tutorUpdateError);
+        } else {
+          console.log('✅ Tutor credits updated successfully - received 100% compensation for late cancellation');
+        }
+      }
+      
+      // Student does not get refund - credits remain deducted as late cancellation penalty
+      console.log('ℹ️ Student credits remain deducted - no refund for late cancellation (< 24 hours)');
     }
 
     // Handle penalty points for tutors
@@ -1047,7 +1078,7 @@ app.post('/bookings/:id/cancel', verifyToken, async (req, res) => {
             isMoreThan24Hours,
             creditsToRefund,
             studentRefunded: shouldRefundStudent,
-            tutorCreditsDeducted: false,
+            tutorCreditsReceived: !shouldRefundStudent && isStudentCancelling ? creditsToRefund : 0,
             isTutorCancelling: isTutorCancelling
           },
           subject: booking.subject || 'Tutoring Session',
@@ -1092,8 +1123,9 @@ app.post('/bookings/:id/cancel', verifyToken, async (req, res) => {
       refundPolicy: {
         isMoreThan24Hours,
         creditsToRefund,
-        studentRefunded: isMoreThan24Hours,
-        tutorCreditsDeducted: false
+        studentRefunded: shouldRefundStudent,
+        tutorCreditsReceived: !shouldRefundStudent && isStudentCancelling ? creditsToRefund : 0,
+        isTutorCancelling: isTutorCancelling
       }
     });
   } catch (error) {

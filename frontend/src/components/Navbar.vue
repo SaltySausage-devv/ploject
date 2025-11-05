@@ -178,13 +178,13 @@
           </li>
 
           <li class="nav-item" v-if="!isAuthenticated">
-            <router-link to="/login" class="nav-link">
+            <router-link to="/login" class="nav-link" @click="closeNavbar">
               <i class="fas fa-sign-in-alt me-1"></i>
               Login
             </router-link>
           </li>
           <li class="nav-item" v-if="!isAuthenticated">
-            <router-link to="/register" class="nav-link">
+            <router-link to="/register" class="nav-link" @click="closeNavbar">
               <i class="fas fa-user-plus me-1"></i>
               Sign Up
             </router-link>
@@ -310,25 +310,25 @@
             </a>
             <ul class="dropdown-menu">
               <li>
-                <router-link to="/profile" class="dropdown-item">
+                <router-link to="/profile" class="dropdown-item" @click="closeNavbar">
                   <i class="fas fa-user me-2"></i>
                   Profile
                 </router-link>
               </li>
               <li>
-                <router-link to="/messages" class="dropdown-item">
+                <router-link to="/messages" class="dropdown-item" @click="closeNavbar">
                   <i class="fas fa-envelope me-2"></i>
                   Messages
                 </router-link>
               </li>
               <li>
-                <router-link to="/calendar" class="dropdown-item">
+                <router-link to="/calendar" class="dropdown-item" @click="closeNavbar">
                   <i class="fas fa-calendar me-2"></i>
                   Calendar
                 </router-link>
               </li>
               <li>
-                <router-link to="/analytics" class="dropdown-item">
+                <router-link to="/analytics" class="dropdown-item" @click="closeNavbar">
                   <i class="fas fa-chart-line me-2"></i>
                   Analytics
                 </router-link>

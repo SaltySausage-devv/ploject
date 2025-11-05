@@ -275,6 +275,10 @@
                                 <strong>Subject:</strong>
                                 {{ getBookingData(message).subject }}
                               </p>
+                              <p class="mb-2" v-if="getBookingData(message).level">
+                                <strong>Level:</strong>
+                                {{ getBookingData(message).level }}
+                              </p>
                               <p class="mb-2">
                                 <strong>Session Type:</strong>
                                 {{
@@ -1535,6 +1539,34 @@
               </small>
             </div>
 
+            <!-- Level Selection -->
+            <div class="mb-3">
+              <label class="form-label fw-bold">Level</label>
+              <select
+                class="form-select"
+                v-model="bookingOffer.level"
+                :required="tutorLevels.length > 0"
+                :disabled="tutorSubjectsLoading || tutorLevels.length === 0"
+              >
+                <option value="" disabled>
+                  {{ tutorSubjectsLoading ? 'Loading levels...' : tutorLevels.length === 0 ? 'No levels available' : 'Please select a level' }}
+                </option>
+                <option
+                  v-for="level in tutorLevels"
+                  :key="level"
+                  :value="level"
+                >
+                  {{ level }}
+                </option>
+              </select>
+              <small v-if="tutorSubjectsLoading" class="text-muted">
+                <i class="fas fa-spinner fa-spin me-1"></i>Loading levels...
+              </small>
+              <small v-else-if="tutorLevels.length === 0" class="text-muted">
+                <i class="fas fa-info-circle me-1"></i>This tutor has not specified any levels
+              </small>
+            </div>
+
             <!-- Location (for on-site) -->
             <div v-if="!bookingOffer.isOnline" class="mb-3">
               <label class="form-label fw-bold">Preferred Location</label>
@@ -1737,6 +1769,13 @@
               >
                 <i class="fas fa-book me-1"></i>
                 {{ selectedBookingOffer.subject }}
+              </span>
+              <span
+                v-if="selectedBookingOffer.level"
+                class="summary-item"
+              >
+                <i class="fas fa-graduation-cap me-1"></i>
+                {{ selectedBookingOffer.level }}
               </span>
               <span class="summary-item">
                 <i class="fas fa-laptop me-1"></i>
@@ -2175,6 +2214,7 @@ export default {
       tuteeLocation: "",
       notes: "",
       subject: "",
+      level: "",
     });
 
     // Booking proposal form data
@@ -2195,8 +2235,9 @@ export default {
       subjects: [],
     });
 
-    // Tutor subjects for booking selection
+    // Tutor subjects and levels for booking selection
     const tutorSubjects = ref([]);
+    const tutorLevels = ref([]);
     const tutorSubjectsLoading = ref(false);
 
     // Calendar variables
@@ -3564,6 +3605,7 @@ export default {
             tuteeLocation: bookingOffer.value.tuteeLocation,
             notes: bookingOffer.value.notes,
             subject: bookingOffer.value.subject,
+            level: bookingOffer.value.level,
           }),
         });
 
@@ -3580,6 +3622,7 @@ export default {
           tuteeLocation: "",
           notes: "",
           subject: "",
+          level: "",
         };
         showBookingOfferModal.value = false;
 
@@ -3721,7 +3764,7 @@ export default {
         selectedBookingOffer.value = null;
 
         // Show success message
-        showSuccess("Success", "Booking proposal sent successfully!");
+        showInfo("Success", "Booking proposal sent successfully!");
       } catch (error) {
         console.error("Error creating booking proposal:", error);
         showError(
@@ -4258,6 +4301,7 @@ export default {
         selectedBookingOffer.value = {
           id: bookingData.bookingOfferId,
           subject: bookingData.subject,
+          level: bookingData.level,
           isOnline: bookingData.isOnline,
           tuteeLocation: bookingData.tuteeLocation,
           notes: bookingData.notes,
@@ -4300,7 +4344,7 @@ export default {
       }
     };
 
-    // Function to load tutor subjects for subject selection
+    // Function to load tutor subjects and levels for booking selection
     const loadTutorSubjects = async () => {
       if (!selectedConversation.value?.participant?.id) return;
 
@@ -4321,14 +4365,20 @@ export default {
           const data = await response.json();
           const profile = data.profile;
           tutorSubjects.value = profile.subjects || [];
+          tutorLevels.value = profile.levels || [];
           console.log(
             "Loaded tutor subjects for booking selection:",
             tutorSubjects.value
           );
+          console.log(
+            "Loaded tutor levels for booking selection:",
+            tutorLevels.value
+          );
         }
       } catch (error) {
-        console.error("Error loading tutor subjects:", error);
+        console.error("Error loading tutor subjects and levels:", error);
         tutorSubjects.value = [];
+        tutorLevels.value = [];
       } finally {
         tutorSubjectsLoading.value = false;
       }
@@ -4422,7 +4472,7 @@ export default {
         await creditService.refreshCredits();
 
         // Show success message
-        showSuccess(
+        showInfo(
           "Success",
           "Booking confirmed successfully! The session has been added to your calendar."
         );
@@ -5676,6 +5726,7 @@ export default {
       loadTutorProfile,
       loadTutorSubjects,
       tutorSubjects,
+      tutorLevels,
       tutorSubjectsLoading,
       // Booking cancellation helpers
       getBookingCancellationData,
@@ -7729,13 +7780,14 @@ i.text-primary {
 }
 
 .popup-content {
-  background: #2d2d44;
-  border: 2px solid #ff8c42;
+  background: rgba(26, 26, 26, 0.98);
+  border: 2px solid rgba(66, 153, 255, 0.8);
   border-radius: 12px;
-  box-shadow: 0 0 30px rgba(255, 140, 66, 0.5);
+  box-shadow: 0 0 30px rgba(66, 153, 255, 0.5);
   min-width: 400px;
   max-width: 500px;
   animation: popupSlideIn 0.3s ease-out;
+  backdrop-filter: blur(10px);
 }
 
 .popup-header {
@@ -7743,8 +7795,8 @@ i.text-primary {
   align-items: center;
   justify-content: space-between;
   padding: 20px;
-  border-bottom: 1px solid rgba(255, 140, 66, 0.3);
-  background: rgba(255, 140, 66, 0.1);
+  border-bottom: 2px solid rgba(66, 153, 255, 0.5);
+  background: linear-gradient(135deg, rgba(66, 153, 255, 0.2), rgba(66, 153, 255, 0.1));
   border-radius: 12px 12px 0 0;
 }
 
@@ -7768,8 +7820,8 @@ i.text-primary {
   opacity: 1;
 }
 
-.text-success {
-  color: #4ecdc4 !important;
+.popup-header .text-success {
+  color: rgba(66, 153, 255, 1) !important;
 }
 
 @keyframes popupSlideIn {

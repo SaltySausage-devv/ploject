@@ -539,9 +539,40 @@ app.put('/bookings/:id/cancel', verifyToken, async (req, res) => {
       console.log('ℹ️ No tutor credit action needed - credits were held, not transferred');
     } else {
       // Only happens when student cancels less than 24 hours before
-      console.log('❌ Student cancelled less than 24 hours - no refund for student');
-      console.log('ℹ️ Credits remain deducted from student account as late cancellation penalty');
-      // NOTE: No tutor credit deduction needed since credits were never transferred
+      // Tutor receives 100% of the credits as compensation for late cancellation
+      console.log('❌ Student cancelled less than 24 hours - transferring 100% credits to tutor');
+      console.log(`💰 Transferring ${creditsToRefund} credits from student to tutor`);
+      
+      // Get tutor's current credits
+      const { data: tutor, error: tutorError } = await supabase
+        .from('users')
+        .select('credits')
+        .eq('id', booking.tutor_id)
+        .single();
+
+      if (tutorError) {
+        console.error('❌ Error fetching tutor credits:', tutorError);
+      } else {
+        const newTutorCredits = (tutor.credits || 0) + creditsToRefund;
+        console.log(`💸 Transferring ${creditsToRefund} credits to tutor. Old: ${tutor.credits}, New: ${newTutorCredits}`);
+        
+        const { error: tutorUpdateError } = await supabase
+          .from('users')
+          .update({ 
+            credits: newTutorCredits,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', booking.tutor_id);
+          
+        if (tutorUpdateError) {
+          console.error('❌ Error updating tutor credits:', tutorUpdateError);
+        } else {
+          console.log('✅ Tutor credits updated successfully - received 100% compensation for late cancellation');
+        }
+      }
+      
+      // Student does not get refund - credits remain deducted as late cancellation penalty
+      console.log('ℹ️ Student credits remain deducted - no refund for late cancellation (< 24 hours)');
     }
 
     // Handle penalty points for tutors
@@ -677,7 +708,7 @@ app.put('/bookings/:id/cancel', verifyToken, async (req, res) => {
         isMoreThan24Hours,
         creditsToRefund,
         studentRefunded: shouldRefundStudent,
-        tutorCreditsDeducted: false,
+        tutorCreditsReceived: !shouldRefundStudent && isStudentCancelling ? creditsToRefund : 0,
         isTutorCancelling: isTutorCancelling
       }
     });
@@ -1054,7 +1085,7 @@ app.post('/booking-confirmations', verifyToken, async (req, res) => {
       }
     }
 
-    // Get tutor's primary subject for the booking
+    // Get tutor's primary subject for the booking (fallback if booking offer doesn't have subject)
     const { data: tutorSubjects } = await supabase
       .from('tutor_profiles')
       .select('subjects')
@@ -1062,7 +1093,9 @@ app.post('/booking-confirmations', verifyToken, async (req, res) => {
       .single();
     
     const primarySubject = tutorSubjects?.subjects?.[0] || 'General Tutoring';
-    const subjectLevel = tutorProfile?.subjects?.length > 1 ? 'Multi-Subject' : 'Single Subject';
+    // Use subject and level from booking offer, fallback to tutor's primary subject if not provided
+    const bookingSubject = bookingOffer.subject || primarySubject;
+    const bookingLevel = bookingOffer.level || 'Secondary'; // Default to Secondary if not provided
 
     // Create a final booking record from the confirmed offer
     const { data: finalBooking, error: bookingError } = await supabase
@@ -1070,9 +1103,9 @@ app.post('/booking-confirmations', verifyToken, async (req, res) => {
       .insert({
         tutor_id: bookingOffer.tutor_id,
         student_id: bookingOffer.tutee_id,
-        title: `${primarySubject} Session`,
-        subject: primarySubject, // Use tutor's primary subject
-        level: subjectLevel,
+        title: `${bookingSubject} Session`,
+        subject: bookingSubject, // Use subject from booking offer
+        level: bookingLevel, // Use level from booking offer
         start_time: bookingOffer.proposed_time,
         end_time: new Date(new Date(bookingOffer.proposed_time).getTime() + 60 * 60 * 1000).toISOString(), // 1 hour session
         location: bookingOffer.final_location,
