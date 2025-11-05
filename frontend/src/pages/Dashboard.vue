@@ -373,13 +373,18 @@ export default {
             } else if (message.includes("Booking request") || message.includes("booking request") || message.includes("Booking offer") || data.notificationType === "booking_offer" || data.notificationType === "booking_request") {
               icon = "fas fa-calendar-plus";
               title = "Booking request sent";
-              status = "Pending";
+              status = "Unread"; 
               badgeClass = "bg-warning";
             } else if (message.includes("message") || message.includes("Message") || notification.type === "push") {
               icon = "fas fa-envelope";
               title = message.includes("from") ? message : `New message${userType.value === "student" ? " from tutor" : " from student"}`;
-              status = "Unread";
-              badgeClass = "bg-warning";
+              if (message.read_at != "" || message.read_at != null) {
+                status = "Completed";
+                badgeClass = "bg-success";
+              } else {
+                status = "Unread";
+                badgeClass = "bg-warning";
+              };
             } else if (message.includes("review") || message.includes("Review")) {
               icon = "fas fa-star";
               // Try to extract rating from message
