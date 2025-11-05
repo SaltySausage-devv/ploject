@@ -362,13 +362,16 @@ export default {
                       message.message_type === "booking_offer" ||
                       message.message_type === "session_completed";
                     
-                    // Include booking_offer and booking_proposal for both sender and receiver
+                    // Include booking_offer, booking_proposal, and booking_confirmation for both sender and receiver
+                    // This ensures both parties see confirmations and can match them with their requests/proposals
                     // Include other system messages only for receiver
                     // Include regular messages only if not from self
                     const isBookingOfferOrProposal = message.message_type === "booking_offer" || message.message_type === "booking_proposal";
+                    const isBookingConfirmation = message.message_type === "booking_confirmation";
                     
-                    if (isBookingOfferOrProposal) {
-                      // Always include booking_offer and booking_proposal (both sent and received)
+                    if (isBookingOfferOrProposal || isBookingConfirmation) {
+                      // Always include booking_offer, booking_proposal, and booking_confirmation (both sent and received)
+                      // This is crucial for matching logic to work - both parties need to see the confirmation
                       recentMessages.push(message);
                     } else if (isSystemMessage && !isSender) {
                       // Other system messages: only include if not from self
@@ -774,6 +777,14 @@ export default {
           a.title === "New booking confirmed" || a.message_type === "booking_confirmation"
         );
         
+        console.log("📊 DASHBOARD: Found", confirmationActivities.length, "booking confirmation activities");
+        console.log("📊 DASHBOARD: Confirmation activities:", confirmationActivities.map(a => ({
+          title: a.title,
+          message_type: a.message_type,
+          booking_offer_id: a.booking_offer_id,
+          timestamp: a.timestamp
+        })));
+        
         if (confirmationActivities.length > 0) {
           // For each confirmation, find related booking_offer/proposal and mark as Completed
           // Match by booking_offer_id if available, otherwise match by timestamp proximity
@@ -784,19 +795,23 @@ export default {
               activity.message_type === "booking_proposal";
             
             if (isBookingRequestOrProposal && activity.status === "Unread") {
+              console.log("📊 DASHBOARD: Checking booking_offer/proposal:", {
+                title: activity.title,
+                message_type: activity.message_type,
+                booking_offer_id: activity.booking_offer_id,
+                timestamp: activity.timestamp
+              });
+              
               // Try to match by booking_offer_id first (most reliable)
               let hasRelatedConfirmation = false;
               
               if (activity.booking_offer_id) {
                 // Match by booking_offer_id - check if confirmation has same booking_offer_id
                 hasRelatedConfirmation = confirmationActivities.some(conf => {
-                  // Try to get booking_offer_id from confirmation message content
-                  try {
-                    if (conf.message_type === "booking_confirmation" && conf.booking_offer_id) {
-                      return String(conf.booking_offer_id) === String(activity.booking_offer_id);
-                    }
-                  } catch (e) {
-                    // Fallback to timestamp matching
+                  // Check if confirmation has booking_offer_id and it matches
+                  if (conf.booking_offer_id && String(conf.booking_offer_id) === String(activity.booking_offer_id)) {
+                    console.log("📊 DASHBOARD: ✅ Matched by booking_offer_id:", activity.booking_offer_id);
+                    return true;
                   }
                   return false;
                 });
@@ -804,16 +819,26 @@ export default {
               
               // If no booking_offer_id match, use timestamp proximity (within 24 hours, confirmation after request/proposal)
               if (!hasRelatedConfirmation) {
-                hasRelatedConfirmation = confirmationActivities.some(conf => 
-                  Math.abs(new Date(conf.timestamp) - new Date(activity.timestamp)) < 24 * 60 * 60 * 1000 &&
-                  new Date(conf.timestamp) > new Date(activity.timestamp) // Confirmation is after the request/proposal
-                );
+                hasRelatedConfirmation = confirmationActivities.some(conf => {
+                  const timeDiff = Math.abs(new Date(conf.timestamp) - new Date(activity.timestamp));
+                  const isAfter = new Date(conf.timestamp) > new Date(activity.timestamp);
+                  const isWithin24Hours = timeDiff < 24 * 60 * 60 * 1000;
+                  
+                  if (isAfter && isWithin24Hours) {
+                    console.log("📊 DASHBOARD: ✅ Matched by timestamp proximity");
+                    return true;
+                  }
+                  return false;
+                });
               }
               
               if (hasRelatedConfirmation) {
+                console.log("📊 DASHBOARD: ✅ Marking booking_offer/proposal as Completed:", activity.title);
                 activity.status = "Completed";
                 activity.badgeClass = "bg-success";
                 existingActivityMap.set(key, activity);
+              } else {
+                console.log("📊 DASHBOARD: ❌ No matching confirmation found for:", activity.title);
               }
             }
           });
@@ -878,6 +903,19 @@ export default {
 
         // Show all activities (container will scroll if more than 5)
         recentActivity.value = limitedActivities;
+
+        // Debug: Log all booking_offer/proposal activities and their status
+        const bookingActivities = recentActivity.value.filter(a => 
+          a.message_type === "booking_offer" || 
+          a.message_type === "booking_proposal" ||
+          (a.title && (a.title.includes("Booking request") || a.title.includes("Booking proposal")))
+        );
+        console.log("📊 DASHBOARD: Final booking_offer/proposal activities:", bookingActivities.map(a => ({
+          title: a.title,
+          status: a.status,
+          booking_offer_id: a.booking_offer_id,
+          message_type: a.message_type
+        })));
 
         console.log("✅ Recent activity loaded:", recentActivity.value.length, "items");
         console.log("✅ Sources: notifications:", (notifications || []).length, "reviews:", reviews.length, "messages:", recentMessages.length);
@@ -1222,6 +1260,9 @@ export default {
             // If so, mark related booking_offer/proposal as "Completed"
             if (message.message_type === "booking_confirmation") {
               console.log("📊 DASHBOARD: Booking confirmed, checking for related booking_offer/proposal to mark as Completed");
+              console.log("📊 DASHBOARD: Confirmation booking_offer_id:", message.booking_offer_id);
+              console.log("📊 DASHBOARD: Checking", recentActivity.value.length, "activities");
+              
               recentActivity.value.forEach((activity, index) => {
                 const isBookingRequestOrProposal = 
                   activity.message_type === "booking_offer" || 
@@ -1229,23 +1270,34 @@ export default {
                   (activity.title && (activity.title.includes("Booking request") || activity.title.includes("Booking proposal")));
                 
                 if (isBookingRequestOrProposal && activity.status === "Unread") {
+                  console.log("📊 DASHBOARD: Found booking_offer/proposal:", {
+                    title: activity.title,
+                    message_type: activity.message_type,
+                    booking_offer_id: activity.booking_offer_id
+                  });
+                  
                   // Check if this booking_offer/proposal is related to the confirmation
                   // Match by booking_offer_id if available, otherwise by timestamp proximity
                   let isRelated = false;
                   
                   if (activity.booking_offer_id && message.booking_offer_id) {
                     isRelated = String(activity.booking_offer_id) === String(message.booking_offer_id);
+                    console.log("📊 DASHBOARD: Matching by booking_offer_id:", activity.booking_offer_id, "===", message.booking_offer_id, "→", isRelated);
                   } else {
                     // Fallback: check if confirmation is within 24 hours after the request/proposal
-                    isRelated = Math.abs(new Date(activityItem.timestamp) - new Date(activity.timestamp)) < 24 * 60 * 60 * 1000 &&
-                               new Date(activityItem.timestamp) > new Date(activity.timestamp);
+                    const timeDiff = Math.abs(new Date(activityItem.timestamp) - new Date(activity.timestamp));
+                    const isAfter = new Date(activityItem.timestamp) > new Date(activity.timestamp);
+                    isRelated = timeDiff < 24 * 60 * 60 * 1000 && isAfter;
+                    console.log("📊 DASHBOARD: Matching by timestamp proximity:", isRelated, "timeDiff:", timeDiff);
                   }
                   
                   if (isRelated) {
-                    console.log("📊 DASHBOARD: Marking related booking_offer/proposal as Completed:", activity.title);
+                    console.log("📊 DASHBOARD: ✅ Marking related booking_offer/proposal as Completed:", activity.title);
                     activity.status = "Completed";
                     activity.badgeClass = "bg-success";
                     recentActivity.value[index] = activity;
+                  } else {
+                    console.log("📊 DASHBOARD: ❌ Not related");
                   }
                 }
               });
@@ -1256,6 +1308,8 @@ export default {
                 const timeB = new Date(b.timestamp || 0);
                 return timeB - timeA;
               });
+              
+              console.log("📊 DASHBOARD: ✅ Finished checking booking_offer/proposal");
             }
             
             // If this is a session_completed message, refresh dashboard metrics in real-time

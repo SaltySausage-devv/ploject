@@ -590,13 +590,12 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
 
     if (bookingsError) throw bookingsError;
 
-    // Get tutor's reviews
+    // Get tutor's reviews (ALL reviews, not just date-filtered, for average rating)
+    // Average rating should be from all reviews the tutor has received
     const { data: reviews, error: reviewsError } = await supabase
       .from('reviews')
       .select('*')
-      .eq('tutor_id', tutorId)
-      .gte('created_at', startDate.toISOString())
-      .lte('created_at', endDate.toISOString());
+      .eq('tutor_id', tutorId);
 
     if (reviewsError) throw reviewsError;
 
@@ -615,15 +614,44 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
     const cancelledBookings = bookings?.filter(b => b.status === 'cancelled').length || 0;
     const pendingBookings = bookings?.filter(b => b.status === 'pending').length || 0;
 
-    const totalEarnings = allConfirmedBookings
-      ?.reduce((sum, b) => {
-        const amount = parseFloat(b.total_amount) || 0;
-        // Ensure earnings is never negative
-        return sum + Math.max(0, amount);
-      }, 0) || 0;
+    // Total Students: Count unique students from ALL bookings (not just date-filtered)
+    // Students who have scheduled a booking with the tutor
+    const totalStudents = new Set(allBookings?.map(b => b.student_id)).size || 0;
+    
+    console.log('📊 TUTOR ANALYTICS: Total Students (from all bookings):', totalStudents);
 
-    const totalHours = bookings
-      ?.filter(b => b.status === 'completed' || b.status === 'confirmed')
+    // Hours This Month: Only from bookings where attendance was marked as 'attended'
+    // AND the session start_time is in current month
+    // Only sessions where attendance was marked count towards hours
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    currentMonthStart.setHours(0, 0, 0, 0);
+    const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    currentMonthEnd.setHours(23, 59, 59, 999);
+
+    console.log('📊 TUTOR ANALYTICS: Current month range:', {
+      start: currentMonthStart.toISOString(),
+      end: currentMonthEnd.toISOString()
+    });
+
+    const bookingsWithAttendanceThisMonth = allBookings
+      ?.filter(b => {
+        // Must have attendance marked as 'attended'
+        if (b.attendance_status !== 'attended') {
+          return false;
+        }
+        // Must have start_time to check the month
+        if (!b.start_time) {
+          return false;
+        }
+        // Check if the session START TIME is in the current month
+        const sessionStart = new Date(b.start_time);
+        return sessionStart >= currentMonthStart && sessionStart <= currentMonthEnd;
+      }) || [];
+
+    console.log('📊 TUTOR ANALYTICS: Bookings with attendance this month:', bookingsWithAttendanceThisMonth.length);
+
+    const totalHours = bookingsWithAttendanceThisMonth
       ?.reduce((sum, b) => {
         if (b.start_time && b.end_time) {
           const start = new Date(b.start_time);
@@ -635,7 +663,22 @@ app.get('/analytics/tutor/:tutorId', verifyToken, async (req, res) => {
         return sum;
       }, 0) || 0;
 
-    const totalStudents = new Set(bookings?.map(b => b.student_id)).size || 0;
+    console.log('📊 TUTOR ANALYTICS: Total Hours This Month (from attended sessions):', totalHours);
+
+    // Earnings: Only from bookings where attendance was marked as 'attended'
+    // Credits are only transferred to tutor when attendance is marked as completed
+    // Only bookings with attendance_status === 'attended' count towards earnings
+    const attendedBookings = allBookings?.filter(b => b.attendance_status === 'attended') || [];
+    console.log('📊 TUTOR ANALYTICS: Attended Bookings (for earnings):', attendedBookings.length);
+
+    const totalEarnings = attendedBookings
+      ?.reduce((sum, b) => {
+        const amount = parseFloat(b.total_amount) || 0;
+        // Ensure earnings is never negative
+        return sum + Math.max(0, amount);
+      }, 0) || 0;
+
+    console.log('📊 TUTOR ANALYTICS: Total Earnings (from attended sessions):', totalEarnings);
     const averageRating = reviews?.length > 0 
       ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length 
       : 0;
