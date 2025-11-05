@@ -143,7 +143,7 @@
                         <td v-for="(cell, cellIndex) in row" :key="cellIndex">{{ cell }}</td>
                       </tr>
                       <tr v-if="tableData.length === 0">
-                        <td colspan="6" class="text-center text-muted py-4">
+                        <td colspan="5" class="text-center text-muted py-4">
                           <i class="fas fa-info-circle me-2"></i>
                           No recent activity data available
                         </td>
@@ -375,11 +375,11 @@ export default {
     const tableHeaders = computed(() => {
       switch (userType.value) {
         case 'tutor':
-          return ['Date', 'Subject', 'Student', 'Duration', 'Earnings', 'Rating']
+          return ['Date', 'Subject', 'Student', 'Duration', 'Earnings']
         case 'student':
-          return ['Date', 'Subject', 'Tutor', 'Duration', 'Cost', 'Rating']
+          return ['Date', 'Subject', 'Tutor', 'Duration', 'Cost']
         case 'centre':
-          return ['Date', 'Tutor', 'Subject', 'Students', 'Revenue', 'Rating']
+          return ['Date', 'Tutor', 'Subject', 'Students', 'Revenue']
         default:
           return []
       }
@@ -403,8 +403,7 @@ export default {
               activity.subject || 'N/A',
               activity.studentName || 'N/A',
               activity.duration || 'N/A',
-              `$${activity.earnings || 0}`,
-              activity.rating || 'N/A'
+              `$${activity.earnings || 0}`
             ];
           case 'student':
             return [
@@ -412,8 +411,7 @@ export default {
               activity.subject || 'N/A',
               activity.tutorName || 'N/A',
               activity.duration || 'N/A',
-              `$${activity.cost || 0}`,
-              activity.rating || 'N/A'
+              `$${activity.cost || 0}`
             ];
           case 'centre':
             return [
@@ -421,8 +419,7 @@ export default {
               activity.tutorName || 'N/A',
               activity.subject || 'N/A',
               activity.students || 0,
-              `$${activity.revenue || 0}`,
-              activity.rating || 'N/A'
+              `$${activity.revenue || 0}`
             ];
           default:
             return [];
