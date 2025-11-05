@@ -1,5 +1,5 @@
 <template>
-  <div class="register-page min-vh-100 position-relative py-4" style="background: #1a1a1a !important;">
+  <div class="register-page min-vh-100 position-relative d-flex align-items-center justify-content-center" style="background: #1a1a1a !important;">
     <!-- Animated Background Elements -->
     <div class="register-background-elements">
       <div class="floating-icon floating-icon-1">🎓</div>
@@ -19,7 +19,7 @@
             ref="registerCard"
             class="cyberpunk-register-card border-0 shadow-lg"
           >
-            <div class="card-body p-3">
+            <div class="card-body pt-3 px-3 pb-2">
               <div class="text-center mb-3">
                 <div 
                   ref="logoIcon"
@@ -254,7 +254,7 @@
                 <button
                   ref="submitButton"
                   type="submit"
-                  class="cyberpunk-submit-btn w-100 py-3 mb-3"
+                  class="cyberpunk-submit-btn w-100 py-3 mb-2"
                   :disabled="isLoading"
                 >
                   <span v-if="isLoading" class="cyberpunk-spinner me-2"></span>
@@ -1174,6 +1174,11 @@ export default {
   color-scheme: dark;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
 }
 
 /* Force dark background on all elements */
