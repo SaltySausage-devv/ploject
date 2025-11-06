@@ -1,6 +1,6 @@
 <template>
   <div
-    class="modal fade show"
+    class="modal fade show booking-insufficient-credits-modal"
     style="display: block; background-color: rgba(0, 0, 0, 0.5)"
     @click.self="$emit('close')"
   >
@@ -133,7 +133,7 @@ export default {
 }
 </script>
 
-<style scoped>
+<style>
 .cyberpunk-modal {
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
   border: 2px solid var(--cyber-orange);
@@ -188,6 +188,15 @@ export default {
 
 .btn-close:hover {
   opacity: 1;
+}
+
+.booking-insufficient-credits-modal {
+  z-index: 10000 !important;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
 }
 </style>
 

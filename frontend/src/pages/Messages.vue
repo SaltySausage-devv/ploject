@@ -4514,20 +4514,55 @@ export default {
           });
 
           // Handle insufficient credits error from backend
-          if (
-            response.status === 400 &&
-            errorData.error === "Insufficient credits"
-          ) {
+          // Check for both exact match and case-insensitive match
+          const isInsufficientCreditsError = 
+            response.status === 400 && 
+            (errorData.error === "Insufficient credits" || 
+             errorData.error?.toLowerCase().includes("insufficient credits") ||
+             errorData.error?.toLowerCase().includes("insufficient credit"));
+          
+          if (isInsufficientCreditsError) {
+            console.log("💰 Insufficient credits detected, showing modal...");
+            console.log("💰 Error data:", errorData);
+            console.log("💰 Error details:", errorData.details);
+            
             const { requiredCredits, currentCredits, shortfall } =
-              errorData.details;
-            // Show insufficient credits modal
-            showBookingInsufficientCreditsModal.value = true;
-            bookingCreditsDetails.value = {
-              requiredCredits: requiredCredits,
-              currentCredits: currentCredits,
-              shortfall: shortfall
-            };
-            return;
+              errorData.details || {};
+            
+            // Validate that we have the required data
+            if (requiredCredits !== undefined && currentCredits !== undefined && shortfall !== undefined) {
+              // Show insufficient credits modal
+              console.log("✅ Setting modal state:", {
+                requiredCredits,
+                currentCredits,
+                shortfall
+              });
+              
+              // Use nextTick to ensure reactivity
+              await nextTick();
+              
+              showBookingInsufficientCreditsModal.value = true;
+              bookingCreditsDetails.value = {
+                requiredCredits: Number(requiredCredits),
+                currentCredits: Number(currentCredits),
+                shortfall: Number(shortfall)
+              };
+              
+              console.log("✅ Modal state after setting:", {
+                showModal: showBookingInsufficientCreditsModal.value,
+                details: bookingCreditsDetails.value
+              });
+              
+              isConfirmingBooking.value = false; // Reset loading state
+              return;
+            } else {
+              console.error("❌ Missing credit details in error response:", errorData);
+              console.error("❌ Required fields:", {
+                requiredCredits: requiredCredits !== undefined,
+                currentCredits: currentCredits !== undefined,
+                shortfall: shortfall !== undefined
+              });
+            }
           }
 
           // Handle 500 errors with more details
@@ -5969,6 +6004,9 @@ export default {
       createConversationWithTutor,
       // Booking offer form validation
       isBookingOfferFormValid,
+      // Booking insufficient credits modal
+      showBookingInsufficientCreditsModal,
+      bookingCreditsDetails,
     };
   },
   components: {
