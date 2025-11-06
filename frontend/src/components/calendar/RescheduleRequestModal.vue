@@ -277,6 +277,16 @@
       </div>
     </div>
   </div>
+
+  <!-- Reschedule Insufficient Credits Modal -->
+  <RescheduleInsufficientCreditsModal
+    v-if="showRescheduleInsufficientCreditsModal"
+    :new-credits="rescheduleCreditsDetails.newCredits"
+    :current-credits="rescheduleCreditsDetails.currentCredits"
+    :original-credits="rescheduleCreditsDetails.originalCredits"
+    :shortfall="rescheduleCreditsDetails.shortfall"
+    @close="showRescheduleInsufficientCreditsModal = false"
+  />
 </template>
 
 <script>
@@ -284,6 +294,7 @@ import { ref, computed, onMounted } from "vue";
 import { useAuthStore } from "../../stores/auth";
 import { useToast } from "../../composables/useToast";
 import { useCreditService } from "../../services/creditService";
+import RescheduleInsufficientCreditsModal from "./RescheduleInsufficientCreditsModal.vue";
 
 export default {
   name: "RescheduleRequestModal",
@@ -305,6 +316,13 @@ export default {
     const tutorHourlyRate = ref(0);
     const loadingCredits = ref(false);
     const currentRequest = ref(null); // Track current request for cancellation
+    const showRescheduleInsufficientCreditsModal = ref(false);
+    const rescheduleCreditsDetails = ref({
+      newCredits: 0,
+      currentCredits: 0,
+      originalCredits: 0,
+      shortfall: 0
+    });
 
     // Computed properties
     const responded = computed(() => {
@@ -666,13 +684,15 @@ export default {
           error.message &&
           error.message.includes("Insufficient credits for reschedule")
         ) {
-          // Show specific credit top-up notification
+          // Show reschedule insufficient credits modal with detailed breakdown
           if (error.details && error.details.shortfall) {
-            creditService.showInsufficientCreditsNotification(
-              error.details.requiredCredits,
-              error.details.currentCredits,
-              "reschedule"
-            );
+            showRescheduleInsufficientCreditsModal.value = true;
+            rescheduleCreditsDetails.value = {
+              newCredits: error.details.newCredits || error.details.requiredCredits + (error.details.originalCredits || 0),
+              currentCredits: error.details.currentCredits,
+              originalCredits: error.details.originalCredits || 0,
+              shortfall: error.details.shortfall
+            };
           } else {
             showToast(error.message, "error");
           }
@@ -777,7 +797,12 @@ export default {
       formatTime,
       handleAccept,
       handleReject,
+      showRescheduleInsufficientCreditsModal,
+      rescheduleCreditsDetails,
     };
+  },
+  components: {
+    RescheduleInsufficientCreditsModal,
   },
 };
 </script>

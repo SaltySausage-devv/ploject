@@ -151,7 +151,7 @@ export default {
       eventDrop: handleEventDrop,
       eventResize: handleEventResize,
       eventDidMount: handleEventDidMount,
-      height: "630px",
+      height: "800px",
       aspectRatio: 1.5,
       eventTimeFormat: {
         hour: "2-digit",
@@ -178,6 +178,12 @@ export default {
           slotMinTime: "00:00:00",
           slotMaxTime: "24:00:00",
           slotLabelInterval: "01:00:00",
+          columnHeaderFormat: {
+            weekday: 'short',
+            day: 'numeric',
+            month: 'numeric',
+            omitCommas: false
+          },
         },
         timeGridDay: {
           titleFormat: { year: "numeric", month: "long", day: "numeric" },
@@ -259,9 +265,8 @@ export default {
     }
 
     function getEventColor(status) {
-      // All bookings use the same dark color - no color coding by status
-      // Match the calendar day background color (dark grey/black)
-      return "rgba(26, 26, 26, 0.9)"; // Dark grey/black to match calendar day cells
+      // All bookings use orange color
+      return "#e85a2a"; // Orange color for calendar events
     }
 
     function handleEventClick(info) {
@@ -454,21 +459,19 @@ export default {
       showToast("Booking updated successfully", "success");
     }
 
-    // Handle query params to open booking and reschedule modal
+    // Handle query params to open booking details modal
     async function handleQueryParams() {
       const bookingId = route.query.bookingId;
-      const reschedule = route.query.reschedule === 'true';
 
-      if (bookingId && reschedule) {
+      if (bookingId) {
         // Wait for bookings to load
         await nextTick();
         
         // Find the booking event - need to access extendedProps
         const bookingEvent = bookings.value.find((b) => b.id === bookingId);
         if (bookingEvent && bookingEvent.extendedProps) {
-          console.log('📅 Opening booking and reschedule modal from query params:', bookingId);
+          console.log('📅 Opening booking details modal from query params:', bookingId);
           selectedBooking.value = bookingEvent.extendedProps;
-          showRescheduleRequestModal.value = true;
           
           // Clean up URL
           window.history.replaceState({}, '', '/calendar');
@@ -480,7 +483,7 @@ export default {
 
     // Watch for route changes (e.g., when navigating from notifications)
     watch(() => route.query, async (newQuery) => {
-      if (newQuery.bookingId && newQuery.reschedule === 'true') {
+      if (newQuery.bookingId) {
         // Fetch fresh data to ensure we have the latest booking info including reschedule request
         console.log('📅 Route changed with bookingId, fetching fresh data...');
         await fetchCalendarData();
@@ -552,7 +555,7 @@ main:has(.calendar-page) {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   padding: 1rem;
   border: 2px solid var(--cyber-orange);
-  min-height: 675px;
+  min-height: 850px;
   backdrop-filter: blur(10px);
 }
 
@@ -579,8 +582,8 @@ h1 {
 }
 
 :deep(.fc .fc-view-harness) {
-  height: 585px !important;
-  min-height: 585px;
+  height: 800px !important;
+  min-height: 800px;
 }
 
 :deep(.fc-toolbar-title) {
@@ -667,6 +670,14 @@ h1 {
   transition: all 0.2s ease;
 }
 
+/* Force orange background for all calendar events (monthly, weekly, daily views) */
+:deep(.fc-event),
+:deep(.fc-daygrid-event),
+:deep(.fc-timegrid-event) {
+  background-color: #e85a2a !important;
+  border-color: #e85a2a !important;
+}
+
 :deep(.booking-event:hover) {
   opacity: 0.8;
 }
@@ -748,6 +759,17 @@ h1 {
 :deep(.fc-timegrid-event) {
   font-size: 0.9rem !important;
   padding: 4px 8px !important;
+}
+
+/* Day view specific: Make events slightly bigger */
+:deep(.fc-timeGridDay-view .fc-timegrid-event) {
+  font-size: 0.95rem !important;
+  padding: 4px 8px !important;
+}
+
+:deep(.fc-timeGridDay-view .fc-timegrid-event .fc-event-content-custom) {
+  font-size: 0.9rem !important;
+  padding: 2px 4px !important;
 }
 
 /* Ensure events have proper height in time grid */
@@ -860,18 +882,21 @@ h1 {
 
 :deep(.fc-more-popover .fc-event) {
   margin-bottom: 0.25rem;
-  background: rgba(42, 42, 42, 0.9) !important;
+  background: #e85a2a !important;
+  border-color: #e85a2a !important;
 }
 
 :deep(.fc-more-popover .fc-daygrid-event) {
   padding: 4px 8px;
   border-radius: 4px;
-  background: rgba(42, 42, 42, 0.9) !important;
+  background: #e85a2a !important;
+  border-color: #e85a2a !important;
   color: #ffffff !important;
 }
 
 :deep(.fc-more-popover .fc-daygrid-event:hover) {
-  background: rgba(58, 58, 82, 0.9) !important;
+  background: #d4491a !important;
+  border-color: #d4491a !important;
   color: #ffffff !important;
 }
 
@@ -961,6 +986,24 @@ h1 {
   }
 }
 
+@media (max-width: 991px) {
+  /* Weekly view: Separate day name and date on different rows for MD/SM viewports */
+  :deep(.fc-timeGridWeek-view .fc-col-header-cell-cushion) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.3;
+    padding: 6px 4px;
+    text-align: center;
+  }
+  
+  /* Split the text content - day name on top, date below */
+  :deep(.fc-timeGridWeek-view .fc-col-header-cell-cushion) {
+    white-space: pre-line;
+  }
+}
+
 @media (max-width: 768px) {
   :deep(.fc) {
     font-size: 0.9rem;
@@ -972,6 +1015,17 @@ h1 {
   :deep(.fc-col-header-cell-cushion) {
     white-space: normal !important;
     line-height: 1.1;
+  }
+  
+  /* Weekly view headers on mobile - ensure separate rows */
+  :deep(.fc-timeGridWeek-view .fc-col-header-cell-cushion) {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    line-height: 1.2;
+    padding: 4px 2px;
+    font-size: 0.75rem;
   }
 }
 

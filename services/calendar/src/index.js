@@ -1658,6 +1658,8 @@ app.post('/bookings/:id/reschedule/accept', verifyToken, async (req, res) => {
                 details: {
                   requiredCredits: creditDifference,
                   currentCredits: currentStudentCredits,
+                  originalCredits: currentCredits, // Credits from previous session (will be refunded)
+                  newCredits: newCredits, // New total cost
                   shortfall: shortfall,
                   message: `You need ${shortfall} more credits to accept this reschedule. Please top up your credits.`
                 }
@@ -1791,6 +1793,8 @@ app.post('/bookings/:id/reschedule/accept', verifyToken, async (req, res) => {
                 details: {
                   requiredCredits: creditDifference,
                   currentCredits: currentStudentCredits,
+                  originalCredits: currentCredits, // Credits from previous session (will be refunded)
+                  newCredits: newCredits, // New total cost
                   shortfall: shortfall,
                   message: `You need ${shortfall} more credits to accept this reschedule. Please top up your credits.`
                 }

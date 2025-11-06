@@ -275,6 +275,16 @@
       </div>
     </div>
   </div>
+
+  <!-- Reschedule Insufficient Credits Modal -->
+  <RescheduleInsufficientCreditsModal
+    v-if="showRescheduleInsufficientCreditsModal"
+    :new-credits="rescheduleCreditsDetails.newCredits"
+    :current-credits="rescheduleCreditsDetails.currentCredits"
+    :original-credits="rescheduleCreditsDetails.originalCredits"
+    :shortfall="rescheduleCreditsDetails.shortfall"
+    @close="showRescheduleInsufficientCreditsModal = false"
+  />
 </template>
 
 <script>
@@ -283,6 +293,7 @@ import { useToast } from "../../composables/useToast";
 import { useAuthStore } from "../../stores/auth";
 import { useCreditService } from "../../services/creditService";
 import { useGoogleMapsProxy } from "../../composables/useGoogleMapsProxy";
+import RescheduleInsufficientCreditsModal from "./RescheduleInsufficientCreditsModal.vue";
 
 export default {
   name: "RescheduleModal",
@@ -305,6 +316,13 @@ export default {
     const newEndTime = ref("");
     const newLocation = ref("");
     const reason = ref("");
+    const showRescheduleInsufficientCreditsModal = ref(false);
+    const rescheduleCreditsDetails = ref({
+      newCredits: 0,
+      currentCredits: 0,
+      originalCredits: 0,
+      shortfall: 0
+    });
 
     // Location autocomplete data
     const locationSuggestions = ref([]);
@@ -721,24 +739,37 @@ export default {
           );
           const durationMinutes =
             (newEndDateTime - newStartDateTime) / (1000 * 60);
+          const durationHours = durationMinutes / 60;
 
-          // Validate credits for rescheduling
-          const rescheduleData = {
-            tutorHourlyRate: tutorHourlyRate.value,
-            durationMinutes: durationMinutes,
-          };
+          // Calculate original session credits (from current booking)
+          const originalCredits = parseFloat(currentCredits.value);
+          
+          // Calculate new session credits
+          const newCredits = parseFloat((tutorHourlyRate.value * durationHours).toFixed(2));
+          
+          // Calculate credit difference
+          const creditDifference = newCredits - originalCredits;
 
-          // Pass current session credits for proper difference calculation
-          const currentSessionCredits = parseFloat(currentCredits.value);
-
-          if (
-            !creditService.validateRescheduleCredits(
-              rescheduleData,
-              currentSessionCredits
-            )
-          ) {
-            loading.value = false;
-            return; // Stop execution if insufficient credits
+          // Only check if the new session costs more (credit difference > 0)
+          if (creditDifference > 0) {
+            // Get student's current credits
+            const currentStudentCredits = authStore.user?.credits || 0;
+            
+            if (currentStudentCredits < creditDifference) {
+              const shortfall = creditDifference - currentStudentCredits;
+              
+              // Show reschedule insufficient credits modal with detailed breakdown
+              showRescheduleInsufficientCreditsModal.value = true;
+              rescheduleCreditsDetails.value = {
+                newCredits: newCredits,
+                currentCredits: currentStudentCredits,
+                originalCredits: originalCredits,
+                shortfall: shortfall
+              };
+              
+              loading.value = false;
+              return; // Stop execution if insufficient credits
+            }
           }
         }
 
@@ -826,7 +857,12 @@ export default {
       loadTutorHourlyRate,
       handleSubmit,
       authStore,
+      showRescheduleInsufficientCreditsModal,
+      rescheduleCreditsDetails,
     };
+  },
+  components: {
+    RescheduleInsufficientCreditsModal,
   },
 };
 </script>

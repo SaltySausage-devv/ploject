@@ -693,7 +693,7 @@
                                 </span>
                                 <button
                                   class="btn btn-outline-primary btn-sm ms-2"
-                                  @click="$router.push('/calendar')"
+                                  @click="viewBookingInCalendar(message)"
                                 >
                                   <i class="fas fa-calendar-check me-1"></i>
                                   View in Calendar
@@ -710,7 +710,7 @@
                                 </span>
                                 <button
                                   class="btn btn-outline-primary btn-sm ms-2"
-                                  @click="$router.push('/calendar')"
+                                  @click="viewBookingInCalendar(message)"
                                 >
                                   <i class="fas fa-calendar-check me-1"></i>
                                   View in Calendar
@@ -719,26 +719,10 @@
                               <template
                                 v-else-if="message.senderId !== currentUserId"
                               >
-                                <!-- Recipient can accept/reject (only if not yet responded) -->
-                                <button
-                                  class="btn btn-success btn-sm me-2"
-                                  :disabled="isProcessingReschedule"
-                                  @click="handleAcceptReschedule(message)"
-                                >
-                                  <i class="fas fa-check me-1"></i>
-                                  Accept
-                                </button>
-                                <button
-                                  class="btn btn-danger btn-sm me-2"
-                                  :disabled="isProcessingReschedule"
-                                  @click="handleRejectReschedule(message)"
-                                >
-                                  <i class="fas fa-times me-1"></i>
-                                  Decline
-                                </button>
+                                <!-- Recipient: Only show View in Calendar button (no accept/decline) -->
                                 <button
                                   class="btn btn-outline-primary btn-sm"
-                                  @click="$router.push('/calendar')"
+                                  @click="viewBookingInCalendar(message)"
                                 >
                                   <i class="fas fa-calendar-check me-1"></i>
                                   View in Calendar
@@ -752,7 +736,7 @@
                                 </span>
                                 <button
                                   class="btn btn-outline-primary btn-sm ms-2"
-                                  @click="$router.push('/calendar')"
+                                  @click="viewBookingInCalendar(message)"
                                 >
                                   <i class="fas fa-calendar-check me-1"></i>
                                   View in Calendar
@@ -874,7 +858,7 @@
                             <div class="booking-actions">
                               <button
                                 class="btn btn-outline-primary btn-sm"
-                                @click="$router.push('/calendar')"
+                                @click="viewBookingInCalendar(message)"
                               >
                                 <i class="fas fa-calendar-check me-1"></i>
                                 View in Calendar
@@ -2070,6 +2054,16 @@
       @absent-reported="handleAbsentReported"
     />
 
+    <!-- Reschedule Insufficient Credits Modal -->
+    <RescheduleInsufficientCreditsModal
+      v-if="showRescheduleInsufficientCreditsModal"
+      :new-credits="rescheduleCreditsDetails.newCredits"
+      :current-credits="rescheduleCreditsDetails.currentCredits"
+      :original-credits="rescheduleCreditsDetails.originalCredits"
+      :shortfall="rescheduleCreditsDetails.shortfall"
+      @close="showRescheduleInsufficientCreditsModal = false"
+    />
+
     <!-- Toast Notifications REMOVED - User requested no popups -->
 
     <!-- Booking Request Success Popup -->
@@ -2124,7 +2118,7 @@
 
 <script>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import messagingService from "../services/messaging.js";
 import { useNotifications } from "../composables/useNotifications";
@@ -2133,12 +2127,14 @@ import { useGoogleMapsProxy } from "../composables/useGoogleMapsProxy";
 import { messagingApi } from "../services/messaging";
 import { useAlertModal } from "../composables/useAlertModal.js";
 import SessionEndModal from "../components/calendar/SessionEndModal.vue";
+import RescheduleInsufficientCreditsModal from "../components/calendar/RescheduleInsufficientCreditsModal.vue";
 // ToastNotifications REMOVED - User requested no popups
 
 export default {
   name: "Messages",
   setup() {
     const route = useRoute();
+    const router = useRouter();
     const authStore = useAuthStore();
     const creditService = useCreditService();
     const { clearAllNotifications } = useNotifications();
@@ -3884,6 +3880,24 @@ export default {
       }
     };
 
+    // View booking in calendar - opens booking details modal
+    const viewBookingInCalendar = (message) => {
+      const bookingData = getBookingData(message);
+      if (bookingData && bookingData.bookingId) {
+        // Navigate to calendar with bookingId and reschedule=true to open booking details
+        router.push({
+          path: '/calendar',
+          query: {
+            bookingId: bookingData.bookingId,
+            reschedule: 'true'
+          }
+        });
+      } else {
+        // Fallback: just navigate to calendar if bookingId not found
+        router.push('/calendar');
+      }
+    };
+
     // Reschedule handlers
     const handleAcceptReschedule = async (message) => {
       if (isProcessingReschedule.value) {
@@ -3926,11 +3940,14 @@ export default {
             errorData.error.includes("Insufficient credits")
           ) {
             if (errorData.details && errorData.details.shortfall) {
-              creditService.showInsufficientCreditsNotification(
-                errorData.details.requiredCredits,
-                errorData.details.currentCredits,
-                "reschedule"
-              );
+              // Show reschedule insufficient credits modal with detailed breakdown
+              showRescheduleInsufficientCreditsModal.value = true;
+              rescheduleCreditsDetails.value = {
+                newCredits: errorData.details.newCredits || errorData.details.requiredCredits + (errorData.details.originalCredits || 0),
+                currentCredits: errorData.details.currentCredits,
+                originalCredits: errorData.details.originalCredits || 0,
+                shortfall: errorData.details.shortfall
+              };
             } else {
               showError("Insufficient Credits", errorMsg);
             }
@@ -5269,6 +5286,13 @@ export default {
 
     // Session end functionality
     const sessionEndModal = ref(false);
+    const showRescheduleInsufficientCreditsModal = ref(false);
+    const rescheduleCreditsDetails = ref({
+      newCredits: 0,
+      currentCredits: 0,
+      originalCredits: 0,
+      shortfall: 0
+    });
     const selectedBookingForSessionEnd = ref(null);
 
     // Check if current user can mark attendance for a booking
@@ -5855,6 +5879,7 @@ export default {
       formatTimeOnly,
       handleBookingOffer,
       confirmBooking,
+      viewBookingInCalendar,
       handleAcceptReschedule,
       handleRejectReschedule,
       isProcessingReschedule,
@@ -5903,6 +5928,7 @@ export default {
   },
   components: {
     SessionEndModal,
+    RescheduleInsufficientCreditsModal,
   },
 };
 </script>
