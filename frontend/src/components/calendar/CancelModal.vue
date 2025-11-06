@@ -101,7 +101,7 @@
               <span v-else>
                 ⚠️ <strong>1 penalty point:</strong> Since you are cancelling
                 less than 24 hours before the session, you will receive 1
-                penalty point. The student will not receive a credit refund.
+                penalty point. The student will receive a full refund.
               </span>
               <br /><br />
               <div class="alert alert-danger" role="alert">
