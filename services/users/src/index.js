@@ -104,17 +104,29 @@ app.put('/users/profile', verifyToken, async (req, res) => {
       return res.status(400).json({ error: error.details[0].message });
     }
 
+    // Build update object, only including optional fields if they have values
+    const updateData = {
+      first_name: value.firstName,
+      last_name: value.lastName,
+      phone: value.phone,
+      updated_at: new Date().toISOString()
+    }
+
+    // Include optional fields only if they have values (these are optional for students)
+    // Empty strings are treated as "don't update" to preserve existing values
+    if (value.dateOfBirth !== undefined && value.dateOfBirth !== null && value.dateOfBirth !== '') {
+      updateData.date_of_birth = value.dateOfBirth
+    }
+    if (value.address !== undefined && value.address !== null && value.address.trim() !== '') {
+      updateData.address = value.address
+    }
+    if (value.bio !== undefined && value.bio !== null && value.bio.trim() !== '') {
+      updateData.bio = value.bio
+    }
+
     const { data: user, error: updateError } = await supabase
       .from('users')
-      .update({
-        first_name: value.firstName,
-        last_name: value.lastName,
-        phone: value.phone,
-        date_of_birth: value.dateOfBirth,
-        address: value.address,
-        bio: value.bio,
-        updated_at: new Date().toISOString()
-      })
+      .update(updateData)
       .eq('id', req.user.userId)
       .select()
       .single();

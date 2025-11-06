@@ -642,10 +642,19 @@ export const useAuthStore = defineStore('auth', () => {
                 first_name: profileData.firstName,
                 last_name: profileData.lastName,
                 phone: profileData.phone,
-                date_of_birth: profileData.dateOfBirth,
-                address: profileData.address,
-                bio: profileData.bio,
                 updated_at: new Date().toISOString()
+            }
+
+            // Include optional fields only if they have values (for students, these are optional)
+            // Empty strings are treated as "don't update" to preserve existing values
+            if (profileData.dateOfBirth !== undefined && profileData.dateOfBirth !== null && profileData.dateOfBirth !== '') {
+                updateData.date_of_birth = profileData.dateOfBirth
+            }
+            if (profileData.address !== undefined && profileData.address !== null && profileData.address.trim() !== '') {
+                updateData.address = profileData.address
+            }
+            if (profileData.bio !== undefined && profileData.bio !== null && profileData.bio.trim() !== '') {
+                updateData.bio = profileData.bio
             }
 
             // Remove undefined fields

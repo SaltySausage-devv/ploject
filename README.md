@@ -99,6 +99,27 @@ A comprehensive marketplace platform connecting students with verified tutors an
    - Calendar: http://localhost:3011
    - Maps: http://localhost:3012
 
+## Test Accounts
+
+The following test accounts are available for testing. All accounts use the password: `password123`
+
+### Tutors
+- **Jason Chui** - `jasonchui@smu.edu.sg` - Mathematics & Physics tutor ($25/hr)
+- **Andrew Tan** - `andrewtan@smu.edu.sg` - Chemistry & Biology tutor ($20/hr)
+
+### Students
+- **Daryl Ng** - `daryl@smu.edu.sg`
+- **Deshaun Wang** - `deshaun@smu.edu.sg`
+- **Lim Wei Yau** - `weiyau@smu.edu.sg`
+- **Wayne Lim** - `wayne@smu.edu.sg`
+
+All test accounts have:
+- 250 credits (tokens)
+- Phone verified
+- Complete user profiles
+
+**Note:** To set up these test accounts in your database, run the SQL script `create_user_profiles.sql` in your Supabase SQL editor.
+
 ## Project Structure
 
 ```
