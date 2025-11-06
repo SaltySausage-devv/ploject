@@ -439,40 +439,46 @@ io.on('connection', (socket) => {
         })
         .eq('id', conversationId);
 
-      // Create notification for recipient and broadcast it
-      createMessageNotification(socket.userId, conversationId, sanitizedContent)
-        .then(notifResult => {
-          if (notifResult && notifResult.notification) {
-            const notificationPayload = {
-              id: notifResult.notification.id,
-              type: 'push',
-              subject: 'New Message',
-              message: notifResult.notification.message,
-              data: notifResult.notification.data,
-              created_at: notifResult.notification.created_at,
-              read_at: null,
-              senderName: notifResult.senderName,
-              recipientId: notifResult.recipientId // Include recipientId so frontend can filter
-            };
-            
-            // Broadcast to conversation room (like new_message) - works if recipient is in room
-            console.log(`🔔 Broadcasting notification to conversation room: conversation_${conversationId}`);
-            io.to(`conversation_${conversationId}`).emit('new_notification', notificationPayload);
-            
-            // ALSO send directly to recipient socket if they're connected (fallback for new conversations)
-            // This ensures they get it even if they haven't joined the room yet
-            const recipientSocket = activeConnections.get(notifResult.recipientId);
-            if (recipientSocket) {
-              console.log(`🔔 Also sending notification directly to recipient ${notifResult.recipientId}`);
-              recipientSocket.emit('new_notification', notificationPayload);
-            }
-            
-            console.log(`✅ Notification broadcasted, recipient: ${notifResult.recipientId}`);
+      // Create notification for recipient and broadcast it - AWAIT to ensure it's created
+      try {
+        const notifResult = await createMessageNotification(socket.userId, conversationId, sanitizedContent);
+        
+        if (notifResult && notifResult.notification) {
+          const notificationPayload = {
+            id: notifResult.notification.id,
+            type: 'push',
+            subject: 'New Message',
+            message: notifResult.notification.message,
+            data: notifResult.notification.data,
+            created_at: notifResult.notification.created_at,
+            read_at: null,
+            senderName: notifResult.senderName,
+            recipientId: notifResult.recipientId // Include recipientId so frontend can filter
+          };
+          
+          // Broadcast to conversation room (like new_message) - works if recipient is in room
+          console.log(`🔔 Broadcasting notification to conversation room: conversation_${conversationId}`);
+          io.to(`conversation_${conversationId}`).emit('new_notification', notificationPayload);
+          
+          // ALSO send directly to recipient socket if they're connected (fallback for new conversations)
+          // This ensures they get it even if they haven't joined the room yet
+          const recipientSocket = activeConnections.get(notifResult.recipientId);
+          if (recipientSocket) {
+            console.log(`🔔 Also sending notification directly to recipient ${notifResult.recipientId}`);
+            recipientSocket.emit('new_notification', notificationPayload);
+          } else {
+            console.log(`⚠️ Recipient ${notifResult.recipientId} not connected via socket, notification saved to database for later fetch`);
           }
-        })
-        .catch(err => {
-          console.error('❌ Notification creation/broadcast failed:', err);
-        });
+          
+          console.log(`✅ Notification created and broadcasted, recipient: ${notifResult.recipientId}`);
+        } else {
+          console.error('❌ Notification creation returned null/undefined result');
+        }
+      } catch (err) {
+        // Log error but don't fail the message send - notification is created in DB
+        console.error('❌ Notification creation/broadcast failed:', err);
+        console.log('⚠️ Message sent successfully but notification may not have been created - recipient should fetch from DB');
+      }
 
     } catch (error) {
       console.error('Message send error:', error);
@@ -946,40 +952,46 @@ app.post('/messaging/conversations/:id/messages', verifyToken, async (req, res) 
       })
       .eq('id', id);
 
-    // Create notification for recipient and broadcast it
-    createMessageNotification(req.user.userId, id, sanitizedContent)
-      .then(notifResult => {
-        if (notifResult && notifResult.notification) {
-          const notificationPayload = {
-            id: notifResult.notification.id,
-            type: 'push',
-            subject: 'New Message',
-            message: notifResult.notification.message,
-            data: notifResult.notification.data,
-            created_at: notifResult.notification.created_at,
-            read_at: null,
-            senderName: notifResult.senderName,
-            recipientId: notifResult.recipientId // Include recipientId so frontend can filter
-          };
-          
-          // Broadcast to conversation room (like new_message) - works if recipient is in room
-          console.log(`🔔 Broadcasting notification to conversation room: conversation_${id}`);
-          io.to(`conversation_${id}`).emit('new_notification', notificationPayload);
-          
-          // ALSO send directly to recipient socket if they're connected (fallback for new conversations)
-          // This ensures they get it even if they haven't joined the room yet
-          const recipientSocket = activeConnections.get(notifResult.recipientId);
-          if (recipientSocket) {
-            console.log(`🔔 Also sending notification directly to recipient ${notifResult.recipientId}`);
-            recipientSocket.emit('new_notification', notificationPayload);
-          }
-          
-          console.log(`✅ Notification broadcasted, recipient: ${notifResult.recipientId}`);
+    // Create notification for recipient and broadcast it - AWAIT to ensure it's created before response
+    try {
+      const notifResult = await createMessageNotification(req.user.userId, id, sanitizedContent);
+      
+      if (notifResult && notifResult.notification) {
+        const notificationPayload = {
+          id: notifResult.notification.id,
+          type: 'push',
+          subject: 'New Message',
+          message: notifResult.notification.message,
+          data: notifResult.notification.data,
+          created_at: notifResult.notification.created_at,
+          read_at: null,
+          senderName: notifResult.senderName,
+          recipientId: notifResult.recipientId // Include recipientId so frontend can filter
+        };
+        
+        // Broadcast to conversation room (like new_message) - works if recipient is in room
+        console.log(`🔔 Broadcasting notification to conversation room: conversation_${id}`);
+        io.to(`conversation_${id}`).emit('new_notification', notificationPayload);
+        
+        // ALSO send directly to recipient socket if they're connected (fallback for new conversations)
+        // This ensures they get it even if they haven't joined the room yet
+        const recipientSocket = activeConnections.get(notifResult.recipientId);
+        if (recipientSocket) {
+          console.log(`🔔 Also sending notification directly to recipient ${notifResult.recipientId}`);
+          recipientSocket.emit('new_notification', notificationPayload);
+        } else {
+          console.log(`⚠️ Recipient ${notifResult.recipientId} not connected via socket, notification saved to database for later fetch`);
         }
-      })
-      .catch(err => {
-        console.error('❌ Notification creation/broadcast failed:', err);
-      });
+        
+        console.log(`✅ Notification created and broadcasted, recipient: ${notifResult.recipientId}`);
+      } else {
+        console.error('❌ Notification creation returned null/undefined result');
+      }
+    } catch (err) {
+      // Log error but don't fail the message send - notification is created in DB
+      console.error('❌ Notification creation/broadcast failed:', err);
+      console.log('⚠️ Message sent successfully but notification may not have been created - recipient should fetch from DB');
+    }
 
     res.status(201).json({
       message: 'Message sent successfully',
