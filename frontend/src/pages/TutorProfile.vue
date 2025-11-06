@@ -52,11 +52,20 @@
               <div class="cyberpunk-card-body text-center">
                 <div class="cyberpunk-tutor-avatar mb-3">
                   <img
+                    v-if="tutor.avatar && tutor.avatar !== ''"
                     :src="tutor.avatar"
                     :alt="tutor.name"
                     class="cyberpunk-avatar-img"
                     ref="tutorAvatar"
+                    @error="handleAvatarError"
                   />
+                  <div
+                    v-else
+                    class="cyberpunk-avatar-placeholder"
+                    ref="tutorAvatar"
+                  >
+                    <i class="fas fa-user"></i>
+                  </div>
                 </div>
                 <h3 class="cyberpunk-tutor-name">{{ tutor.name }}</h3>
                 <div class="cyberpunk-rating mb-3">
@@ -284,8 +293,7 @@ export default {
       name: "Loading...",
       subject: "Loading...",
       level: "Loading...",
-      avatar:
-        "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==",
+      avatar: null,
       rating: 0,
       bio: "Loading tutor information...",
       education: "Loading...",
@@ -315,6 +323,14 @@ export default {
     const sendMessage = () => {
       // Navigate to chat page with tutor ID
       router.push(`/chat/${tutor.value.id}`);
+    };
+
+    const handleAvatarError = (event) => {
+      // If image fails to load, set avatar to null to show placeholder
+      tutor.value.avatar = null;
+      if (event.target) {
+        event.target.style.display = 'none';
+      }
     };
 
     const initProfileAnimations = () => {
@@ -528,8 +544,7 @@ export default {
             "Unknown Tutor",
           subject: profile.subjects?.[0] || "N/A",
           level: profile.levels?.[0] || "N/A",
-          avatar:
-            "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==",
+          avatar: profile.profile_image_url || null,
           rating: profile.average_rating || 0,
           bio:
             profile.bio ||
@@ -570,8 +585,7 @@ export default {
           name: "Tutor Not Found",
           subject: "N/A",
           level: "N/A",
-          avatar:
-            "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgdmlld0JveD0iMCAwIDQwMCA0MDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSI0MDAiIGhlaWdodD0iNDAwIiBmaWxsPSIjRjNGNEY2Ii8+CjxjaXJjbGUgY3g9IjIwMCIgY3k9IjE0MCIgcj0iNTUiIGZpbGw9IiM5Q0EzQUYiLz4KPHBhdGggZD0iTTE2MCAyNDBDMTYwIDIyMC45MDkgMTgwLjkwOSAyMDAgMjA3IDIwMEgyMTlDMjQ1LjA5MSAyMDAgMjY2IDIyMC45MDkgMjY2IDI0MFYzMjBIMTYwVjI0MFoiIGZpbGw9IiM5Q0EzQUYiLz4KPC9zdmc+Cg==",
+          avatar: null,
           rating: 0,
           bio: "Unable to load tutor information. The tutor profile may not exist or there may be a network error.",
           education: "Not specified",
@@ -621,6 +635,7 @@ export default {
       displayedReviews,
       formatDate,
       sendMessage,
+      handleAvatarError,
       heroTitle,
       heroSubtitle,
       heroIcon,
@@ -768,6 +783,21 @@ export default {
   border-radius: 50%;
   object-fit: cover;
   box-shadow: 0 0 20px rgba(255, 140, 66, 0.3);
+}
+
+.cyberpunk-avatar-placeholder {
+  width: 120px !important;
+  height: 120px !important;
+  border: 3px solid var(--cyber-orange);
+  border-radius: 50%;
+  background: linear-gradient(45deg, var(--cyber-orange), var(--cyber-yellow));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 3rem;
+  box-shadow: 0 0 20px rgba(255, 140, 66, 0.3);
+  margin: 0 auto;
 }
 
 .cyberpunk-tutor-name {
