@@ -1052,7 +1052,19 @@
                                 </div>
                                 <div class="text-info">
                                   <i class="fas fa-info-circle me-1"></i>
-                                  Student credits have been deducted
+                                  <span
+                                    v-if="
+                                      getBookingCancellationData(message)
+                                        .refundPolicy.studentRefunded &&
+                                      getBookingCancellationData(message)
+                                        .refundPolicy.isTutorCancelling
+                                    "
+                                  >
+                                    Student credits have been refunded
+                                  </span>
+                                  <span v-else>
+                                    Student credits have been deducted
+                                  </span>
                                 </div>
                               </div>
                             </div>
