@@ -65,6 +65,88 @@ const sanitizeInput = (input) => {
   });
 };
 
+// Helper function to create notification for message recipient
+const createMessageNotification = async (senderId, conversationId, messageContent) => {
+  try {
+    console.log(`🔔 Creating notification for message in conversation ${conversationId} from sender ${senderId}`);
+    
+    // Get conversation to find recipient
+    const { data: conversation, error: convError } = await supabase
+      .from('conversations')
+      .select('participant1_id, participant2_id')
+      .eq('id', conversationId)
+      .maybeSingle();
+
+    if (convError || !conversation) {
+      console.error('❌ Failed to fetch conversation for notification:', convError);
+      return null;
+    }
+
+    // Determine recipient (the other participant)
+    const recipientId = conversation.participant1_id === senderId 
+      ? conversation.participant2_id 
+      : conversation.participant1_id;
+
+    if (!recipientId) {
+      console.error('❌ No recipient found for notification');
+      return null;
+    }
+
+    console.log(`🔔 Recipient ID: ${recipientId}`);
+
+    // Get sender name for notification
+    const { data: sender } = await supabase
+      .from('users')
+      .select('first_name, last_name')
+      .eq('id', senderId)
+      .maybeSingle();
+
+    const senderName = sender 
+      ? `${sender.first_name} ${sender.last_name}`.trim()
+      : 'Someone';
+
+    const notificationMessage = `${senderName}: ${messageContent.substring(0, 100)}${messageContent.length > 100 ? '...' : ''}`;
+
+    // Create notification in database
+    const { data: notification, error: notifError } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: recipientId,
+        type: 'push',
+        subject: 'New Message',
+        message: notificationMessage,
+        data: {
+          conversationId,
+          messageType: 'text',
+          senderId
+        },
+        status: 'sent',
+        sent_at: new Date().toISOString(),
+        created_at: new Date().toISOString()
+      })
+      .select()
+      .maybeSingle();
+
+    if (notifError) {
+      console.error('❌ Failed to create notification:', notifError);
+      return null;
+    }
+
+    console.log(`✅ Notification created for user ${recipientId}, ID: ${notification?.id}`);
+    
+    // Return notification data for socket broadcasting
+    return {
+      notification,
+      recipientId,
+      senderName,
+      messagePreview: notificationMessage
+    };
+  } catch (error) {
+    console.error('❌ Error creating message notification:', error);
+    return null;
+  }
+};
+
 // RabbitMQ removed - using direct Socket.io + Supabase messaging
 
 // Configure multer for file uploads
@@ -272,6 +354,41 @@ io.on('connection', (socket) => {
         })
         .eq('id', conversationId);
 
+      // Create notification for recipient and broadcast it
+      createMessageNotification(socket.userId, conversationId, sanitizedContent)
+        .then(notifResult => {
+          if (notifResult && notifResult.notification) {
+            const notificationPayload = {
+              id: notifResult.notification.id,
+              type: 'push',
+              subject: 'New Message',
+              message: notifResult.notification.message,
+              data: notifResult.notification.data,
+              created_at: notifResult.notification.created_at,
+              read_at: null,
+              senderName: notifResult.senderName,
+              recipientId: notifResult.recipientId // Include recipientId so frontend can filter
+            };
+            
+            // Broadcast to conversation room (like new_message) - works if recipient is in room
+            console.log(`🔔 Broadcasting notification to conversation room: conversation_${conversationId}`);
+            io.to(`conversation_${conversationId}`).emit('new_notification', notificationPayload);
+            
+            // ALSO send directly to recipient socket if they're connected (fallback for new conversations)
+            // This ensures they get it even if they haven't joined the room yet
+            const recipientSocket = activeConnections.get(notifResult.recipientId);
+            if (recipientSocket) {
+              console.log(`🔔 Also sending notification directly to recipient ${notifResult.recipientId}`);
+              recipientSocket.emit('new_notification', notificationPayload);
+            }
+            
+            console.log(`✅ Notification broadcasted, recipient: ${notifResult.recipientId}`);
+          }
+        })
+        .catch(err => {
+          console.error('❌ Notification creation/broadcast failed:', err);
+        });
+
     } catch (error) {
       console.error('Message send error:', error);
       socket.emit('message_error', { 
@@ -451,6 +568,21 @@ app.post('/messaging/conversations', verifyToken, async (req, res) => {
         )
       `)
       .maybeSingle();
+
+    // Auto-join both participants to the conversation room so they can receive notifications
+    if (conversation && !insertError) {
+      const participant1Socket = activeConnections.get(conversation.participant1_id);
+      const participant2Socket = activeConnections.get(conversation.participant2_id);
+      
+      if (participant1Socket) {
+        participant1Socket.join(`conversation_${conversation.id}`);
+        console.log(`🔔 Auto-joined participant1 (${conversation.participant1_id}) to conversation room: conversation_${conversation.id}`);
+      }
+      if (participant2Socket) {
+        participant2Socket.join(`conversation_${conversation.id}`);
+        console.log(`🔔 Auto-joined participant2 (${conversation.participant2_id}) to conversation room: conversation_${conversation.id}`);
+      }
+    }
 
     if (insertError) {
       throw insertError;
@@ -655,6 +787,41 @@ app.post('/messaging/conversations/:id/messages', verifyToken, async (req, res) 
         last_message_content: sanitizedContent
       })
       .eq('id', id);
+
+    // Create notification for recipient and broadcast it
+    createMessageNotification(req.user.userId, id, sanitizedContent)
+      .then(notifResult => {
+        if (notifResult && notifResult.notification) {
+          const notificationPayload = {
+            id: notifResult.notification.id,
+            type: 'push',
+            subject: 'New Message',
+            message: notifResult.notification.message,
+            data: notifResult.notification.data,
+            created_at: notifResult.notification.created_at,
+            read_at: null,
+            senderName: notifResult.senderName,
+            recipientId: notifResult.recipientId // Include recipientId so frontend can filter
+          };
+          
+          // Broadcast to conversation room (like new_message) - works if recipient is in room
+          console.log(`🔔 Broadcasting notification to conversation room: conversation_${id}`);
+          io.to(`conversation_${id}`).emit('new_notification', notificationPayload);
+          
+          // ALSO send directly to recipient socket if they're connected (fallback for new conversations)
+          // This ensures they get it even if they haven't joined the room yet
+          const recipientSocket = activeConnections.get(notifResult.recipientId);
+          if (recipientSocket) {
+            console.log(`🔔 Also sending notification directly to recipient ${notifResult.recipientId}`);
+            recipientSocket.emit('new_notification', notificationPayload);
+          }
+          
+          console.log(`✅ Notification broadcasted, recipient: ${notifResult.recipientId}`);
+        }
+      })
+      .catch(err => {
+        console.error('❌ Notification creation/broadcast failed:', err);
+      });
 
     res.status(201).json({
       message: 'Message sent successfully',

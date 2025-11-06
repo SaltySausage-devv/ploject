@@ -358,6 +358,7 @@ import { useRouter } from "vue-router";
 import { useAuthStore } from "../stores/auth";
 import { animate, stagger, spring } from "animejs";
 import messagingService from "../services/messaging.js";
+import api from "../services/api.js";
 import CreditsIcon from "./CreditsIcon.vue";
 
 export default {
@@ -381,6 +382,7 @@ export default {
     const notifications = ref([]);
     const showAllNotifications = ref(false);
     let messageHandler = null;
+    let notificationHandler = null;
 
     // Watch for any changes to notifications array (debugging)
     watch(
@@ -663,10 +665,85 @@ export default {
     };
 
     // Load unread messages from conversations and add to notifications
+    // Fetch notifications from database and convert to frontend format
+    const fetchNotificationsFromDatabase = async () => {
+      try {
+        if (!currentUserId.value) {
+          console.log("🔔 NAVBAR: No user ID, skipping notification fetch");
+          return;
+        }
+
+        console.log("🔔 NAVBAR: 📥 Fetching notifications from database...");
+        const response = await api.get(`/notifications/${currentUserId.value}`, {
+          params: {
+            limit: 20,
+            type: 'push'
+          }
+        });
+
+        if (response.data && response.data.notifications) {
+          const dbNotifications = response.data.notifications;
+          console.log(`🔔 NAVBAR: Found ${dbNotifications.length} notifications in database`);
+
+          // Convert database notifications to frontend format
+          const existingNotificationIds = new Set(notifications.value.map(n => n.id));
+          
+          dbNotifications.forEach(dbNotif => {
+            // Skip if we already have this notification
+            if (existingNotificationIds.has(dbNotif.id)) {
+              return;
+            }
+
+            // Parse notification data to extract conversation info
+            const notifData = dbNotif.data || {};
+            const conversationId = notifData.conversationId;
+
+            // Only process message notifications (not booking/system notifications that are handled differently)
+            if (conversationId && dbNotif.message && dbNotif.message.includes(':')) {
+              const [senderName, ...messageParts] = dbNotif.message.split(':');
+              const messagePreview = messageParts.join(':').trim();
+
+              const notification = {
+                id: dbNotif.id,
+                icon: getIconForNotificationType({ type: 'text', message_type: 'text' }),
+                title: `New message from ${senderName.trim()}`,
+                message: messagePreview.substring(0, 100) + (messagePreview.length > 100 ? '...' : ''),
+                time: formatTime(dbNotif.created_at),
+                timestamp: dbNotif.created_at,
+                conversationId: conversationId,
+                type: 'text',
+                unread: !dbNotif.read_at, // Ensure unread is true if read_at is null/undefined
+              };
+              
+              // Remove any status or badgeClass fields that might have been added from activity items
+              delete notification.status;
+              delete notification.badgeClass;
+
+              // Add to notifications (prepend to keep most recent first)
+              notifications.value = [notification, ...notifications.value];
+              existingNotificationIds.add(dbNotif.id);
+              console.log(`🔔 NAVBAR: ✅ Added notification from database: ${dbNotif.id}`);
+            }
+          });
+
+          // Save to localStorage if we added any new notifications
+          if (dbNotifications.length > 0) {
+            saveNotificationsToStorage();
+          }
+        }
+      } catch (error) {
+        console.error("🔔 NAVBAR: ❌ Error fetching notifications from database:", error);
+        // Don't throw - this is not critical, just a fallback
+      }
+    };
+
     const loadUnreadMessagesAsNotifications = async () => {
       try {
         console.log("🔔 NAVBAR: 📥 Loading unread messages from conversations...");
         console.log("🔔 NAVBAR: Current notifications count BEFORE loading unread:", notifications.value.length);
+        
+        // First, fetch notifications from database (for messages that were sent before socket was ready)
+        await fetchNotificationsFromDatabase();
         
         const response = await messagingService.getConversations();
 
@@ -870,11 +947,16 @@ export default {
         !!authStore.session?.access_token
       );
 
-      // Remove old handler if it exists
+      // Remove old handlers if they exist
       if (messageHandler) {
-        console.log("🔔 NAVBAR: Removing existing handler");
+        console.log("🔔 NAVBAR: Removing existing message handler");
         messagingService.off("new_message", messageHandler);
         messageHandler = null;
+      }
+      if (notificationHandler) {
+        console.log("🔔 NAVBAR: Removing existing notification handler");
+        messagingService.off("new_notification", notificationHandler);
+        notificationHandler = null;
       }
 
       // Create new handler for navbar notifications
@@ -1114,6 +1196,10 @@ export default {
             type: message.message_type, // Store message type to filter reschedule responses
             unread: true,
           };
+          
+          // Remove any status or badgeClass fields that might have been added from activity items
+          delete notification.status;
+          delete notification.badgeClass;
 
           console.log("🔔 NAVBAR: Before adding - current count:", notifications.value.length);
           console.log("🔔 NAVBAR: Current IDs:", notifications.value.map(n => n.id));
@@ -1183,6 +1269,81 @@ export default {
       messagingService.on("new_message", messageHandler);
       console.log("🔔 NAVBAR: ✅ Message handler registered successfully");
       console.log("🔔 NAVBAR: Handler function:", messageHandler ? "EXISTS" : "NULL");
+
+      // Register the new_notification handler for direct notification events
+      if (!notificationHandler) {
+        notificationHandler = (notificationData) => {
+          console.log("🔔 NAVBAR: 📬 NEW NOTIFICATION RECEIVED VIA SOCKET!");
+          console.log("🔔 NAVBAR: Notification data:", notificationData);
+          
+          // Check if notification already exists
+          const existingNotification = notifications.value.find(n => n.id === notificationData.id);
+          if (existingNotification) {
+            console.log("🔔 NAVBAR: Notification already exists, skipping");
+            return;
+          }
+
+          // Parse notification data
+          const notifData = notificationData.data || {};
+          const conversationId = notifData.conversationId;
+          
+          // Check if this notification is for the current user
+          // Only show notification if recipientId matches current user (or if not specified, show it)
+          const recipientId = notificationData.recipientId;
+          if (recipientId && String(recipientId) !== String(currentUserId.value)) {
+            console.log("🔔 NAVBAR: Notification not for current user, skipping");
+            return;
+          }
+          
+          if (!conversationId) {
+            console.log("🔔 NAVBAR: No conversationId in notification, skipping");
+            return;
+          }
+
+          // Extract sender name from message (format: "Sender Name: message content")
+          let senderName = notificationData.senderName || "Someone";
+          let messagePreview = notificationData.message || "";
+          
+          if (messagePreview.includes(':')) {
+            const parts = messagePreview.split(':');
+            senderName = parts[0].trim();
+            messagePreview = parts.slice(1).join(':').trim();
+          }
+
+          // Create notification object
+          const notification = {
+            id: notificationData.id,
+            icon: getIconForNotificationType({ type: 'text', message_type: 'text' }),
+            title: `New message from ${senderName}`,
+            message: messagePreview.substring(0, 100) + (messagePreview.length > 100 ? '...' : ''),
+            time: formatTime(notificationData.created_at),
+            timestamp: notificationData.created_at,
+            conversationId: conversationId,
+            type: 'text',
+            unread: !notificationData.read_at, // Ensure unread is true if read_at is null/undefined
+          };
+          
+          // Remove any status or badgeClass fields that might have been added from activity items
+          delete notification.status;
+          delete notification.badgeClass;
+
+          // Add to notifications (prepend to keep most recent first)
+          notifications.value = [notification, ...notifications.value];
+          
+          // Limit to last 20 notifications
+          if (notifications.value.length > 20) {
+            notifications.value = notifications.value.slice(0, 20);
+          }
+
+          // Save to localStorage
+          saveNotificationsToStorage();
+          
+          console.log(`🔔 NAVBAR: ✅ Added notification from socket: ${notificationData.id}`);
+        };
+      }
+      
+      messagingService.on("new_notification", notificationHandler);
+      console.log("🔔 NAVBAR: ✅ Registered new_notification handler");
 
       // Also listen for messages_read event to clear notifications when user opens conversation
       messagingService.on("messages_read", (data) => {
@@ -1311,6 +1472,10 @@ export default {
             messagingService.off("new_message", messageHandler);
             messageHandler = null;
           }
+          if (notificationHandler) {
+            messagingService.off("new_notification", notificationHandler);
+            notificationHandler = null;
+          }
           // Clear notifications and storage
           notifications.value = [];
           localStorage.removeItem(NOTIFICATIONS_STORAGE_KEY);
@@ -1322,14 +1487,18 @@ export default {
     // This ensures we receive real-time messages even if the connection wasn't ready on mount
     const ensureHandlerRegistered = () => {
       if (authStore.isAuthenticated && messagingService.isConnected) {
-        // Check if handler is registered
-        const handlers = messagingService.messageHandlers?.get('new_message') || [];
-        const handlerRegistered = handlers.includes(messageHandler);
+        // Check if message handler is registered
+        const messageHandlers = messagingService.messageHandlers?.get('new_message') || [];
+        const messageHandlerRegistered = messageHandlers.includes(messageHandler);
         
-        if (!handlerRegistered || !messageHandler) {
+        // Check if notification handler is registered
+        const notificationHandlers = messagingService.messageHandlers?.get('new_notification') || [];
+        const notificationHandlerRegistered = notificationHandlers.includes(notificationHandler);
+        
+        if (!messageHandlerRegistered || !messageHandler || !notificationHandlerRegistered || !notificationHandler) {
           console.log("🔔 NAVBAR: Connection ready but handler missing or not registered, setting up now");
-          console.log("🔔 NAVBAR: Current handlers count:", handlers.length);
-          console.log("🔔 NAVBAR: messageHandler exists?", !!messageHandler);
+          console.log("🔔 NAVBAR: messageHandler exists?", !!messageHandler, "registered?", messageHandlerRegistered);
+          console.log("🔔 NAVBAR: notificationHandler exists?", !!notificationHandler, "registered?", notificationHandlerRegistered);
           setupMessageNotifications();
         }
       }
@@ -1343,6 +1512,11 @@ export default {
       if (messageHandler) {
         messagingService.off("new_message", messageHandler);
         messageHandler = null;
+      }
+      // Clean up notification handler
+      if (notificationHandler) {
+        messagingService.off("new_notification", notificationHandler);
+        notificationHandler = null;
       }
       // Clear the handler check interval
       if (handlerCheckInterval) {
