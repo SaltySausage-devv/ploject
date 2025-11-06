@@ -1841,90 +1841,57 @@ app.post('/bookings/:id/reschedule/accept', verifyToken, async (req, res) => {
           }
         }
 
+        // NOTE: Credits are held from student but NOT transferred to tutor yet
+        // Credits will be held in student account and transferred to tutor only after session completion
+        // This prevents tutors from receiving payment for sessions that don't actually happen
         if (creditDifference !== 0) {
-          console.log('🔍 Credit difference is not zero, proceeding with transaction...');
-          console.log('🔄 Updating credits for BOTH student and tutor...');
+          console.log('🔍 Credit difference is not zero, proceeding with student credit adjustment...');
+          console.log('🔄 Updating student credits (hold additional or refund difference)...');
           
-          // Update credits for BOTH parties
-          const updatePromises = [];
-          
-          // Update student credits
+          // Get student data to update credits
           const { data: student, error: studentError } = await supabase
             .from('users')
-            .select('credits')
+            .select('credits, user_type')
             .eq('id', booking.student_id)
             .single();
           
           if (studentError) {
             console.error('❌ Error fetching student credits:', studentError);
-          } else {
+          } else if (student.user_type === 'student') {
             const currentStudentCredits = student.credits || 0;
+            
+            // If creditDifference > 0: new session costs more, deduct additional amount (hold it)
+            // If creditDifference < 0: new session costs less, refund the difference
             const newStudentCredits = Math.max(0, currentStudentCredits - creditDifference);
-            console.log(`💸 Student credit adjustment: ${currentStudentCredits} → ${newStudentCredits} (difference: ${creditDifference})`);
             
-            updatePromises.push(
-              supabase
-                .from('users')
-                .update({
-                  credits: newStudentCredits,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', booking.student_id)
-                .select('id, credits')
-                .then(result => {
-                  if (result.error) {
-                    console.error('❌ Error updating student credits:', result.error);
-                  } else {
-                    console.log(`✅ Student credits updated successfully:`, result.data);
-                  }
-                  return result;
-                })
-            );
-          }
-          
-          // Update tutor credits
-          const { data: tutor, error: tutorError } = await supabase
-            .from('users')
-            .select('credits')
-            .eq('id', booking.tutor_id)
-            .single();
-          
-          if (tutorError) {
-            console.error('❌ Error fetching tutor credits:', tutorError);
-          } else {
-            const currentTutorCredits = tutor.credits || 0;
-            const newTutorCredits = Math.max(0, currentTutorCredits + creditDifference);
-            console.log(`💰 Tutor credit adjustment: ${currentTutorCredits} → ${newTutorCredits} (difference: ${creditDifference})`);
+            if (creditDifference > 0) {
+              console.log(`💸 Holding additional ${creditDifference} credits from student. Old: ${currentStudentCredits}, New: ${newStudentCredits}`);
+            } else {
+              console.log(`💰 Refunding ${Math.abs(creditDifference)} credits to student. Old: ${currentStudentCredits}, New: ${newStudentCredits}`);
+            }
             
-            updatePromises.push(
-              supabase
-                .from('users')
-                .update({
-                  credits: newTutorCredits,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', booking.tutor_id)
-                .select('id, credits')
-                .then(result => {
-                  if (result.error) {
-                    console.error('❌ Error updating tutor credits:', result.error);
-                  } else {
-                    console.log(`✅ Tutor credits updated successfully:`, result.data);
-                  }
-                  return result;
-                })
-            );
+            const { error: studentUpdateError } = await supabase
+              .from('users')
+              .update({
+                credits: newStudentCredits,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', booking.student_id);
+              
+            if (studentUpdateError) {
+              console.error('❌ Error updating student credits:', studentUpdateError);
+            } else {
+              if (creditDifference > 0) {
+                console.log(`✅ Additional ${creditDifference} credits held from student successfully`);
+              } else {
+                console.log(`✅ ${Math.abs(creditDifference)} credits refunded to student successfully`);
+              }
+            }
           }
           
-          // Wait for both updates to complete
-          try {
-            await Promise.all(updatePromises);
-            console.log('✅ All credit updates completed successfully');
-          } catch (error) {
-            console.error('❌ Error in credit update process:', error);
-          }
+          console.log('ℹ️ Credits are held from student and will be transferred to tutor only after session completion');
         } else {
-          console.log('ℹ️ No credit difference - no transaction needed');
+          console.log('ℹ️ No credit difference - no student credit adjustment needed');
           console.log('🔍 Credit calculation details:', {
             currentCredits,
             newCredits,
