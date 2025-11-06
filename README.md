@@ -130,7 +130,6 @@ ploject/
 │   ├── reviews/          # Reviews and ratings
 │   ├── notifications/    # Notifications service
 │   ├── analytics/        # Analytics service
-│   ├── earnings/         # Earnings tracking
 │   ├── calendar/         # Calendar integration
 │   └── maps/             # Maps integration
 ├── scripts/
