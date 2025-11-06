@@ -25,17 +25,16 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# IDE
+# IDE files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Temp files
+# Temporary files
 *.tmp
 .cache/
-/.claude/settings.local.json
 
-# Database schema (security - contains sensitive structure information)
-dbschema.sql
+# Editor/IDE specific
+.claude/settings.local.json

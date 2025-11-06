@@ -27,14 +27,7 @@
                 <!-- User Info -->
                 <div class="profile-info">
                   <h1 class="profile-title">{{ user?.firstName }} {{ user?.lastName }}</h1>
-                  <div class="profile-subtitle-container">
-                    <p class="profile-subtitle">
-                      <i class="fas fa-envelope me-2"></i>{{ user?.email }}
-                      <span v-if="user?.phone" class="profile-phone ms-3">
-                        <i class="fas fa-phone me-2"></i>{{ user?.phone }}
-                      </span>
-                    </p>
-                  </div>
+                  <p class="profile-subtitle">{{ user?.email }}</p>
 
                   <!-- Badges -->
                   <div class="profile-badges">
@@ -130,6 +123,19 @@
                   </div>
                 </div>
 
+                <div class="mb-3">
+                  <label class="form-label cyberpunk-label">PHONE NUMBER</label>
+                  <div class="cyberpunk-input-group">
+                    <input
+                      type="tel"
+                      v-model="profileForm.phone"
+                      class="form-control cyberpunk-input"
+                      :disabled="!editMode"
+                      :placeholder="user?.phone || 'Enter your phone number'"
+                    />
+                    <i class="cyberpunk-input-icon fas fa-phone"></i>
+                  </div>
+                </div>
 
                 <div class="mb-3">
                   <label class="form-label cyberpunk-label">DATE OF BIRTH</label>
@@ -141,6 +147,20 @@
                       :disabled="!editMode"
                     />
                     <i class="cyberpunk-input-icon fas fa-calendar"></i>
+                  </div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label cyberpunk-label">ADDRESS</label>
+                  <div class="cyberpunk-input-group">
+                    <textarea
+                      v-model="profileForm.address"
+                      class="form-control cyberpunk-input"
+                      :disabled="!editMode"
+                      rows="3"
+                      :placeholder="user?.address || 'Enter your address'"
+                    ></textarea>
+                    <i class="cyberpunk-input-icon fas fa-map-marker-alt"></i>
                   </div>
                 </div>
 
@@ -247,7 +267,9 @@ export default {
       firstName: '',
       lastName: '',
       email: '',
+      phone: '',
       dateOfBirth: '',
+      address: '',
       bio: ''
     })
 
@@ -293,7 +315,9 @@ export default {
         profileForm.firstName = user.value.firstName || ''
         profileForm.lastName = user.value.lastName || ''
         profileForm.email = user.value.email || ''
+        profileForm.phone = user.value.phone || ''
         profileForm.dateOfBirth = user.value.dateOfBirth || ''
+        profileForm.address = user.value.address || ''
         profileForm.bio = user.value.bio || ''
 
         // Load tutor-specific data if user is a tutor
@@ -966,30 +990,11 @@ export default {
   letter-spacing: 0.5px;
 }
 
-.profile-subtitle-container {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-}
-
 .profile-subtitle {
   font-size: 1.1rem;
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
   font-family: 'Inter', sans-serif;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-}
-
-.profile-phone {
-  display: inline-flex;
-  align-items: center;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: inherit;
-  white-space: nowrap;
 }
 
 .profile-details {
@@ -1136,14 +1141,6 @@ export default {
     font-size: 0.95rem;
   }
 
-  .profile-phone {
-    font-size: 0.9rem;
-  }
-
-  .profile-subtitle-container {
-    gap: 0.5rem;
-  }
-
   .cyberpunk-avatar {
     width: 100px !important;
     height: 100px !important;
@@ -1187,18 +1184,6 @@ export default {
 
   .profile-subtitle {
     font-size: 0.85rem;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.25rem;
-  }
-
-  .profile-phone {
-    font-size: 0.8rem;
-    margin-left: 0 !important;
-  }
-
-  .profile-subtitle-container {
-    gap: 0.25rem;
   }
 
   .cyberpunk-avatar {

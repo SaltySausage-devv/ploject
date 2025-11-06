@@ -1,374 +1,250 @@
-# TutorConnect - Singapore's Premier Tutoring Marketplace
+# TutorConnect
 
-A comprehensive marketplace platform connecting students with verified tutors and tuition centres in Singapore, built with a modern microservices architecture and featuring advanced animations.
+A comprehensive marketplace platform connecting students with verified tutors and tuition centres in Singapore. Built with a modern microservices architecture.
 
-## 🎯 Project Overview
+## Features
 
-TutorConnect is a full-stack web application that revolutionizes the tutoring industry in Singapore by providing:
-- **Transparent pricing** comparison across tutors and centres
-- **Real-time availability** and instant booking
-- **Verified tutor profiles** with comprehensive reviews
-- **Gamification system** with badges, points, and leaderboards
-- **Analytics dashboard** for performance tracking
-- **Earnings tracking** for tutors
-- **Advanced animations** with study-themed backgrounds
+- **User Management**: Students, tutors, and tuition centres
+- **Booking System**: Real-time availability and instant booking
+- **Messaging**: Real-time chat with Socket.io
+- **Reviews & Ratings**: Comprehensive review system
+- **Analytics**: Performance tracking and reporting
+- **Gamification**: Badges, points, and leaderboards
+- **Calendar Integration**: Google Calendar sync
+- **Maps Integration**: Google Maps for location services
+- **Notifications**: Email and SMS notifications via Twilio
 
-## 🏗️ Architecture
+## Tech Stack
 
-### **Microservices Backend (12 Services)**
-| Service | Port | Technology | Purpose |
-|---------|------|-------------|---------|
-| **Auth** | 3001 | Node.js + JWT | User authentication & authorization |
-| **Users** | 3002 | Node.js + Express | Student, tutor, centre management |
-| **Profiles** | 3003 | Node.js + Express | Tutor/centre profiles & verification |
-| **Bookings** | 3004 | Node.js + Express | Availability & booking management |
-| **Messaging** | 3005 | Node.js + Socket.io | Real-time chat & Q&A |
-| **Reviews** | 3006 | Node.js + Express | Reviews & ratings system |
-| **Notifications** | 3007 | Node.js + Email/SMS | Email & WhatsApp notifications |
-| **Analytics** | 3008 | Node.js + Express | Analytics & reporting |
-| **Gamification** | 3009 | Node.js + Express | Badges, points, leaderboards |
-| **Earnings** | 3010 | Node.js + Express | Tutor earnings tracking |
-| **Calendar** | 3011 | Node.js + Google API | Google Calendar integration |
-| **Maps** | 3012 | Node.js + Google API | Google Maps integration |
+### Frontend
+- Vue.js 3 (Composition API)
+- Vue Router 4
+- Pinia (State Management)
+- Vite
+- Bootstrap 5
+- Socket.io Client
 
-### **Frontend Application**
-- **Framework**: Vue.js 3 with Composition API
-- **Router**: Vue Router 4
-- **State Management**: Pinia
-- **Styling**: Bootstrap 5 + Custom Cyberpunk Theme
-- **Animations**: Anime.js 4.2.0 + Motion.js
-- **Build Tool**: Vite
-- **Port**: 3000
-
-### **Database & Infrastructure**
-- **Database**: Supabase (PostgreSQL)
-- **Message Queue**: RabbitMQ
-- **Load Balancer**: Nginx
-- **Deployment**: Railway ready with super-dev script
-
-## 📁 Complete Codebase Structure
-
-```
-TutorConnect/
-├── 📁 database/
-│   └── schema.sql                    # PostgreSQL database schema
-├── 📁 frontend/                      # Vue.js frontend application
-│   ├── 📁 src/
-│   │   ├── 📁 components/           # Reusable Vue components
-│   │   │   ├── Navbar.vue           # Navigation with cyberpunk styling
-│   │   │   └── Footer.vue           # Footer component
-│   │   ├── 📁 pages/                # Vue page components
-│   │   │   ├── Home.vue             # Landing page with animations
-│   │   │   ├── Login.vue            # User authentication
-│   │   │   ├── Register.vue         # User registration
-│   │   │   ├── Dashboard.vue        # User dashboard
-│   │   │   ├── SearchTutors.vue     # Tutor search interface
-│   │   │   ├── TutorProfile.vue    # Individual tutor profiles
-│   │   │   ├── Booking.vue          # Booking interface
-│   │   │   ├── Messages.vue         # Messaging interface
-│   │   │   ├── Analytics.vue        # Analytics dashboard
-│   │   │   ├── Profile.vue          # User profile management
-│   │   │   └── Gamification.vue     # Gamification features
-│   │   ├── 📁 composables/          # Vue composables (custom hooks)
-│   │   │   ├── useAnimatedBackground.js  # Study-themed background animations
-│   │   │   └── useScrollAnimations.js  # Scroll-triggered animations
-│   │   ├── 📁 stores/               # Pinia state management
-│   │   │   └── auth.js              # Authentication store
-│   │   ├── 📁 services/             # API services
-│   │   │   └── api.js               # API client
-│   │   ├── App.vue                  # Main Vue component
-│   │   ├── main.js                  # Vue app entry point
-│   │   └── style.css                # Global styles with cyberpunk theme
-│   ├── package.json                 # Frontend dependencies
-│   └── vite.config.js               # Vite configuration
-├── 📁 services/                     # Microservices backend
-│   ├── 📁 auth/                     # Authentication service
-│   │   ├── src/index.js             # Auth service implementation
-│   │   └── package.json             # Auth dependencies
-│   ├── 📁 users/                    # Users service
-│   ├── 📁 profiles/                 # Profiles service
-│   ├── 📁 bookings/                 # Bookings service
-│   ├── 📁 messaging/                # Messaging service
-│   ├── 📁 reviews/                  # Reviews service
-│   ├── 📁 notifications/            # Notifications service
-│   ├── 📁 analytics/                # Analytics service
-│   ├── 📁 gamification/             # Gamification service
-│   ├── 📁 earnings/                 # Earnings service
-│   ├── 📁 calendar/                 # Calendar service
-│   └── 📁 maps/                     # Maps service
-├── 📄 package.json                  # Root package configuration
-├── 📄 nginx.conf                    # Load balancer configuration
-├── 📄 start-dev.sh                  # Development startup script
-├── 📄 env.example                   # Environment variables template
-└── 📄 README.md                     # This file
-```
-
-## 🚀 Quick Start Guide
-
-> **📖 For detailed setup instructions, see [SETUP.md](./SETUP.md)**
-
-### **Prerequisites**
+### Backend
 - Node.js 18+
-- npm or yarn
-- Railway CLI (for deployment)
+- Express.js
+- Socket.io
+- JWT Authentication
+- Supabase (PostgreSQL)
+
+### Infrastructure
+- Supabase (Database)
+- Railway (Deployment)
+- Google APIs (Calendar, Maps)
+
+## Prerequisites
+
+- Node.js 18.0.0 or higher
+- npm 9.0.0 or higher
 - Supabase account
-- Google Cloud Platform account (optional, for Calendar/Maps APIs)
+- (Optional) Google Cloud Platform account for Calendar/Maps APIs
+- (Optional) Twilio account for SMS notifications
 
-### **1. Clone and Install Dependencies**
+## Installation
 
-**Windows:**
-```bash
-# Clone the repository
-git clone <repository-url>
-cd TutorConnect
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd ploject
+   ```
 
-# Run setup script (installs everything automatically)
-setup.bat
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+   This will install dependencies for the root, frontend, and all microservices.
+
+3. **Configure environment variables**
+   
+   **Root `.env` file** (for backend services):
+   
+   Create a `.env` file in the root directory. Reference `services/auth/env.example` for the required structure.
+   
+   **Required variables:**
+   - `SUPABASE_URL` - Your Supabase project URL
+   - `SUPABASE_ANON_KEY` - Your Supabase anonymous key
+   - `JWT_SECRET` - Secret key for JWT token signing
+   - `FRONTEND_URL` - Frontend URL (default: `http://localhost:3000`)
+   
+   **Frontend `.env` file** (for Vue.js application):
+   
+   Create a `.env` file in the `frontend/` directory with Vite-prefixed variables:
+   
+   ```bash
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+   
+   **Note:** Service URLs (e.g., `VITE_AUTH_SERVICE_URL`) are optional for local development as they default to `http://localhost:300X`.
+
+4. **Start the development servers**
+   ```bash
+   npm run dev
+   ```
+
+   This will start all services:
+   - Frontend: http://localhost:3000
+   - Auth: http://localhost:3001
+   - Users: http://localhost:3002
+   - Profiles: http://localhost:3003
+   - Bookings: http://localhost:3004
+   - Messaging: http://localhost:3005
+   - Reviews: http://localhost:3006
+   - Notifications: http://localhost:3007
+   - Analytics: http://localhost:3008
+   - Calendar: http://localhost:3011
+   - Maps: http://localhost:3012
+
+## Project Structure
+
+```
+ploject/
+├── frontend/              # Vue.js frontend application
+│   ├── src/
+│   │   ├── components/   # Reusable Vue components
+│   │   ├── pages/        # Page components
+│   │   ├── services/     # API services
+│   │   ├── stores/       # Pinia stores
+│   │   └── lib/          # Libraries (Supabase client)
+│   └── package.json
+├── services/              # Microservices backend
+│   ├── auth/             # Authentication service
+│   ├── users/            # User management
+│   ├── profiles/         # Profile management
+│   ├── bookings/         # Booking management
+│   ├── messaging/        # Real-time messaging
+│   ├── reviews/          # Reviews and ratings
+│   ├── notifications/    # Notifications service
+│   ├── analytics/        # Analytics service
+│   ├── gamification/     # Gamification service
+│   ├── earnings/         # Earnings tracking
+│   ├── calendar/         # Calendar integration
+│   └── maps/             # Maps integration
+├── scripts/
+│   └── super-dev.js      # Development orchestration script
+└── package.json          # Root package configuration
 ```
 
-**macOS/Linux:**
+## Available Scripts
+
+### Development
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd TutorConnect
-
-# Make scripts executable
-chmod +x setup.sh kill-ports.sh
-
-# Run setup script (installs everything automatically)
-./setup.sh
+npm run dev              # Start all services in development mode
+npm run dev:auth         # Start auth service only
+npm run dev:users        # Start users service only
+npm run dev:frontend     # Start frontend only
+# ... similar for other services
 ```
 
-**Or use npm:**
+### Production
 ```bash
-# Install all dependencies (root + all services + frontend)
-npm run install:all
+npm run build            # Build frontend for production
+npm run start            # Start all services in production mode
 ```
 
-### **2. Environment Setup**
-
+### Deployment
 ```bash
-# Copy environment template
-cp env.example .env
-
-# Edit environment variables
-nano .env
+npm run deploy:railway   # Deploy to Railway
+npm run deploy:setup     # Setup Railway CLI
 ```
 
-**Required Environment Variables:**
-```bash
-# Supabase Configuration
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_ANON_KEY=your_supabase_anon_key
+## Environment Variables
 
-# JWT Configuration
-JWT_SECRET=your_jwt_secret_key_here
+### Root `.env` (Backend Services)
 
-# Email Service (SendGrid)
-SENDGRID_API_KEY=your_sendgrid_api_key
-FROM_EMAIL=noreply@tutorconnect.sg
+See `services/auth/env.example` for the complete list of environment variables.
 
-# SMS Service (Twilio)
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=your_twilio_phone_number
+**Required:**
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `JWT_SECRET`
+- `FRONTEND_URL`
 
-# Google APIs
-GOOGLE_CALENDAR_API_KEY=your_google_calendar_api_key
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-GOOGLE_REDIRECT_URI=http://localhost:3000/auth/google/callback
+**Optional:**
+- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` (SMS)
+- `GOOGLE_MAPS_API_KEY`, `GOOGLE_CALENDAR_API_KEY` (Google APIs)
+- `EMAIL_USER`, `EMAIL_PASS` (Email service)
 
-# Service URLs
-FRONTEND_URL=http://localhost:3000
-RABBITMQ_URL=amqp://localhost:5672
-```
+### Frontend `.env` (Vue.js Application)
 
-### **3. Database Setup**
+**Required:**
+- `VITE_SUPABASE_URL` - Your Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Your Supabase anonymous key
 
-```bash
-# Create Supabase project at https://supabase.com
-# Run the database schema
-psql -h your-db-host -U postgres -d postgres -f database/schema.sql
-```
+**Optional (for production):**
+- `VITE_AUTH_SERVICE_URL` - Auth service URL (defaults to `http://localhost:3001`)
+- `VITE_USERS_SERVICE_URL` - Users service URL (defaults to `http://localhost:3002`)
+- `VITE_PROFILES_SERVICE_URL` - Profiles service URL (defaults to `http://localhost:3003`)
+- `VITE_BOOKINGS_SERVICE_URL` - Bookings service URL (defaults to `http://localhost:3004`)
+- `VITE_MESSAGING_SERVICE_URL` - Messaging service URL (defaults to `http://localhost:3005`)
+- `VITE_REVIEWS_SERVICE_URL` - Reviews service URL (defaults to `http://localhost:3006`)
+- `VITE_NOTIFICATIONS_SERVICE_URL` - Notifications service URL (defaults to `http://localhost:3007`)
+- `VITE_ANALYTICS_SERVICE_URL` - Analytics service URL (defaults to `http://localhost:3008`)
+- `VITE_CALENDAR_SERVICE_URL` - Calendar service URL (defaults to `http://localhost:3011`)
+- `VITE_MAPS_SERVICE_URL` - Maps service URL (defaults to `http://localhost:3012`)
 
-### **4. Start Development Servers**
+## Architecture
 
-**Windows:**
-```bash
-# If ports are in use, clean them up first
-kill-ports.bat
+### Microservices
 
-# Start all services
-start-dev.bat
-```
+The application follows a microservices architecture with 12 independent services:
 
-**macOS/Linux:**
-```bash
-# If ports are in use, clean them up first
-./kill-ports.sh
+| Service | Port | Description |
+|---------|------|-------------|
+| Frontend | 3000 | Vue.js application |
+| Auth | 3001 | Authentication & authorization |
+| Users | 3002 | User management |
+| Profiles | 3003 | Profile management |
+| Bookings | 3004 | Booking management |
+| Messaging | 3005 | Real-time messaging (Socket.io) |
+| Reviews | 3006 | Reviews & ratings |
+| Notifications | 3007 | Email & SMS notifications |
+| Analytics | 3008 | Analytics & reporting |
+| Calendar | 3011 | Google Calendar integration |
+| Maps | 3012 | Google Maps integration |
 
-# Start all services
-npm run dev
-```
+### Database
 
-**Individual Services:**
-```bash
-# Start individual services for debugging
-npm run dev:auth      # Port 3001
-npm run dev:users     # Port 3002
-npm run dev:profiles  # Port 3003
-npm run dev:bookings  # Port 3004
-npm run dev:messaging # Port 3005
-npm run dev:reviews   # Port 3006
-npm run dev:notifications # Port 3007
-npm run dev:analytics # Port 3008
-npm run dev:gamification # Port 3009
-npm run dev:earnings  # Port 3010
-npm run dev:calendar  # Port 3011
-npm run dev:maps      # Port 3012
-npm run dev:frontend  # Port 3000
-```
-
-### **5. Access the Application**
-
-- **Frontend**: http://localhost:3000
-- **API Gateway**: http://localhost:3001 (Auth service)
-- **RabbitMQ Management**: http://localhost:15672 (admin/password)
-
-## 🎨 Design System
-
-### **Cyberpunk Theme**
-- **Primary Colors**: Dark grey (#1a1a1a, #2a2a2a)
-- **Accent Colors**: Orange (#ff8c42), Yellow (#ffd23f)
-- **Typography**: Inter font family
-- **Animations**: Anime.js with study-themed elements
-
-### **Background Animations**
-- **Study Elements**: 📚 Books, ✏️ Pencils, 📝 Notebooks, 🧮 Calculators
-- **Academic Symbols**: 🎓 Graduation caps, 🔬 Microscopes, 💡 Light bulbs
-- **Mathematical Symbols**: π, ∑, ∞, +, =, ∫, ∆, √
-- **Performance**: Optimized to 10 elements for smooth performance
-
-### **Custom Scrollbar**
-- **White segmented design** with horizontal dashes
-- **20px width** for better visibility
-- **Glow effects** for enhanced user experience
-- **Lag-free performance** with optimized CSS
-
-## 🛠️ Development Commands
-
-```bash
-# Install dependencies
-npm run install:all
-
-# Start development
-npm run dev
-
-# Build for production
-npm run build
-
-# Start individual services
-npm run dev:auth
-npm run dev:users
-npm run dev:frontend
-# ... etc
-
-# Railway deployment
-npm run deploy:railway
-```
-
-## 📊 Database Schema
-
-### **Core Tables**
-- `users` - User accounts (students, tutors, centres, admins)
-- `tutor_profiles` - Tutor-specific information
-- `centre_profiles` - Tuition centre information
+The application uses Supabase (PostgreSQL) for data storage. Key tables include:
+- `users` - User accounts
+- `tutor_profiles` - Tutor information
+- `centre_profiles` - Centre information
 - `bookings` - Booking records
-- `reviews` - Reviews and ratings
 - `messages` - Chat messages
+- `reviews` - Reviews and ratings
 - `notifications` - Notification records
-- `analytics_events` - User behavior tracking
-- `gamification_points` - Points and badges
-- `earnings` - Tutor earnings tracking
 
-### **Integration Tables**
-- `calendar_events` - Google Calendar integration
-- `location_data` - Google Maps location data
+## Development
 
-## 🚀 Deployment
+The project uses `super-dev.js` to orchestrate development:
+- Automatically installs dependencies for all services
+- Cleans up ports 3000-3012
+- Starts all services concurrently
+- Excludes `gamification` and `earnings` services by default
 
-### **Railway Deployment**
-```bash
-# Deploy to Railway
-npm run deploy:railway
+## Deployment
 
-# Or setup Railway CLI first
-npm run deploy:setup
-```
+The application is configured for deployment on Railway:
+- All services can be deployed using the `super-dev.js` script
+- Environment variables are managed via Railway's dashboard
+- Database is hosted on Supabase
 
-### **Production Deployment**
-- **All Services**: Deploy to Railway using super-dev script
-- **Database**: Use Supabase production instance
-- **Load Balancer**: Railway handles load balancing automatically
-
-## 🔧 Performance Optimizations
-
-### **Frontend Optimizations**
-- **Removed unused animations** (6 functions removed)
-- **Optimized background elements** (10 max for smooth performance)
-- **Simplified CSS animations** (removed complex keyframes)
-- **Hardware-accelerated scrollbar** (CSS-only implementation)
-
-### **Backend Optimizations**
-- **Microservices architecture** for scalability
-- **RabbitMQ message queuing** for async processing
-- **JWT authentication** for stateless sessions
-- **Database indexing** for query optimization
-
-## 📱 Features
-
-### **For Students**
-- Browse verified tutors and centres
-- Compare pricing transparently
-- Book sessions instantly
-- Track progress with gamification
-- Real-time messaging with tutors
-
-### **For Tutors**
-- Create detailed profiles
-- Set availability and pricing
-- Track earnings and analytics
-- Earn badges and points
-- Manage bookings and messages
-
-### **For Centres**
-- Manage multiple tutors
-- Bulk booking management
-- Analytics dashboard
-- Brand customization
-- Revenue tracking
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📄 License
+## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
-## 🆘 Support
+## Support
 
-For support and questions:
-- Create an issue on GitHub
-- Contact the development team
-- Check the documentation
-
----
-
-**TutorConnect** - Revolutionizing education in Singapore, one connection at a time. 🎓✨
+For issues and questions, please open an issue on GitHub.

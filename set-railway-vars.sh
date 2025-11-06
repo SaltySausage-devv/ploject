@@ -94,6 +94,4 @@ echo "===================="
 echo ""
 echo "🌐 Frontend: $FRONTEND_URL"
 echo "🗺️  Maps: $MAPS_URL"
-echo ""
-echo "Next: Run database migrations in Supabase (dbschema.sql)"
 
