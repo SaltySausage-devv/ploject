@@ -180,8 +180,7 @@ See `services/auth/env.example` for the complete list of environment variables.
 **Optional:**
 
 - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER` (SMS)
-- `GOOGLE_MAPS_API_KEY`, `GOOGLE_CALENDAR_API_KEY` (Google APIs)
-- `EMAIL_USER`, `EMAIL_PASS` (Email service)
+- `GOOGLE_MAPS_API_KEY`
 
 ### Frontend `.env` (Vue.js Application)
 
@@ -242,7 +241,6 @@ The project uses `super-dev.js` to orchestrate development:
 - Automatically installs dependencies for all services
 - Cleans up ports 3000-3012
 - Starts all services concurrently
-- Excludes `gamification` and `earnings` services by default
 
 ## Deployment
 
